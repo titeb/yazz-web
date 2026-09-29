@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClientSafe, isSupabaseConfigured } from "@/lib/supabase/client";
 import { YazzLogo } from "@/components/yazz/yazz-logo";
@@ -19,6 +19,27 @@ import {
 type Mode = "phone" | "email";
 
 export default function LoginPage() {
+  return (
+    <Suspense fallback={<LoginFallback />}>
+      <LoginContent />
+    </Suspense>
+  );
+}
+
+function LoginFallback() {
+  return (
+    <div className="grid min-h-screen place-items-center bg-yazz-background">
+      <div className="text-center">
+        <div className="mx-auto mb-3 h-8 w-8 animate-spin rounded-full border-2 border-yazz-border-light border-t-yazz-primary" />
+        <p className="font-inter text-[13px] font-medium text-yazz-text-muted">
+          Chargement…
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function LoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirectTo = searchParams.get("redirect") || "/";
