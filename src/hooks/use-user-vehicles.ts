@@ -118,7 +118,7 @@ export function useUserVehicles() {
         return {
           id: ud.id,
           deviceId: ud.device_id,
-          name: ud.nickname || device?.name || `Device ${ud.device_id.slice(-6)}`,
+          name: ud.nickname || device?.name || `Device ${(ud.device_id || "").slice(-6) || "unknown"}`,
           plate: ud.vehicle_plate,
           status,
           speed: pos?.speed ?? 0,
