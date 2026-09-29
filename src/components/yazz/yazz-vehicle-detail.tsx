@@ -159,7 +159,7 @@ export function YazzVehicleDetail({ vehicle, onClose }: YazzVehicleDetailProps) 
         {vehicle.driver && (
           <div className="mt-3 flex items-center gap-3 rounded-yazz-md border border-yazz-border-light p-3">
             <div className="font-outfit grid h-10 w-10 place-items-center rounded-full bg-yazz-gradient-primary text-xs font-bold text-white">
-              {vehicle.driver.split(" ").map((p) => p[0]).join("").slice(0, 2)}
+              {(vehicle.driver || "?").split(" ").map((p) => p[0]).join("").slice(0, 2) || "?"}
             </div>
             <div className="flex-1">
               <p className="font-inter text-[10px] uppercase tracking-wide text-yazz-text-caption">Conducteur</p>
