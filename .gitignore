@@ -52,3 +52,22 @@ prompt
 server.log
 # Skills directory
 /skills/
+# ─── YAZZ Web : secrets & env ─────────────────────────────
+# Jamais committer les credentials
+.env
+.env.local
+.env.*.local
+.env.production
+.env.development
+
+# Audit / clones des autres repos YAZZ
+/audit/
+/tool-results/
+/upload/
+/worklog.md
+/dev.log
+/server.log
+/skills/
+/.zscripts/
+/.next/
+/scripts/

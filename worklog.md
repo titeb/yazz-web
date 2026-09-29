@@ -977,3 +977,42 @@ Stage Summary:
 - Aucune dépendance à Mapbox/Supabase pour la démo — utilisation de données mockées (prêt à être branché au vrai backend Supabase + Mapbox)
 - Code dans un nouveau projet isolé, n'affecte PAS les repos existants yazz/yazz-admin/yazz_backend
 - Captures dans /home/z/my-project/download/yazz-web-*.png
+
+---
+Task ID: YAZZ-WEB-V2-SUPABASE
+Agent: main (fullstack-dev)
+Task: Brancher Supabase + Mapbox réel sur yazz-web
+
+Work Log:
+- Installé @supabase/supabase-js, @supabase/ssr, mapbox-gl, @types/mapbox-gl
+- Créé .env.example + .env.local avec variables YAZZ (SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY, MAPBOX_TOKEN, MAPBOX_STYLE_URL, YAZZ_BACKEND_URL)
+- Créé src/lib/yazz/types/database.ts (types complets calqués sur migrations 001-036 : users, devices, user_devices, last_known_positions, gps_points, trips, geofences, notifications, user_credits, payments, parking_sessions, device_alert_configs, shared_devices, share_invitations, app_settings + RPC types)
+- Créé src/lib/supabase/client.ts (browser client avec isSupabaseConfigured() + createClient() + createClientSafe())
+- Créé src/lib/supabase/server.ts (server client + admin client pour service_role)
+- Créé src/lib/supabase/middleware.ts (refresh token + protection routes, désactivé en mode démo)
+- Créé src/middleware.ts (matcher Next.js)
+- Créé src/hooks/use-user-vehicles.ts (hook Realtime : fetch user_devices + last_known_positions + subscribe aux changements)
+- Créé src/components/yazz/mapbox/yazz-mapbox.tsx (carte Mapbox GL JS v3 avec markers animés, popups, filtres, navigation controls, centrage auto)
+- Créé src/app/login/page.tsx (page de connexion avec 2 modes : SMS OTP + email/password, layout 2 colonnes desktop avec brand panel gauche)
+- Mis à jour src/app/page.tsx (utilise useUserVehicles + fallback mock si Supabase pas configuré + bannière démo + état loading + gestion erreurs)
+- Créé README.md complet (installation, configuration, déploiement Vercel)
+- Créé scripts/create-github-repo.sh (script pour créer le repo GitHub)
+- Mis à jour .gitignore (exclut .env*, /audit, /upload, /worklog.md, /skills, etc.)
+
+Stage Summary:
+- Code compile sans erreur, page charge en 200
+- Dashboard s'affiche en mode démo (mock data) avec bannière "Supabase non configuré"
+- Page /login fonctionnelle (toggle phone/email, validation, états loading/erreur)
+- Carte Mapbox en attente de NEXT_PUBLIC_MAPBOX_TOKEN dans .env.local
+- Middleware protège les routes quand Supabase configuré, sinon mode démo
+- Types Supabase complets (13 tables + 5 RPC + 5 enums)
+- Realtime subscriptions sur last_known_positions + user_devices
+- Hook useUserVehicles gère : fetch initial + Realtime updates + compute status (moving/idle/offline/alert)
+- Tout est isolé dans /home/z/my-project/ — repos yazz/yazz-admin/yazz_backend intacts
+- Captures dans /home/z/my-project/download/yazz-web-v6-*.png
+
+Prochaines étapes pour l'utilisateur :
+1. Remplir .env.local avec NEXT_PUBLIC_SUPABASE_ANON_KEY (PAS la service_role côté client)
+2. Remplir NEXT_PUBLIC_MAPBOX_TOKEN (token public Mapbox)
+3. Exécuter scripts/create-github-repo.sh pour créer le repo GitHub
+4. Connecter le repo à Vercel + configurer les variables d'env
