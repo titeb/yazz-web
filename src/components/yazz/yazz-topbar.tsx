@@ -29,7 +29,7 @@ export function YazzTopbar({ onMobileMenu }: YazzTopbarProps) {
           type="search"
           placeholder="Rechercher un véhicule, IMEI, plaque..."
           className={cn(
-            "h-10 w-full rounded-yazz-sm border border-yazz-border-light bg-yazz-background pl-10 pr-3 text-sm",
+            "font-inter h-10 w-full rounded-yazz-sm border border-yazz-border-light bg-yazz-background pl-10 pr-3 text-[13px]",
             "text-yazz-text-dark placeholder:text-yazz-text-caption",
             "transition-all focus:border-yazz-primary focus:outline-none focus:ring-2 focus:ring-yazz-primary/20",
           )}
@@ -41,7 +41,7 @@ export function YazzTopbar({ onMobileMenu }: YazzTopbarProps) {
       {/* Quick actions */}
       <div className="flex items-center gap-1.5">
         <button
-          className="hidden h-10 items-center gap-2 rounded-yazz-sm bg-yazz-primary px-4 text-sm font-semibold text-white shadow-yazz-medium transition-all hover:bg-yazz-primary/90 hover:shadow-yazz-elevated active:scale-[0.98] md:inline-flex"
+          className="font-inter hidden h-10 items-center gap-2 rounded-yazz-sm bg-yazz-primary px-4 text-[13px] font-semibold text-white shadow-yazz-medium transition-all hover:bg-yazz-primary/90 hover:shadow-yazz-elevated active:scale-[0.98] md:inline-flex"
         >
           <Plus className="h-4 w-4" />
           Ajouter un véhicule
@@ -70,12 +70,12 @@ export function YazzTopbar({ onMobileMenu }: YazzTopbarProps) {
 
         {/* User */}
         <button className="flex items-center gap-2 rounded-yazz-sm p-1 pr-2 transition-colors hover:bg-yazz-accent">
-          <div className="grid h-8 w-8 place-items-center rounded-full bg-yazz-gradient-primary text-xs font-bold text-white">
+          <div className="font-outfit grid h-8 w-8 place-items-center rounded-full bg-yazz-gradient-primary text-[11px] font-bold text-white">
             HT
           </div>
           <div className="hidden flex-col items-start leading-none md:flex">
-            <span className="text-[13px] font-semibold text-yazz-text-dark">Henock T.</span>
-            <span className="text-[10px] font-medium text-yazz-text-caption">Propriétaire</span>
+            <span className="font-outfit text-[13px] font-semibold text-yazz-text-dark">Henock T.</span>
+            <span className="font-inter text-[10px] font-medium text-yazz-text-caption">Propriétaire</span>
           </div>
           <ChevronDown className="hidden h-4 w-4 text-yazz-text-caption md:block" />
         </button>

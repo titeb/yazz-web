@@ -10,9 +10,18 @@
    ============================================================ */
 
 @theme inline {
-  /* Polices */
-  --font-sans: var(--font-plus-jakarta), var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
-  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+  /* ─── Polices officielles YAZZ (Flutter) ───────────────────────────
+     Outfit             → titres, headlines, titres de cartes
+     Inter              → corps de texte, labels, boutons
+     Plus Jakarta Sans  → police historique YAZZ (utilisée dans certains widgets)
+     Google Sans Flex   → police secondaire
+     ────────────────────────────────────────────────────────────────── */
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-outfit: var(--font-outfit), var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-inter: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-jakarta: var(--font-plus-jakarta), var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-gsans: var(--font-google-sans), var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: ui-monospace, "SFMono-Regular", Menlo, monospace;
 
   /* Couleurs YAZZ — Design System officiel */
   --color-yazz-primary: #2b44ee;          /* Bleu Électrique — CTA, boutons */

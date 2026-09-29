@@ -55,13 +55,13 @@ export function YazzAlertsFeed({ alerts }: YazzAlertsFeedProps) {
             <span className="absolute -right-1 -top-1 h-2 w-2 rounded-full bg-yazz-error yazz-blink" />
           </div>
           <div>
-            <h3 className="text-[14px] font-bold text-yazz-text-dark">Alertes récentes</h3>
-            <p className="text-[11px] text-yazz-text-caption">
+            <h3 className="font-outfit text-[14px] font-bold tracking-[-0.01em] text-yazz-text-dark">Alertes récentes</h3>
+            <p className="font-inter text-[11px] text-yazz-text-caption">
               {alerts.length} non lues · {alerts.filter((a) => a.severity === "critical").length} critiques
             </p>
           </div>
         </div>
-        <button className="text-[11px] font-semibold text-yazz-primary hover:underline">
+        <button className="font-inter text-[11px] font-semibold text-yazz-primary hover:underline">
           Tout voir
         </button>
       </div>
@@ -84,23 +84,23 @@ export function YazzAlertsFeed({ alerts }: YazzAlertsFeedProps) {
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between gap-2">
-                      <p className="truncate text-[12px] font-semibold text-yazz-text-dark">
+                      <p className="font-outfit truncate text-[12px] font-semibold tracking-[-0.01em] text-yazz-text-dark">
                         {a.vehicleName}
                       </p>
-                      <span className="shrink-0 text-[10px] text-yazz-text-caption">
+                      <span className="font-inter shrink-0 text-[10px] text-yazz-text-caption">
                         {timeAgo(a.ts)}
                       </span>
                     </div>
-                    <p className="mt-0.5 line-clamp-2 text-[11px] leading-relaxed text-yazz-text-muted">
+                    <p className="font-inter mt-0.5 line-clamp-2 text-[11px] leading-relaxed text-yazz-text-muted">
                       {a.label}
                     </p>
                     <div className="mt-1.5 flex items-center justify-between">
-                      <span className="rounded-full bg-yazz-surface px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-yazz-text-caption">
+                      <span className="font-outfit rounded-full bg-yazz-surface px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-yazz-text-caption">
                         {a.plate}
                       </span>
                       <span
                         className={cn(
-                          "flex items-center gap-1 text-[10px] font-semibold opacity-0 transition-opacity group-hover:opacity-100",
+                          "font-inter flex items-center gap-1 text-[10px] font-semibold opacity-0 transition-opacity group-hover:opacity-100",
                           "text-yazz-primary",
                         )}
                       >
@@ -120,10 +120,10 @@ export function YazzAlertsFeed({ alerts }: YazzAlertsFeedProps) {
             <div className="grid h-12 w-12 place-items-center rounded-full bg-yazz-success/10">
               <Bell className="h-5 w-5 text-yazz-success" />
             </div>
-            <p className="mt-3 text-[13px] font-semibold text-yazz-text-dark">
+            <p className="font-outfit mt-3 text-[13px] font-semibold text-yazz-text-dark">
               Aucune alerte
             </p>
-            <p className="mt-1 text-[11px] text-yazz-text-muted">
+            <p className="font-inter mt-1 text-[11px] text-yazz-text-muted">
               Tout est sous contrôle
             </p>
           </div>

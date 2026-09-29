@@ -86,10 +86,10 @@ export function YazzStatCard({ label, value, delta, trend, icon, accent }: StatC
       </div>
 
       <div className="mt-4">
-        <p className="text-[12px] font-medium uppercase tracking-wide text-yazz-text-caption">
+        <p className="font-inter text-[11px] font-medium uppercase tracking-[0.08em] text-yazz-text-caption">
           {label}
         </p>
-        <p className="mt-1 text-[26px] font-extrabold leading-tight text-yazz-text-dark">
+        <p className="font-outfit mt-1 text-[26px] font-bold leading-tight tracking-[-0.02em] text-yazz-text-dark">
           {value}
         </p>
       </div>

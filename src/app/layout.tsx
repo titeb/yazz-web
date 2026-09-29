@@ -1,18 +1,42 @@
 import type { Metadata } from "next";
-import { Plus_Jakarta_Sans, Geist_Mono } from "next/font/google";
+import { Outfit, Inter } from "next/font/google";
+import localFont from "next/font/local";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
 
-const plusJakarta = Plus_Jakarta_Sans({
-  variable: "--font-plus-jakarta",
+// Polices officielles YAZZ (Flutter) :
+//   Outfit      → titres, headlines
+//   Inter       → corps de texte, labels
+//   Plus Jakarta Sans → police d'icônes/titres dans certaines vues Flutter
+//   GoogleSansFlex   → police secondaire
+//
+// On charge Outfit + Inter via Google Fonts (rapidité de build), et on déclare
+// les variables CSS pour usage Tailwind.
+
+const outfit = Outfit({
+  variable: "--font-outfit",
   subsets: ["latin"],
-  weight: ["300", "400", "500", "600", "700", "800"],
+  weight: ["400", "500", "600", "700", "800"],
   display: "swap",
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const inter = Inter({
+  variable: "--font-inter",
   subsets: ["latin"],
+  weight: ["300", "400", "500", "600", "700"],
+  display: "swap",
+});
+
+// Polices locales YAZZ (fallback, identiques au Flutter)
+const plusJakarta = localFont({
+  src: "../../public/fonts/PlusJakartaSans-Variable.ttf",
+  variable: "--font-plus-jakarta",
+  display: "swap",
+});
+
+const googleSans = localFont({
+  src: "../../public/fonts/GoogleSansFlex-Variable.ttf",
+  variable: "--font-google-sans",
   display: "swap",
 });
 
@@ -31,6 +55,10 @@ export const metadata: Metadata = {
     "antivol",
   ],
   authors: [{ name: "YAZZ" }],
+  icons: {
+    icon: "/yazz-logo-square.png",
+    apple: "/yazz-logo-square.png",
+  },
   openGraph: {
     title: "YAZZ — Suivi GPS en temps réel",
     description:
@@ -54,7 +82,7 @@ export default function RootLayout({
   return (
     <html lang="fr" suppressHydrationWarning>
       <body
-        className={`${plusJakarta.variable} ${geistMono.variable} font-sans antialiased bg-yazz-background text-yazz-text-dark`}
+        className={`${outfit.variable} ${inter.variable} ${plusJakarta.variable} ${googleSans.variable} font-sans antialiased bg-yazz-background text-yazz-text-dark`}
       >
         {children}
         <Toaster />

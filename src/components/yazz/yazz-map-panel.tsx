@@ -168,8 +168,8 @@ export function YazzMapPanel({ vehicles, selectedId, onSelect }: YazzMapPanelPro
       <div className="absolute left-4 right-4 top-4 z-20 flex items-center justify-between gap-3">
         <div className="flex items-center gap-2 rounded-yazz-sm bg-yazz-surface/90 px-3 py-2 yazz-glass">
           <Crosshair className="h-4 w-4 text-yazz-primary" />
-          <span className="text-xs font-semibold text-yazz-text-dark">Kinshasa</span>
-          <span className="text-[10px] text-yazz-text-caption">Live</span>
+          <span className="font-outfit text-[12px] font-semibold text-yazz-text-dark">Kinshasa</span>
+          <span className="font-inter text-[10px] text-yazz-text-caption">Live</span>
           <span className="ml-1 h-2 w-2 rounded-full bg-yazz-success yazz-blink" />
         </div>
 
@@ -188,7 +188,7 @@ export function YazzMapPanel({ vehicles, selectedId, onSelect }: YazzMapPanelPro
                 key={f.id}
                 onClick={() => setFilter(f.id as VehicleStatus | "all")}
                 className={cn(
-                  "rounded-yazz-xs px-2.5 py-1.5 text-[11px] font-semibold transition-all",
+                  "font-inter rounded-yazz-xs px-2.5 py-1.5 text-[11px] font-semibold transition-all",
                   active
                     ? "bg-yazz-primary text-white shadow-yazz-soft"
                     : "text-yazz-text-muted hover:bg-yazz-accent hover:text-yazz-primary",
@@ -270,14 +270,14 @@ export function YazzMapPanel({ vehicles, selectedId, onSelect }: YazzMapPanelPro
                 )}
               >
                 <div className="flex items-start justify-between gap-2">
-                  <p className="text-[11px] font-semibold text-yazz-text-dark">{v.name}</p>
-                  <span className={cn("rounded-full px-1.5 py-0.5 text-[9px] font-bold", cfg.bg, "text-white")}>
+                  <p className="font-outfit text-[11px] font-semibold text-yazz-text-dark">{v.name}</p>
+                  <span className={cn("font-inter rounded-full px-1.5 py-0.5 text-[9px] font-bold", cfg.bg, "text-white")}>
                     {cfg.label}
                   </span>
                 </div>
-                <p className="mt-0.5 truncate text-[10px] text-yazz-text-muted">{v.address}</p>
-                <div className="mt-1.5 flex items-center justify-between text-[10px]">
-                  <span className="font-semibold text-yazz-primary">
+                <p className="font-inter mt-0.5 truncate text-[10px] text-yazz-text-muted">{v.address}</p>
+                <div className="font-inter mt-1.5 flex items-center justify-between text-[10px]">
+                  <span className="font-outfit font-semibold text-yazz-primary">
                     {v.speed > 0 ? `${v.speed} km/h` : "À l'arrêt"}
                   </span>
                   <span className="text-yazz-text-caption">Batt: {v.battery}%</span>
@@ -287,7 +287,7 @@ export function YazzMapPanel({ vehicles, selectedId, onSelect }: YazzMapPanelPro
               {/* Plate badge below marker */}
               <div
                 className={cn(
-                  "absolute left-1/2 top-[42px] -translate-x-1/2 whitespace-nowrap rounded-full px-2 py-0.5 text-[9px] font-bold",
+                  "font-outfit absolute left-1/2 top-[42px] -translate-x-1/2 whitespace-nowrap rounded-full px-2 py-0.5 text-[9px] font-bold tracking-wide",
                   isSelected
                     ? "bg-yazz-primary text-white"
                     : "bg-yazz-surface/90 text-yazz-text-body yazz-glass",
@@ -302,7 +302,7 @@ export function YazzMapPanel({ vehicles, selectedId, onSelect }: YazzMapPanelPro
 
       {/* Legend bottom-left */}
       <div className="absolute bottom-4 left-4 z-20 rounded-yazz-sm bg-yazz-surface/95 p-2.5 yazz-glass">
-        <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-yazz-text-caption">
+        <p className="font-inter mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-yazz-text-caption">
           Légende
         </p>
         <ul className="space-y-1">
@@ -316,7 +316,7 @@ export function YazzMapPanel({ vehicles, selectedId, onSelect }: YazzMapPanelPro
           ).map((l) => (
             <li key={l.id} className="flex items-center gap-2">
               <span className={cn("h-2 w-2 rounded-full", l.color)} />
-              <span className="text-[11px] font-medium text-yazz-text-body">{l.label}</span>
+              <span className="font-inter text-[11px] font-medium text-yazz-text-body">{l.label}</span>
             </li>
           ))}
         </ul>
@@ -324,7 +324,7 @@ export function YazzMapPanel({ vehicles, selectedId, onSelect }: YazzMapPanelPro
 
       {/* Scale bottom-right */}
       <div className="absolute bottom-4 right-4 z-20 flex items-center gap-2 rounded-yazz-sm bg-yazz-surface/95 px-2.5 py-1.5 yazz-glass">
-        <span className="text-[10px] font-semibold text-yazz-text-muted">2 km</span>
+        <span className="font-outfit text-[10px] font-semibold text-yazz-text-muted">2 km</span>
         <div className="h-1.5 w-12 border-b-2 border-l-2 border-r-2 border-yazz-text-muted" />
       </div>
     </div>

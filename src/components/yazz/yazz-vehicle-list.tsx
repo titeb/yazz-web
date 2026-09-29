@@ -61,8 +61,8 @@ export function YazzVehicleList({ vehicles, selectedId, onSelect }: YazzVehicleL
       {/* Header */}
       <div className="flex items-center justify-between border-b border-yazz-border-light px-4 py-3">
         <div>
-          <h3 className="text-[14px] font-bold text-yazz-text-dark">Mes véhicules</h3>
-          <p className="text-[11px] text-yazz-text-caption">
+          <h3 className="font-outfit text-[14px] font-bold tracking-[-0.01em] text-yazz-text-dark">Mes véhicules</h3>
+          <p className="font-inter text-[11px] text-yazz-text-caption">
             {vehicles.length} véhicules · {vehicles.filter((v) => v.status === "moving").length} actifs
           </p>
         </div>
@@ -112,38 +112,38 @@ export function YazzVehicleList({ vehicles, selectedId, onSelect }: YazzVehicleL
                     {/* Info */}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between gap-2">
-                        <p className="truncate text-[13px] font-semibold text-yazz-text-dark">
+                        <p className="font-outfit truncate text-[13px] font-semibold tracking-[-0.01em] text-yazz-text-dark">
                           {v.name}
                         </p>
-                        <span className="shrink-0 text-[10px] font-bold uppercase tracking-wide text-yazz-text-caption">
+                        <span className="font-outfit shrink-0 text-[10px] font-bold uppercase tracking-wide text-yazz-text-caption">
                           {v.plate}
                         </span>
                       </div>
 
-                      <p className="mt-0.5 flex items-center gap-1 truncate text-[11px] text-yazz-text-muted">
+                      <p className="font-inter mt-0.5 flex items-center gap-1 truncate text-[11px] text-yazz-text-muted">
                         <MapPin className="h-3 w-3 shrink-0" />
                         <span className="truncate">{v.address}</span>
                       </p>
 
                       {/* Stats line */}
-                      <div className="mt-2 flex items-center gap-2">
+                      <div className="font-inter mt-2 flex items-center gap-2">
                         <span className={cn("rounded-full px-1.5 py-0.5 text-[9px] font-bold", cfg.badge)}>
                           {cfg.badgeLabel}
                         </span>
 
                         {v.speed > 0 && (
-                          <span className="flex items-center gap-0.5 text-[10px] font-semibold text-yazz-primary">
+                          <span className="font-outfit flex items-center gap-0.5 text-[10px] font-semibold text-yazz-primary">
                             <Zap className="h-2.5 w-2.5" />
                             {v.speed} km/h
                           </span>
                         )}
 
-                        <span className="flex items-center gap-0.5 text-[10px] text-yazz-text-caption">
+                        <span className="font-inter flex items-center gap-0.5 text-[10px] text-yazz-text-caption">
                           <Battery className="h-2.5 w-2.5" />
                           {v.battery}%
                         </span>
 
-                        <span className="ml-auto flex items-center gap-0.5 text-[10px] text-yazz-text-caption">
+                        <span className="font-inter ml-auto flex items-center gap-0.5 text-[10px] text-yazz-text-caption">
                           <Clock className="h-2.5 w-2.5" />
                           {timeAgo(v.lastUpdate)}
                         </span>

@@ -55,7 +55,7 @@ export function YazzSidebar({ collapsed, onToggle, active, onSelect }: YazzSideb
       {/* Logo + collapse toggle */}
       <div className="flex items-center justify-between px-4 py-5">
         {collapsed ? (
-          <YazzLogo variant="mark" className="h-9 w-9" />
+          <YazzLogo variant="mark" size={36} />
         ) : (
           <YazzLogo />
         )}
@@ -92,7 +92,7 @@ export function YazzSidebar({ collapsed, onToggle, active, onSelect }: YazzSideb
                   aria-current={isActive ? "page" : undefined}
                   title={collapsed ? item.label : undefined}
                   className={cn(
-                    "group relative flex w-full items-center gap-3 rounded-yazz-sm px-3 py-2.5 text-sm font-medium transition-all",
+                    "group relative flex w-full items-center gap-3 rounded-yazz-sm px-3 py-2.5 font-inter text-[13px] font-medium transition-all",
                     "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yazz-primary/30",
                     collapsed && "justify-center px-0",
                     isActive
@@ -130,7 +130,7 @@ export function YazzSidebar({ collapsed, onToggle, active, onSelect }: YazzSideb
           <li>
             <button
               className={cn(
-                "group flex w-full items-center gap-3 rounded-yazz-sm px-3 py-2.5 text-sm font-medium text-yazz-text-body transition-colors",
+                "group flex w-full items-center gap-3 rounded-yazz-sm px-3 py-2.5 font-inter text-[13px] font-medium text-yazz-text-body transition-colors",
                 "hover:bg-yazz-accent hover:text-yazz-primary",
                 collapsed && "justify-center",
               )}
@@ -143,7 +143,7 @@ export function YazzSidebar({ collapsed, onToggle, active, onSelect }: YazzSideb
           <li>
             <button
               className={cn(
-                "group flex w-full items-center gap-3 rounded-yazz-sm px-3 py-2.5 text-sm font-medium text-yazz-error/80 transition-colors",
+                "group flex w-full items-center gap-3 rounded-yazz-sm px-3 py-2.5 font-inter text-[13px] font-medium text-yazz-error/80 transition-colors",
                 "hover:bg-yazz-error/10 hover:text-yazz-error",
                 collapsed && "justify-center",
               )}
