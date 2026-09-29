@@ -69,7 +69,7 @@ export function useUserVehicles() {
 
       const { data: userDevices, error: udErr } = await supabase
         .from("user_devices")
-        .select("*, devices(*)")
+        .select("*")
         .eq("user_id", user.id)
         .eq("is_active", true);
 
@@ -81,6 +81,19 @@ export function useUserVehicles() {
       }
 
       const deviceIds = userDevices.map((ud) => ud.device_id);
+
+      // Récupère les devices correspondants (catalogue devices — 2e requête car la relation
+      // user_devices.devices n'est pas exposée via PostgREST par défaut)
+      const { data: devicesData, error: devErr } = await supabase
+        .from("devices")
+        .select("*")
+        .in("id", deviceIds);
+
+      if (devErr) throw devErr;
+
+      const devicesMap = new Map<string, Device>();
+      devicesData?.forEach((d) => devicesMap.set(d.id, d));
+
       const { data: positions, error: posErr } = await supabase
         .from("last_known_positions")
         .select("*")
@@ -93,7 +106,7 @@ export function useUserVehicles() {
 
       const vehiclesData: VehicleWithPosition[] = userDevices.map((ud) => {
         const pos = positionsMap.get(ud.device_id);
-        const device = ud.devices as Device | null;
+        const device = devicesMap.get(ud.device_id) ?? null;
         const status = computeStatus(pos, device);
 
         const lat = pos?.latitude ?? -4.325;
