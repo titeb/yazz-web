@@ -1,0 +1,388 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+/* ============================================================
+   YAZZ Web — Design System v2.1
+   Calqué sur le design system Flutter de yazz user.
+   Couleurs officielles YAZZ : ne pas modifier sans validation.
+   ============================================================ */
+
+@theme inline {
+  /* Polices */
+  --font-sans: var(--font-plus-jakarta), var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+
+  /* Couleurs YAZZ — Design System officiel */
+  --color-yazz-primary: #2b44ee;          /* Bleu Électrique — CTA, boutons */
+  --color-yazz-secondary: #333984;        /* Bleu Nuit — Icônes, texte support */
+  --color-yazz-background: #fafafa;       /* Blanc Cassé — Background */
+  --color-yazz-surface: #ffffff;          /* Blanc Pur — Cartes */
+  --color-yazz-border-light: #dde1f2;     /* Bordures légères */
+  --color-yazz-border-medium: #b8bdd6;    /* Bordures moyennes */
+  --color-yazz-text-dark: #1a1a2e;        /* Texte principal */
+  --color-yazz-text-body: #2d3066;        /* Texte corps */
+  --color-yazz-text-muted: #5a5f8a;       /* Texte secondaire */
+  --color-yazz-text-caption: #888ca8;     /* Texte tertiaire */
+  --color-yazz-success: #38a169;          /* Vert succès */
+  --color-yazz-error: #e53e3e;             /* Rouge erreur */
+  --color-yazz-warning: #d69e2e;          /* Jaune attention */
+  --color-yazz-crawling: #ed8936;         /* Orange ralentissement */
+  --color-yazz-info: #3182ce;             /* Bleu info */
+  --color-yazz-whatsapp: #25d366;         /* WhatsApp brand */
+  --color-yazz-orange: #ff6b35;           /* Orange SMS/Orange brand */
+
+  /* Dark mode surfaces YAZZ */
+  --color-yazz-dark-bg: #0f0f1a;
+  --color-yazz-dark-surface: #1a1a2e;
+  --color-yazz-dark-elevated: #252542;
+  --color-yazz-dark-subtle: #2a2a4a;
+
+  /* Mapping shadcn (tokens Tailwind 4) */
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+
+  /* Radius — YAZZ DS: 9/14/18/22 */
+  --radius-sm: 9px;
+  --radius-md: 14px;
+  --radius-lg: 18px;
+  --radius-xl: 22px;
+}
+
+:root {
+  /* shadcn aliases → valeurs YAZZ */
+  --radius: 14px;
+  --background: #fafafa;
+  --foreground: #1a1a2e;
+  --card: #ffffff;
+  --card-foreground: #1a1a2e;
+  --popover: #ffffff;
+  --popover-foreground: #1a1a2e;
+  --primary: #2b44ee;
+  --primary-foreground: #ffffff;
+  --secondary: #333984;
+  --secondary-foreground: #ffffff;
+  --muted: #f0f1fa;
+  --muted-foreground: #5a5f8a;
+  --accent: #dde1f2;
+  --accent-foreground: #2b44ee;
+  --destructive: #e53e3e;
+  --border: #dde1f2;
+  --input: #dde1f2;
+  --ring: #2b44ee;
+  --chart-1: #2b44ee;
+  --chart-2: #38a169;
+  --chart-3: #ed8936;
+  --chart-4: #e53e3e;
+  --chart-5: #3182ce;
+  --sidebar: #ffffff;
+  --sidebar-foreground: #1a1a2e;
+  --sidebar-primary: #2b44ee;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #f0f1fa;
+  --sidebar-accent-foreground: #2b44ee;
+  --sidebar-border: #dde1f2;
+  --sidebar-ring: #2b44ee;
+}
+
+.dark {
+  --background: #0f0f1a;
+  --foreground: #ffffff;
+  --card: #1a1a2e;
+  --card-foreground: #ffffff;
+  --popover: #1a1a2e;
+  --popover-foreground: #ffffff;
+  --primary: #2b44ee;
+  --primary-foreground: #ffffff;
+  --secondary: #252542;
+  --secondary-foreground: #ffffff;
+  --muted: #252542;
+  --muted-foreground: #9da2c6;
+  --accent: #2a2a4a;
+  --accent-foreground: #ffffff;
+  --destructive: #e53e3e;
+  --border: rgba(255, 255, 255, 0.08);
+  --input: rgba(255, 255, 255, 0.12);
+  --ring: #2b44ee;
+  --chart-1: #2b44ee;
+  --chart-2: #38a169;
+  --chart-3: #ed8936;
+  --chart-4: #e53e3e;
+  --chart-5: #3182ce;
+  --sidebar: #1a1a2e;
+  --sidebar-foreground: #ffffff;
+  --sidebar-primary: #2b44ee;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #252542;
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: rgba(255, 255, 255, 0.08);
+  --sidebar-ring: #2b44ee;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "cv11", "ss01";
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Scrollbar YAZZ — fine et bleutée */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #dde1f2;
+    border-radius: 8px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #b8bdd6;
+  }
+  .dark ::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.12);
+  }
+  .dark ::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.2);
+  }
+}
+
+/* ============================================================
+   Animations YAZZ — Fluides et subtiles
+   ============================================================ */
+@keyframes yazz-pulse-ring {
+  0% {
+    transform: scale(0.8);
+    opacity: 0.8;
+  }
+  100% {
+    transform: scale(2.2);
+    opacity: 0;
+  }
+}
+
+@keyframes yazz-pulse-dot {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.15);
+  }
+}
+
+@keyframes yazz-marker-bounce {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+
+@keyframes yazz-shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+@keyframes yazz-fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes yazz-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes yazz-slide-in-right {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes yazz-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+@keyframes yazz-route-dash {
+  to {
+    stroke-dashoffset: -20;
+  }
+}
+
+.yazz-animate-pulse-ring::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: currentColor;
+  animation: yazz-pulse-ring 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.yazz-animate-marker-bounce {
+  animation: yazz-marker-bounce 2s ease-in-out infinite;
+}
+
+.yazz-animate-fade-in-up {
+  animation: yazz-fade-in-up 0.4s ease-out;
+}
+
+.yazz-animate-fade-in {
+  animation: yazz-fade-in 0.3s ease-out;
+}
+
+.yazz-animate-slide-in-right {
+  animation: yazz-slide-in-right 0.3s ease-out;
+}
+
+.yazz-shimmer {
+  background: linear-gradient(
+    90deg,
+    rgba(221, 225, 242, 0) 0%,
+    rgba(221, 225, 242, 0.6) 50%,
+    rgba(221, 225, 242, 0) 100%
+  );
+  background-size: 200% 100%;
+  animation: yazz-shimmer 1.5s ease-in-out infinite;
+}
+
+.yazz-blink {
+  animation: yazz-blink 1.5s ease-in-out infinite;
+}
+
+/* Glass effect YAZZ */
+.yazz-glass {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px) saturate(180%);
+  -webkit-backdrop-filter: blur(12px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+}
+
+.dark .yazz-glass {
+  background: rgba(26, 26, 46, 0.85);
+  backdrop-filter: blur(12px) saturate(180%);
+  -webkit-backdrop-filter: blur(12px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* Shadow YAZZ — toujours bleuté, jamais gris */
+.yazz-shadow-soft {
+  box-shadow: 0 1px 3px rgba(43, 68, 238, 0.06), 0 1px 2px rgba(43, 68, 238, 0.04);
+}
+.yazz-shadow-medium {
+  box-shadow: 0 4px 12px rgba(43, 68, 238, 0.12), 0 2px 4px rgba(43, 68, 238, 0.06);
+}
+.yazz-shadow-elevated {
+  box-shadow: 0 8px 24px rgba(43, 68, 238, 0.16), 0 4px 8px rgba(43, 68, 238, 0.08);
+}
+.yazz-shadow-high {
+  box-shadow: 0 16px 48px rgba(43, 68, 238, 0.22), 0 8px 16px rgba(43, 68, 238, 0.12);
+}
+
+/* Gradient YAZZ */
+.yazz-gradient-primary {
+  background: linear-gradient(135deg, #2b44ee 0%, #333984 100%);
+}
+.yazz-gradient-subtle {
+  background: linear-gradient(135deg, rgba(43, 68, 238, 0.08) 0%, rgba(51, 57, 132, 0.08) 100%);
+}
+.yazz-gradient-text {
+  background: linear-gradient(135deg, #2b44ee 0%, #333984 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Map custom — gridded background, similaire à une carte */
+.yazz-map-grid {
+  background-color: #eef0f7;
+  background-image:
+    linear-gradient(rgba(43, 68, 238, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(43, 68, 238, 0.04) 1px, transparent 1px);
+  background-size: 32px 32px;
+}
+.dark .yazz-map-grid {
+  background-color: #15152a;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+}
+
+/* Status dot */
+.yazz-status-dot {
+  position: relative;
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+.yazz-status-dot::after {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: 50%;
+  background: inherit;
+  opacity: 0.3;
+  animation: yazz-pulse-dot 2s ease-in-out infinite;
+}
+
+/* Hide scrollbar utility */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}

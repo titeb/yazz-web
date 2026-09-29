@@ -953,3 +953,27 @@ Le backend **yazz_backend** est un système GPS tracking **mature fonctionnellem
 ---
 
 *Fin du rapport d'audit — AUDIT-YAZZ-BACKEND*
+
+---
+Task ID: YAZZ-WEB-MVP
+Agent: main (fullstack-dev)
+Task: Créer yazz-web — version web de yazz user (Next.js)
+
+Work Log:
+- Lu le design system Flutter YAZZ : couleurs (#2B44EE primary, #333984 secondary, etc.), radius (9/14/18/22), police Plus Jakarta Sans
+- Configuré le design system YAZZ dans src/app/globals.css (tokens, animations, shadows bleutés, glass effect)
+- Configuré le layout Next.js 16 avec Plus Jakarta Sans + Geist Mono
+- Créé les composants YAZZ : YazzLogo, YazzSidebar (collapsible + badges), YazzTopbar (search + theme + notif + user), YazzStatCard (4 cards avec accent bar), YazzMapPanel (carte SVG avec markers animés + filtres + légende + zoom controls), YazzVehicleList (liste latérale avec statuts + badges + tooltips), YazzAlertsFeed (feed alertes avec severity), YazzVehicleDetail (panneau détail avec actions coupe-moteur/partager/configurer)
+- Construit la page Dashboard principale avec layout responsive : sidebar desktop + drawer mobile + topbar + 4 stat cards + carte + liste véhicules + feed alertes
+- Données mockées dans src/lib/yazz/mock-data.ts (8 véhicules, 4 alertes, 4 stats, 3 trajets)
+- Vérifié avec agent-browser : desktop 1440x900 + mobile 390x844, interactions (sélection véhicule, filtre, collapse sidebar) toutes fonctionnelles, 0 erreur console
+
+Stage Summary:
+- Projet Next.js 16 + TypeScript + Tailwind 4 + shadcn/ui fonctionnel
+- Design system YAZZ officiel appliqué (couleurs exactes du Flutter)
+- Layout inspiré des 3 captures : sidebar gauche + carte centrale + panneau droit + 4 stat cards top
+- 100% responsive (mobile drawer, grid adaptatif, breakpoints lg/xl)
+- Animations fluides : pulse rings sur markers, fade-in-up, slide-in-right, bounce, blink, transitions CSS
+- Aucune dépendance à Mapbox/Supabase pour la démo — utilisation de données mockées (prêt à être branché au vrai backend Supabase + Mapbox)
+- Code dans un nouveau projet isolé, n'affecte PAS les repos existants yazz/yazz-admin/yazz_backend
+- Captures dans /home/z/my-project/download/yazz-web-*.png
