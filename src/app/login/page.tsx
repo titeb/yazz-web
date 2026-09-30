@@ -10,7 +10,6 @@ import {
   Phone,
   ArrowRight,
   Loader2,
-  ShieldCheck,
   ChevronLeft,
   CheckCircle2,
   AlertTriangle,
@@ -250,7 +249,7 @@ function LoginContent() {
   return (
     <div className="relative grid min-h-screen lg:grid-cols-2">
       {/* Brand panel (gauche, desktop) */}
-      <div className="relative hidden overflow-hidden bg-yazz-gradient-primary lg:flex lg:flex-col lg:justify-between lg:p-12">
+      <div className="relative hidden overflow-hidden bg-yazz-gradient-primary lg:flex lg:flex-col lg:items-center lg:justify-center lg:p-12">
         {/* Decorative grid */}
         <div className="absolute inset-0 opacity-20">
           <svg className="h-full w-full" preserveAspectRatio="none" viewBox="0 0 100 100">
@@ -263,37 +262,16 @@ function LoginContent() {
           </svg>
         </div>
 
-        <div className="relative">
-          <YazzLogo variant="mark" size={48} />
-        </div>
+        <div className="relative flex flex-col items-center text-center">
+          {/* Logo agrandi */}
+          <YazzLogo variant="mark" size={120} />
 
-        <div className="relative space-y-6 text-white">
-          <h1 className="font-outfit text-5xl font-bold leading-tight tracking-[-0.03em]">
+          {/* Slogan */}
+          <h1 className="font-outfit mt-8 text-5xl font-bold leading-tight tracking-[-0.03em] text-white">
             Sécurisez vos véhicules,
             <br />
             <span className="text-white/80">où que vous soyez.</span>
           </h1>
-          <p className="font-inter max-w-md text-[15px] leading-relaxed text-white/80">
-            Suivi GPS temps réel, alertes antivol instantanées, paiements Mobile Money. La plateforme GPS pensée pour la RDC.
-          </p>
-          <ul className="font-inter space-y-2 text-[13px] text-white/90">
-            <li className="flex items-center gap-2">
-              <ShieldCheck className="h-4 w-4" />
-              Coupe-moteur à distance
-            </li>
-            <li className="flex items-center gap-2">
-              <ShieldCheck className="h-4 w-4" />
-              Mode parking antivol avec bip sonore
-            </li>
-            <li className="flex items-center gap-2">
-              <ShieldCheck className="h-4 w-4" />
-              Géofences & alertes SOS vigiles
-            </li>
-          </ul>
-        </div>
-
-        <div className="relative font-inter text-[11px] text-white/60">
-          © 2026 YAZZ GPS Tracking · RDC
         </div>
       </div>
 

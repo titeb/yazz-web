@@ -3,17 +3,14 @@
 import { useState, useMemo } from "react";
 import { YazzStatCard } from "@/components/yazz/yazz-stat-card";
 import { YazzMapPanel } from "@/components/yazz/yazz-map-panel";
-import { YazzVehicleList } from "@/components/yazz/yazz-vehicle-list";
-import { YazzAlertsFeed } from "@/components/yazz/yazz-alerts-feed";
 import { YazzVehicleDetail } from "@/components/yazz/yazz-vehicle-detail";
 import { useUserVehicles, type VehicleWithPosition } from "@/hooks/use-user-vehicles";
 import { useUserStats } from "@/hooks/use-user-stats";
-import { useUserAlerts } from "@/hooks/use-user-alerts";
 import { isSupabaseConfigured } from "@/lib/supabase/client";
 import { Loader2, AlertTriangle, Database } from "lucide-react";
 
 // Véhicules mockés — utilisés en fallback si Supabase n'est pas configuré
-import { vehicles as mockVehicles, alerts as mockAlerts, stats as mockStats } from "@/lib/yazz/mock-data";
+import { vehicles as mockVehicles, stats as mockStats } from "@/lib/yazz/mock-data";
 
 function toMockVehicle(v: VehicleWithPosition) {
   return {
@@ -40,7 +37,6 @@ export default function DashboardPage() {
   const isSupabaseReady = isSupabaseConfigured();
   const { vehicles: realVehicles, loading: vehiclesLoading, error: vehiclesError } = useUserVehicles();
   const { stats: realStats, loading: statsLoading } = useUserStats();
-  const { alerts: realAlerts, loading: alertsLoading } = useUserAlerts(5);
 
   // ── Choix : vraies données Supabase ou mockées ──────────────────
   const useMockData = !isSupabaseReady;
@@ -96,20 +92,6 @@ export default function DashboardPage() {
     ];
   }, [realStats, useMockData]);
 
-  const alerts = useMemo(() => {
-    if (useMockData) return mockAlerts;
-    return realAlerts.map((a) => ({
-      id: a.id,
-      vehicleId: a.vehicleId ?? "",
-      vehicleName: a.vehicleName,
-      plate: a.plate ?? "",
-      type: (a.type as "geofence" | "speed" | "battery" | "parking" | "sos") ?? "parking",
-      label: a.message || a.title,
-      ts: a.createdAt,
-      severity: a.severity ?? "info",
-    }));
-  }, [realAlerts, useMockData]);
-
   const selectedVehicle = vehicles.find((v) => v.id === selectedVehicleId);
 
   return (
@@ -163,40 +145,23 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* Main dashboard grid */}
-      <div className="grid h-[calc(100vh-260px)] grid-cols-1 gap-3 p-4 md:px-6 md:pb-6 lg:grid-cols-[1fr_320px] xl:grid-cols-[1fr_360px]">
-        {/* Map area */}
-        <div className="relative h-[500px] min-h-0 lg:h-auto">
-          <YazzMapPanel
-            vehicles={vehicles}
-            selectedId={selectedVehicleId}
-            onSelect={setSelectedVehicleId}
-          />
-        </div>
+      {/* Map plein écran (~90% hauteur) avec panneau détail en overlay si véhicule sélectionné */}
+      <div className="relative h-[calc(100vh-220px)] min-h-[400px] p-4 md:px-6 md:pb-6">
+        <YazzMapPanel
+          vehicles={vehicles}
+          selectedId={selectedVehicleId}
+          onSelect={setSelectedVehicleId}
+        />
 
-        {/* Right side: vehicle list + alerts OR vehicle detail */}
-        <div className="flex h-[500px] min-h-0 flex-col gap-3 lg:h-auto">
-          {selectedVehicle ? (
-            <div className="flex-1 min-h-0 overflow-hidden rounded-yazz-xl border border-yazz-border-light yazz-shadow-soft">
-              <YazzVehicleDetail
-                vehicle={selectedVehicle}
-                onClose={() => setSelectedVehicleId(undefined)}
-              />
-            </div>
-          ) : (
-            <div className="flex-1 min-h-0 overflow-hidden rounded-yazz-xl border border-yazz-border-light yazz-shadow-soft">
-              <YazzVehicleList
-                vehicles={vehicles}
-                selectedId={selectedVehicleId}
-                onSelect={setSelectedVehicleId}
-              />
-            </div>
-          )}
-
-          <div className="h-48 min-h-0 overflow-hidden rounded-yazz-xl border border-yazz-border-light yazz-shadow-soft">
-            <YazzAlertsFeed alerts={alerts} />
+        {/* Panneau détail en overlay à droite quand un véhicule est sélectionné */}
+        {selectedVehicle && (
+          <div className="absolute right-6 top-4 bottom-4 z-20 w-[340px] max-w-[calc(100vw-3rem)] overflow-hidden rounded-yazz-xl border border-yazz-border-light bg-yazz-surface yazz-shadow-high yazz-animate-slide-in-right">
+            <YazzVehicleDetail
+              vehicle={selectedVehicle}
+              onClose={() => setSelectedVehicleId(undefined)}
+            />
           </div>
-        </div>
+        )}
       </div>
     </div>
   );

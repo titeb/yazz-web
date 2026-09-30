@@ -220,6 +220,7 @@ export function YazzMapPanel({ vehicles, selectedId, onSelect }: YazzMapPanelPro
           const cfg = statusConfig[v.status];
           const isSelected = v.id === selectedId;
           const isAlert = v.status === "alert";
+          const isMoving = v.status === "moving";
           return (
             <button
               key={v.id}
@@ -228,33 +229,33 @@ export function YazzMapPanel({ vehicles, selectedId, onSelect }: YazzMapPanelPro
               style={{ left: `${v.position.x}%`, top: `${v.position.y}%` }}
               aria-label={v.name}
             >
-              {/* Pulse ring for moving & alert vehicles */}
-              {(v.status === "moving" || v.status === "alert") && (
+              {/* Pulse ring subtil pour moving & alert (taille réduite) */}
+              {(isMoving || isAlert) && (
                 <span
                   className={cn(
-                    "absolute left-1/2 top-1/2 h-8 w-8 -translate-x-1/2 -translate-y-1/2 rounded-full",
-                    isAlert ? "bg-yazz-error/30" : "bg-yazz-primary/25",
+                    "absolute left-1/2 top-1/2 h-7 w-7 -translate-x-1/2 -translate-y-1/2 rounded-full",
+                    isAlert ? "bg-yazz-error/25" : "bg-yazz-primary/20",
                   )}
                   style={{ animation: "yazz-pulse-ring 2.4s ease-out infinite" }}
                 />
               )}
 
-              {/* Marker */}
+              {/* Marker compact style YAZZ user — petit cercle de couleur */}
               <div
                 className={cn(
-                  "relative grid h-9 w-9 place-items-center rounded-full text-white transition-all duration-200",
+                  "relative grid h-6 w-6 place-items-center rounded-full text-white transition-all duration-200",
                   cfg.bg,
-                  cfg.ring,
-                  "group-hover:scale-110 group-active:scale-95",
-                  isSelected && "scale-125 ring-4 ring-yazz-primary/40",
-                  v.status === "moving" && "yazz-animate-marker-bounce",
+                  "group-hover:scale-125 group-active:scale-90",
+                  isSelected && "scale-150 ring-2 ring-white",
+                  isMoving && "yazz-animate-marker-bounce",
                 )}
+                style={isSelected ? { boxShadow: `0 0 0 3px ${cfg.color}` } : { boxShadow: "0 2px 6px rgba(0,0,0,0.2)" }}
               >
                 {isAlert ? (
-                  <AlertTriangle className="h-4 w-4" />
+                  <AlertTriangle className="h-3 w-3" />
                 ) : (
                   <Navigation
-                    className="h-4 w-4"
+                    className="h-3 w-3"
                     style={{ transform: `rotate(${v.heading}deg)` }}
                   />
                 )}
