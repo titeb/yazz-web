@@ -70,8 +70,7 @@ export function useUserVehicles() {
       const { data: userDevices, error: udErr } = await supabase
         .from("user_devices")
         .select("*")
-        .eq("user_id", user.id)
-        .eq("is_active", true);
+        .eq("user_id", user.id);
 
       if (udErr) throw udErr;
       if (!userDevices || userDevices.length === 0) {
@@ -80,33 +79,71 @@ export function useUserVehicles() {
         return;
       }
 
-      const deviceIds = userDevices.map((ud) => ud.device_id);
+      // Debug : inspecter le schéma réel (au premier fetch)
+      // (désactivé en prod — décommenter pour debug)
+      // if (userDevices.length > 0) {
+      //   const firstRow = userDevices[0] as any;
+      //   const cols = Object.keys(firstRow);
+      //   console.log("[useUserVehicles] user_devices columns:", cols.join(", "));
+      // }
 
-      // Récupère les devices correspondants (catalogue devices — 2e requête car la relation
-      // user_devices.devices n'est pas exposée via PostgREST par défaut)
+      // Détecter le nom de la colonne device_id (peut être 'device_id', 'imei', etc.)
+      const firstDeviceRow = userDevices[0] as any;
+      const deviceIdField = "device_id" in firstDeviceRow
+        ? "device_id"
+        : "imei" in firstDeviceRow
+        ? "imei"
+        : "id" in firstDeviceRow
+        ? "id"
+        : null;
+
+      if (!deviceIdField) {
+        console.error("[useUserVehicles] Aucune colonne device_id/imei/id trouvée dans user_devices");
+        setVehicles([]);
+        setLoading(false);
+        return;
+      }
+
+      const deviceIds = userDevices.map((ud: any) => ud[deviceIdField]).filter(Boolean);
+
+      // Récupère les devices correspondants (catalogue devices — 2e requête)
       const { data: devicesData, error: devErr } = await supabase
         .from("devices")
         .select("*")
         .in("id", deviceIds);
 
-      if (devErr) throw devErr;
+      if (devErr) {
+        console.warn("[useUserVehicles] devices query erreur (non bloquant):", devErr.message);
+      }
 
-      const devicesMap = new Map<string, Device>();
-      devicesData?.forEach((d) => devicesMap.set(d.id, d));
+      const devicesMap = new Map<string, any>();
+      devicesData?.forEach((d: any) => devicesMap.set(d.id, d));
 
       const { data: positions, error: posErr } = await supabase
         .from("last_known_positions")
         .select("*")
         .in("device_id", deviceIds);
 
-      if (posErr) throw posErr;
+      if (posErr) {
+        console.warn("[useUserVehicles] last_known_positions query erreur (non bloquant):", posErr.message);
+      }
 
-      const positionsMap = new Map<string, LastKnownPosition>();
-      positions?.forEach((p) => positionsMap.set(p.device_id, p));
+      // Debug : inspecter le schéma réel
+      // (désactivé en prod — décommenter pour debug)
+      // if (positions && positions.length > 0) {
+      //   const cols = Object.keys(positions[0] as any);
+      //   console.log("[useUserVehicles] last_known_positions columns:", cols.join(", "));
+      // } else if (positions && positions.length === 0) {
+      //   console.log("[useUserVehicles] last_known_positions vide pour deviceIds:", deviceIds.join(","));
+      // }
 
-      const vehiclesData: VehicleWithPosition[] = userDevices.map((ud) => {
-        const pos = positionsMap.get(ud.device_id);
-        const device = devicesMap.get(ud.device_id) ?? null;
+      const positionsMap = new Map<string, any>();
+      positions?.forEach((p: any) => positionsMap.set(p.device_id, p));
+
+      const vehiclesData: VehicleWithPosition[] = userDevices.map((ud: any) => {
+        const deviceId = ud[deviceIdField];
+        const pos = positionsMap.get(deviceId);
+        const device = devicesMap.get(deviceId) ?? null;
         const status = computeStatus(pos, device);
 
         const lat = pos?.latitude ?? -4.325;
@@ -115,11 +152,20 @@ export function useUserVehicles() {
         const x = ((lng - 15.2) / 0.2) * 100;
         const y = ((-4.2 - lat) / 0.2) * 100;
 
+        // Hiérarchie des noms : name > nickname > vehicle_plate > short_id > device.name > fallback
+        const vehicleName =
+          ud.name ||
+          ud.nickname ||
+          ud.vehicle_plate ||
+          (ud.short_id ? `Capteur ${ud.short_id}` : null) ||
+          device?.name ||
+          (deviceId ? `Capteur ${String(deviceId).slice(-6)}` : "Capteur inconnu");
+
         return {
-          id: ud.id,
-          deviceId: ud.device_id,
-          name: ud.nickname || device?.name || `Device ${(ud.device_id || "").slice(-6) || "unknown"}`,
-          plate: ud.vehicle_plate,
+          id: ud.id ?? deviceId,
+          deviceId,
+          name: vehicleName,
+          plate: ud.vehicle_plate ?? null,
           status,
           speed: pos?.speed ?? 0,
           battery: pos?.battery_percent ?? null,
@@ -128,7 +174,7 @@ export function useUserVehicles() {
           lat,
           lng,
           heading: pos?.heading ?? 0,
-          address: "Chargement de l'adresse…",
+          address: "—",
           todayDistanceKm: 0,
         };
       });

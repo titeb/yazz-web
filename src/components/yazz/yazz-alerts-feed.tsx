@@ -30,6 +30,13 @@ const typeConfig: Record<
   sos: { icon: Siren, color: "text-yazz-error", bg: "bg-yazz-error/10" },
 };
 
+// Fallback pour les types non prévus (la DB peut avoir d'autres types)
+const fallbackConfig = { icon: Bell, color: "text-yazz-text-muted", bg: "bg-yazz-accent" };
+
+function getTypeConfig(type: AlertItem["type"]) {
+  return typeConfig[type] ?? fallbackConfig;
+}
+
 const severityConfig: Record<AlertItem["severity"], string> = {
   info: "border-l-yazz-info",
   warning: "border-l-yazz-warning",
@@ -69,7 +76,7 @@ export function YazzAlertsFeed({ alerts }: YazzAlertsFeedProps) {
       <div className="flex-1 overflow-y-auto p-2">
         <ul className="space-y-1.5">
           {alerts.map((a) => {
-            const cfg = typeConfig[a.type];
+            const cfg = getTypeConfig(a.type);
             const Icon = cfg.icon;
             return (
               <li key={a.id}>
