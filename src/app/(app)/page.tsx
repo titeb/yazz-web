@@ -22,6 +22,8 @@ function toMockVehicle(v: VehicleWithPosition) {
     battery: v.battery ?? 0,
     lastUpdate: v.lastUpdate,
     position: v.position,
+    lat: v.lat,
+    lng: v.lng,
     heading: v.heading,
     address: v.address,
     todayDistanceKm: v.todayDistanceKm,

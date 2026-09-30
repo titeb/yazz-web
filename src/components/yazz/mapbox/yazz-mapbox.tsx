@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useMemo } from "react";
+import { useEffect, useRef, useState, useMemo, useCallback } from "react";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { cn } from "@/lib/utils";
@@ -19,8 +19,16 @@ const statusConfig: Record<VehicleStatus, { color: string; label: string }> = {
   alert: { color: "#E53E3E", label: "Alerte" },
 };
 
-// Kinshasa center
-const KINSHASA_CENTER: [number, number] = [15.3130, -4.3250];
+// Kinshasa center — matches Flutter yazz user (lib/ui/features/base/dashboard/dashbord.dart:108)
+const KINSHASA_CENTER: [number, number] = [15.31, -4.32];
+// Zoom limites — Flutter yazz user (dashbord.dart:894-896)
+const MIN_ZOOM = 10;
+const MAX_ZOOM = 18;
+const INITIAL_ZOOM = 13;
+// Animation flyTo — Flutter yazz user (dashbord.dart:786, 500ms duration)
+const FLYTO_ZOOM = 15.6;
+const FLYTO_PITCH = 45; // inclinaison 3D
+const FLYTO_DURATION = 500; // ms (Flutter: 500ms, throttle 1500ms)
 
 export function YazzMapbox({ vehicles, selectedId, onSelect }: YazzMapboxProps) {
   const mapContainer = useRef<HTMLDivElement>(null);
@@ -28,6 +36,31 @@ export function YazzMapbox({ vehicles, selectedId, onSelect }: YazzMapboxProps) 
   const markersRef = useRef<Map<string, mapboxgl.Marker>>(new Map());
   const [mapReady, setMapReady] = useState(false);
   const [filter, setFilter] = useState<VehicleStatus | "all">("all");
+
+  // Fit bounds sur tous les markers visibles
+  const fitAllMarkers = useCallback(() => {
+    if (!map.current) return;
+    const filtered = filter === "all" ? vehicles : vehicles.filter((v) => v.status === filter);
+    if (filtered.length === 0) return;
+
+    const coords = filtered.map(toLngLat);
+    if (coords.length === 1) {
+      map.current.flyTo({
+        center: coords[0],
+        zoom: FLYTO_ZOOM,
+        pitch: FLYTO_PITCH,
+        duration: FLYTO_DURATION,
+      });
+    } else {
+      const bounds = coords.reduce((b, c) => b.extend(c), new mapboxgl.LngLatBounds(coords[0], coords[0]));
+      map.current.fitBounds(bounds, {
+        padding: { top: 80, bottom: 80, left: 80, right: 380 }, // 380 = laisse place pour le panneau détail
+        pitch: 0,
+        bearing: 0,
+        duration: 800,
+      });
+    }
+  }, [vehicles, filter]);
 
   // Initialize Mapbox
   useEffect(() => {
@@ -48,17 +81,33 @@ export function YazzMapbox({ vehicles, selectedId, onSelect }: YazzMapboxProps) 
         ? process.env.NEXT_PUBLIC_MAPBOX_STYLE_URL
         : "mapbox://styles/mapbox/streets-v12",
       center: KINSHASA_CENTER,
-      zoom: 11.5,
+      zoom: INITIAL_ZOOM,
+      minZoom: MIN_ZOOM,
+      maxZoom: MAX_ZOOM,
+      pitch: 0, // démarrer flat, flyTo mettra le pitch à 45°
+      bearing: 0,
       attributionControl: true,
+      // Désactiver la rotation (Flutter: rotateEnabled: false)
+      dragRotate: false,
+      touchPitch: true,
+      pitchWithRotate: true,
     });
 
     map.current.on("load", () => {
       setMapReady(true);
       // Force resize after load — sometimes Mapbox needs a kick
-      setTimeout(() => map.current?.resize(), 100);
+      setTimeout(() => {
+        map.current?.resize();
+        // Fit bounds pour voir tous les markers au chargement
+        fitAllMarkers();
+      }, 200);
     });
 
-    map.current.addControl(new mapboxgl.NavigationControl({ visualizePitch: false, showCompass: false }), "top-right");
+    // Navigation controls — zoom only, no compass (rotation disabled)
+    map.current.addControl(
+      new mapboxgl.NavigationControl({ visualizePitch: false, showCompass: false }),
+      "top-right"
+    );
 
     // Resize on window resize
     const handleResize = () => map.current?.resize();
@@ -71,6 +120,14 @@ export function YazzMapbox({ vehicles, selectedId, onSelect }: YazzMapboxProps) 
       map.current = null;
     };
   }, []);
+
+  // Re-fit bounds quand les véhicules changent (au premier chargement)
+  useEffect(() => {
+    if (!mapReady || !map.current || vehicles.length === 0) return;
+    // Petit délai pour que les markers soient créés
+    const t = setTimeout(() => fitAllMarkers(), 300);
+    return () => clearTimeout(t);
+  }, [mapReady, vehicles, fitAllMarkers]);
 
   // Convert vehicle position to [lng, lat]
   const toLngLat = (v: Vehicle): [number, number] => {
@@ -107,23 +164,37 @@ export function YazzMapbox({ vehicles, selectedId, onSelect }: YazzMapboxProps) 
       const cfg = statusConfig[v.status];
       const isSelected = v.id === selectedId;
 
-      // Build marker DOM element — style YAZZ Flutter
+      // Build marker DOM element — style YAZZ Flutter (avec tige type pin)
       const el = document.createElement("div");
       el.style.cursor = "pointer";
       el.style.display = "flex";
+      el.style.flexDirection = "column";
       el.style.alignItems = "center";
-      el.style.justifyContent = "center";
-      el.style.width = `${isSelected ? 32 : 26}px`;
-      el.style.height = `${isSelected ? 32 : 26}px`;
-      el.style.borderRadius = "50%";
-      el.style.backgroundColor = cfg.color;
-      el.style.boxShadow = `0 2px 6px rgba(0,0,0,0.25), 0 0 0 3px ${cfg.color}33`;
-      el.style.transition = "all 0.2s ease";
-      el.style.transform = "translateY(0)";
+      el.style.transition = "transform 0.2s ease";
 
-      // Pulse ring for moving & alert (subtle)
+      // Tige du pin (petit trait vertical pour effet 3D)
+      const stem = document.createElement("div");
+      stem.style.width = "2px";
+      stem.style.height = `${isSelected ? 10 : 7}px`;
+      stem.style.backgroundColor = cfg.color;
+      stem.style.opacity = "0.6";
+      stem.style.borderRadius = "1px";
+      el.appendChild(stem);
+
+      // Cercle du marker
+      const circle = document.createElement("div");
+      circle.style.display = "flex";
+      circle.style.alignItems = "center";
+      circle.style.justifyContent = "center";
+      circle.style.width = `${isSelected ? 32 : 26}px`;
+      circle.style.height = `${isSelected ? 32 : 26}px`;
+      circle.style.borderRadius = "50%";
+      circle.style.backgroundColor = cfg.color;
+      circle.style.boxShadow = `0 2px 6px rgba(0,0,0,0.3), 0 0 0 3px ${cfg.color}33`;
+      circle.style.position = "relative";
+
+      // Pulse ring for moving & alert
       if (v.status === "moving" || v.status === "alert") {
-        el.style.position = "relative";
         const pulse = document.createElement("div");
         pulse.style.position = "absolute";
         pulse.style.inset = "-4px";
@@ -131,7 +202,7 @@ export function YazzMapbox({ vehicles, selectedId, onSelect }: YazzMapboxProps) 
         pulse.style.backgroundColor = cfg.color;
         pulse.style.opacity = "0.3";
         pulse.style.animation = "yazz-pulse-ring 2.4s ease-out infinite";
-        el.appendChild(pulse);
+        circle.appendChild(pulse);
       }
 
       // Icon inside marker
@@ -140,23 +211,27 @@ export function YazzMapbox({ vehicles, selectedId, onSelect }: YazzMapboxProps) 
         v.status === "alert"
           ? `<svg width="${iconSize}" height="${iconSize}" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="position:relative;z-index:1"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>`
           : `<svg width="${iconSize}" height="${iconSize}" viewBox="0 0 24 24" fill="white" stroke="white" stroke-width="0.5" style="position:relative;z-index:1;transform:rotate(${v.heading || 0}deg)"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg>`;
-      el.insertAdjacentHTML("beforeend", iconHtml);
-
-      el.addEventListener("click", (e) => {
-        e.stopPropagation();
-        onSelect?.(v.id);
-        map.current?.flyTo({
-          center: lngLat,
-          zoom: Math.max(map.current.getZoom(), 14),
-          duration: 1200,
-        });
-      });
+      circle.insertAdjacentHTML("beforeend", iconHtml);
+      el.appendChild(circle);
 
       el.addEventListener("mouseenter", () => {
-        el.style.transform = "translateY(-2px) scale(1.1)";
+        el.style.transform = "translateY(-3px) scale(1.1)";
       });
       el.addEventListener("mouseleave", () => {
         el.style.transform = "translateY(0) scale(1)";
+      });
+      el.addEventListener("click", (e) => {
+        e.stopPropagation();
+        onSelect?.(v.id);
+        // flyTo style Flutter yazz user — zoom 15.6, pitch 45°, 500ms
+        map.current?.flyTo({
+          center: lngLat,
+          zoom: FLYTO_ZOOM,
+          pitch: FLYTO_PITCH,
+          bearing: 0,
+          duration: FLYTO_DURATION,
+          essential: true,
+        });
       });
 
       // Popup
@@ -182,13 +257,13 @@ export function YazzMapbox({ vehicles, selectedId, onSelect }: YazzMapboxProps) 
       if (marker) {
         marker.setLngLat(lngLat).setPopup(popup);
         marker.getElement().replaceWith(el);
-        marker = new mapboxgl.Marker(el, { anchor: "center" })
+        marker = new mapboxgl.Marker(el, { anchor: "bottom" })
           .setLngLat(lngLat)
           .setPopup(popup)
           .addTo(map.current);
         markersRef.current.set(v.id, marker);
       } else {
-        marker = new mapboxgl.Marker(el, { anchor: "center" })
+        marker = new mapboxgl.Marker(el, { anchor: "bottom" })
           .setLngLat(lngLat)
           .setPopup(popup)
           .addTo(map.current);
@@ -197,15 +272,18 @@ export function YazzMapbox({ vehicles, selectedId, onSelect }: YazzMapboxProps) 
     });
   }, [vehicles, filter, selectedId, mapReady, onSelect]);
 
-  // Center on selected vehicle
+  // Center on selected vehicle — style Flutter yazz user
   useEffect(() => {
     if (!mapReady || !map.current || !selectedId) return;
     const v = vehicles.find((x) => x.id === selectedId);
     if (!v) return;
     map.current.flyTo({
       center: toLngLat(v),
-      zoom: Math.max(map.current.getZoom(), 14),
-      duration: 1200,
+      zoom: FLYTO_ZOOM,
+      pitch: FLYTO_PITCH,
+      bearing: 0,
+      duration: FLYTO_DURATION,
+      essential: true,
     });
   }, [selectedId, mapReady, vehicles]);
 
