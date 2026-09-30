@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { YazzMapPanel } from "@/components/yazz/yazz-map-panel";
+import { YazzMapbox } from "@/components/yazz/mapbox/yazz-mapbox";
 import { YazzVehicleDetail } from "@/components/yazz/yazz-vehicle-detail";
 import { useUserVehicles, type VehicleWithPosition } from "@/hooks/use-user-vehicles";
 import { isSupabaseConfigured } from "@/lib/supabase/client";
@@ -45,7 +45,7 @@ export default function DashboardPage() {
   const selectedVehicle = vehicles.find((v) => v.id === selectedVehicleId);
 
   return (
-    <div className="relative h-full overflow-hidden">
+    <div className="absolute inset-0 overflow-hidden">
       {/* Bannière si Supabase pas configuré (mode démo) */}
       {!isSupabaseReady && (
         <div className="absolute left-4 right-4 top-4 z-30 rounded-yazz-md border-l-4 border-l-yazz-warning bg-yazz-warning/10 p-3 backdrop-blur-sm md:left-6">
@@ -62,7 +62,7 @@ export default function DashboardPage() {
       )}
 
       {/* Carte plein écran (100% du viewport restant) */}
-      <YazzMapPanel
+      <YazzMapbox
         vehicles={vehicles}
         selectedId={selectedVehicleId}
         onSelect={setSelectedVehicleId}

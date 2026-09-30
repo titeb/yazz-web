@@ -47,7 +47,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       {/* Main content */}
       <div className="flex flex-1 flex-col min-w-0">
         <YazzTopbar onMobileMenu={() => setMobileSidebarOpen(true)} />
-        <main className="flex-1 overflow-hidden">{children}</main>
+        <main className="relative flex-1 overflow-hidden">{children}</main>
       </div>
     </div>
   );

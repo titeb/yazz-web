@@ -1,18 +1,9 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useMemo } from "react";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { cn } from "@/lib/utils";
-import {
-  Navigation,
-  AlertTriangle,
-  Crosshair,
-  Layers,
-  Plus,
-  Minus,
-  Maximize2,
-} from "lucide-react";
 import type { Vehicle, VehicleStatus } from "@/lib/yazz/mock-data";
 
 type YazzMapboxProps = {
@@ -21,15 +12,15 @@ type YazzMapboxProps = {
   onSelect?: (id: string) => void;
 };
 
-const statusConfig: Record<VehicleStatus, {
-  color: string;
-  label: string;
-}> = {
+const statusConfig: Record<VehicleStatus, { color: string; label: string }> = {
   moving: { color: "#2B44EE", label: "En mouvement" },
   idle: { color: "#5A5F8A", label: "À l'arrêt" },
   offline: { color: "#888CA8", label: "Hors-ligne" },
   alert: { color: "#E53E3E", label: "Alerte" },
 };
+
+// Kinshasa center
+const KINSHASA_CENTER: [number, number] = [15.3130, -4.3250];
 
 export function YazzMapbox({ vehicles, selectedId, onSelect }: YazzMapboxProps) {
   const mapContainer = useRef<HTMLDivElement>(null);
@@ -52,19 +43,28 @@ export function YazzMapbox({ vehicles, selectedId, onSelect }: YazzMapboxProps) 
 
     map.current = new mapboxgl.Map({
       container: mapContainer.current,
-      style: process.env.NEXT_PUBLIC_MAPBOX_STYLE_URL || "mapbox://styles/mapbox/streets-v12",
-      center: [15.3130, -4.3250], // Kinshasa
+      // Style Mapbox — fallback sur streets-v12 si le custom style est inaccessible
+      style: process.env.NEXT_PUBLIC_MAPBOX_STYLE_URL && process.env.NEXT_PUBLIC_MAPBOX_STYLE_URL !== "mapbox://styles/devzak/cmkwzy0w5001b01qx7653fjne"
+        ? process.env.NEXT_PUBLIC_MAPBOX_STYLE_URL
+        : "mapbox://styles/mapbox/streets-v12",
+      center: KINSHASA_CENTER,
       zoom: 11.5,
       attributionControl: true,
     });
 
     map.current.on("load", () => {
       setMapReady(true);
+      // Force resize after load — sometimes Mapbox needs a kick
+      setTimeout(() => map.current?.resize(), 100);
     });
 
-    map.current.addControl(new mapboxgl.NavigationControl({ visualizePitch: false }), "top-right");
+    map.current.addControl(new mapboxgl.NavigationControl({ visualizePitch: false, showCompass: false }), "top-right");
 
+    // Resize on window resize
+    const handleResize = () => map.current?.resize();
+    window.addEventListener("resize", handleResize);
     return () => {
+      window.removeEventListener("resize", handleResize);
       markersRef.current.forEach((m) => m.remove());
       markersRef.current.clear();
       map.current?.remove();
@@ -72,15 +72,28 @@ export function YazzMapbox({ vehicles, selectedId, onSelect }: YazzMapboxProps) 
     };
   }, []);
 
-  // Update markers when vehicles change
+  // Convert vehicle position to [lng, lat]
+  const toLngLat = (v: Vehicle): [number, number] => {
+    // Use real lat/lng if available (from Supabase)
+    const lat = (v as any).lat;
+    const lng = (v as any).lng;
+    if (typeof lat === "number" && typeof lng === "number" && (lat !== -4.325 || lng !== 15.313)) {
+      return [lng, lat];
+    }
+    // Fallback: project x/y around Kinshasa
+    return [
+      KINSHASA_CENTER[0] + (v.position.x - 50) * 0.01,
+      KINSHASA_CENTER[1] + (v.position.y - 50) * -0.01,
+    ];
+  };
+
+  // Update markers
   useEffect(() => {
     if (!mapReady || !map.current) return;
 
-    const filtered = filter === "all"
-      ? vehicles
-      : vehicles.filter((v) => v.status === filter);
+    const filtered = filter === "all" ? vehicles : vehicles.filter((v) => v.status === filter);
 
-    // Remove markers not in the filtered list
+    // Remove markers not in filtered list
     markersRef.current.forEach((marker, id) => {
       if (!filtered.find((v) => v.id === id)) {
         marker.remove();
@@ -90,76 +103,95 @@ export function YazzMapbox({ vehicles, selectedId, onSelect }: YazzMapboxProps) 
 
     // Add or update markers
     filtered.forEach((v) => {
-      const lng = -4.3250 + (v.position.x - 50) * 0.01;
-      const lat = 15.3130 - (v.position.y - 50) * 0.01;
+      const lngLat = toLngLat(v);
       const cfg = statusConfig[v.status];
       const isSelected = v.id === selectedId;
 
+      // Build marker DOM element — style YAZZ Flutter
       const el = document.createElement("div");
-      el.className = cn(
-        "yazz-mapbox-marker",
-        "relative grid place-items-center rounded-full text-white transition-all",
-        isSelected ? "scale-125" : "",
-        v.status === "alert" && "yazz-blink"
-      );
-      el.style.width = `${isSelected ? 44 : 36}px`;
-      el.style.height = `${isSelected ? 44 : 36}px`;
-      el.style.backgroundColor = cfg.color;
-      el.style.boxShadow = `0 0 0 4px ${cfg.color}33, 0 4px 12px ${cfg.color}40`;
-
-      el.innerHTML =
-        v.status === "alert"
-          ? `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>`
-          : `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="transform: rotate(${v.heading}deg)"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg>`;
-
       el.style.cursor = "pointer";
+      el.style.display = "flex";
+      el.style.alignItems = "center";
+      el.style.justifyContent = "center";
+      el.style.width = `${isSelected ? 32 : 26}px`;
+      el.style.height = `${isSelected ? 32 : 26}px`;
+      el.style.borderRadius = "50%";
+      el.style.backgroundColor = cfg.color;
+      el.style.boxShadow = `0 2px 6px rgba(0,0,0,0.25), 0 0 0 3px ${cfg.color}33`;
+      el.style.transition = "all 0.2s ease";
+      el.style.transform = "translateY(0)";
 
-      el.addEventListener("click", () => {
+      // Pulse ring for moving & alert (subtle)
+      if (v.status === "moving" || v.status === "alert") {
+        el.style.position = "relative";
+        const pulse = document.createElement("div");
+        pulse.style.position = "absolute";
+        pulse.style.inset = "-4px";
+        pulse.style.borderRadius = "50%";
+        pulse.style.backgroundColor = cfg.color;
+        pulse.style.opacity = "0.3";
+        pulse.style.animation = "yazz-pulse-ring 2.4s ease-out infinite";
+        el.appendChild(pulse);
+      }
+
+      // Icon inside marker
+      const iconSize = isSelected ? 16 : 13;
+      const iconHtml =
+        v.status === "alert"
+          ? `<svg width="${iconSize}" height="${iconSize}" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="position:relative;z-index:1"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>`
+          : `<svg width="${iconSize}" height="${iconSize}" viewBox="0 0 24 24" fill="white" stroke="white" stroke-width="0.5" style="position:relative;z-index:1;transform:rotate(${v.heading || 0}deg)"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg>`;
+      el.insertAdjacentHTML("beforeend", iconHtml);
+
+      el.addEventListener("click", (e) => {
+        e.stopPropagation();
         onSelect?.(v.id);
         map.current?.flyTo({
-          center: [lng, lat],
+          center: lngLat,
           zoom: Math.max(map.current.getZoom(), 14),
           duration: 1200,
         });
       });
 
-      // Tooltip popup
+      el.addEventListener("mouseenter", () => {
+        el.style.transform = "translateY(-2px) scale(1.1)";
+      });
+      el.addEventListener("mouseleave", () => {
+        el.style.transform = "translateY(0) scale(1)";
+      });
+
+      // Popup
       const popup = new mapboxgl.Popup({
-        offset: 28,
+        offset: 22,
         closeButton: false,
         className: "yazz-mapbox-popup",
       }).setHTML(`
-        <div class="p-2 min-w-[180px]">
-          <div class="flex items-start justify-between gap-2">
-            <p class="font-outfit font-semibold text-[12px] text-yazz-text-dark">${v.name}</p>
-            <span class="rounded-full px-1.5 py-0.5 text-[9px] font-bold text-white" style="background-color:${cfg.color}">
-              ${cfg.label}
-            </span>
+        <div style="padding:8px;min-width:180px;font-family:var(--font-inter),sans-serif">
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
+            <p style="font-family:var(--font-outfit),sans-serif;font-weight:600;font-size:12px;color:#1a1a2e;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:130px">${escapeHtml(v.name)}</p>
+            <span style="background-color:${cfg.color};color:white;border-radius:999px;padding:2px 6px;font-size:9px;font-weight:700;flex-shrink:0">${cfg.label}</span>
           </div>
-          <p class="font-inter text-[10px] text-yazz-text-muted mt-0.5 truncate">${v.address}</p>
-          <div class="flex items-center justify-between mt-1.5">
-            <span class="font-outfit font-semibold text-[11px] text-yazz-primary">
-              ${v.speed > 0 ? `${v.speed} km/h` : "À l'arrêt"}
-            </span>
-            <span class="font-inter text-[10px] text-yazz-text-caption">Batt: ${v.battery}%</span>
+          <p style="font-size:10px;color:#5a5f8a;margin:2px 0 0 0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(v.address || "—")}</p>
+          <div style="display:flex;justify-content:space-between;margin-top:6px;font-size:10px">
+            <span style="font-family:var(--font-outfit),sans-serif;font-weight:600;color:#2b44ee">${v.speed > 0 ? `${v.speed} km/h` : "À l'arrêt"}</span>
+            <span style="color:#888ca8">Batt: ${v.battery ?? "—"}%</span>
           </div>
         </div>
       `);
 
       let marker = markersRef.current.get(v.id);
       if (marker) {
-        marker.setLngLat([lng, lat]).setPopup(popup);
+        marker.setLngLat(lngLat).setPopup(popup);
         marker.getElement().replaceWith(el);
-        marker = new mapboxgl.Marker(el)
-          .setLngLat([lng, lat])
+        marker = new mapboxgl.Marker(el, { anchor: "center" })
+          .setLngLat(lngLat)
           .setPopup(popup)
-          .addTo(map.current!);
+          .addTo(map.current);
         markersRef.current.set(v.id, marker);
       } else {
-        marker = new mapboxgl.Marker(el)
-          .setLngLat([lng, lat])
+        marker = new mapboxgl.Marker(el, { anchor: "center" })
+          .setLngLat(lngLat)
           .setPopup(popup)
-          .addTo(map.current!);
+          .addTo(map.current);
         markersRef.current.set(v.id, marker);
       }
     });
@@ -170,81 +202,92 @@ export function YazzMapbox({ vehicles, selectedId, onSelect }: YazzMapboxProps) 
     if (!mapReady || !map.current || !selectedId) return;
     const v = vehicles.find((x) => x.id === selectedId);
     if (!v) return;
-    const lng = -4.3250 + (v.position.x - 50) * 0.01;
-    const lat = 15.3130 - (v.position.y - 50) * 0.01;
     map.current.flyTo({
-      center: [lng, lat],
+      center: toLngLat(v),
       zoom: Math.max(map.current.getZoom(), 14),
       duration: 1200,
     });
   }, [selectedId, mapReady, vehicles]);
 
-  const counts = {
+  const counts = useMemo(() => ({
     all: vehicles.length,
     moving: vehicles.filter((v) => v.status === "moving").length,
     idle: vehicles.filter((v) => v.status === "idle").length,
     alert: vehicles.filter((v) => v.status === "alert").length,
     offline: vehicles.filter((v) => v.status === "offline").length,
-  };
+  }), [vehicles]);
 
   return (
-    <div className="relative h-full w-full overflow-hidden rounded-yazz-xl bg-yazz-surface yazz-shadow-soft">
-      {/* Mapbox container */}
-      <div ref={mapContainer} className="absolute inset-0" />
+    <div className="relative h-full w-full overflow-hidden">
+      {/* Mapbox container — fixed dimensions via style to ensure proper rendering */}
+      <div
+        ref={mapContainer}
+        className="absolute inset-0"
+        style={{ width: "100%", height: "100%" }}
+      />
 
       {/* Loading state */}
       {!mapReady && (
         <div className="absolute inset-0 z-30 grid place-items-center bg-yazz-background">
           <div className="text-center">
-            <div className="mx-auto mb-3 h-10 w-10 animate-spin rounded-full border-2 border-yazz-border-light border-t-yazz-primary" />
-            <p className="font-inter text-[13px] font-medium text-yazz-text-muted">
+            <div className="mx-auto mb-3 h-8 w-8 animate-spin rounded-full border-2 border-yazz-border-light border-t-yazz-primary" />
+            <p className="font-inter text-[12px] font-medium text-yazz-text-muted">
               Chargement de la carte…
             </p>
           </div>
         </div>
       )}
 
-      {/* Header overlay */}
-      <div className="absolute left-4 right-4 top-4 z-20 flex items-center justify-between gap-3 pointer-events-none">
-        <div className="flex items-center gap-2 rounded-yazz-sm bg-yazz-surface/90 px-3 py-2 yazz-glass pointer-events-auto">
-          <Crosshair className="h-4 w-4 text-yazz-primary" />
-          <span className="font-outfit text-[12px] font-semibold text-yazz-text-dark">Kinshasa</span>
-          <span className="font-inter text-[10px] text-yazz-text-caption">Live</span>
-          <span className="ml-1 h-2 w-2 rounded-full bg-yazz-success yazz-blink" />
-        </div>
+      {/* Filter pills (overlay top-left) */}
+      <div className="absolute left-3 top-3 z-20 flex items-center gap-1 rounded-yazz-sm bg-yazz-surface/95 p-1 yazz-glass">
+        {([
+          { id: "all", label: "Tous", count: counts.all },
+          { id: "moving", label: "Mouvement", count: counts.moving },
+          { id: "idle", label: "Arrêt", count: counts.idle },
+          { id: "alert", label: "Alerte", count: counts.alert },
+          { id: "offline", label: "Hors-ligne", count: counts.offline },
+        ] as const).map((f) => {
+          const active = filter === f.id;
+          return (
+            <button
+              key={f.id}
+              onClick={() => setFilter(f.id as VehicleStatus | "all")}
+              className={cn(
+                "font-inter rounded-yazz-xs px-2.5 py-1.5 text-[11px] font-semibold transition-all",
+                active
+                  ? "bg-yazz-primary text-white shadow-yazz-soft"
+                  : "text-yazz-text-muted hover:bg-yazz-accent hover:text-yazz-primary"
+              )}
+            >
+              {f.label}
+              <span className={cn("ml-1.5", active ? "opacity-80" : "opacity-50")}>{f.count}</span>
+            </button>
+          );
+        })}
+      </div>
 
-        <div className="hidden items-center gap-1 rounded-yazz-sm bg-yazz-surface/90 p-1 yazz-glass pointer-events-auto md:flex">
+      {/* Legend bottom-left */}
+      <div className="absolute bottom-3 left-3 z-20 rounded-yazz-sm bg-yazz-surface/95 p-2.5 yazz-glass">
+        <p className="font-inter mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-yazz-text-caption">
+          Légende
+        </p>
+        <ul className="space-y-1">
           {([
-            { id: "all", label: "Tous", count: counts.all },
-            { id: "moving", label: "Mouvement", count: counts.moving },
-            { id: "idle", label: "Arrêt", count: counts.idle },
-            { id: "alert", label: "Alerte", count: counts.alert },
-            { id: "offline", label: "Hors-ligne", count: counts.offline },
-          ] as const).map((f) => {
-            const active = filter === f.id;
-            return (
-              <button
-                key={f.id}
-                onClick={() => setFilter(f.id as VehicleStatus | "all")}
-                className={cn(
-                  "font-inter rounded-yazz-xs px-2.5 py-1.5 text-[11px] font-semibold transition-all",
-                  active
-                    ? "bg-yazz-primary text-white shadow-yazz-soft"
-                    : "text-yazz-text-muted hover:bg-yazz-accent hover:text-yazz-primary"
-                )}
-              >
-                {f.label}
-                <span className={cn("ml-1.5", active ? "opacity-80" : "opacity-50")}>
-                  {f.count}
-                </span>
-              </button>
-            );
-          })}
-        </div>
+            { id: "moving", label: "En mouvement", color: "bg-yazz-primary" },
+            { id: "idle", label: "À l'arrêt", color: "bg-yazz-text-muted" },
+            { id: "alert", label: "Alerte active", color: "bg-yazz-error" },
+            { id: "offline", label: "Hors-ligne", color: "bg-yazz-text-caption" },
+          ] as const).map((l) => (
+            <li key={l.id} className="flex items-center gap-2">
+              <span className={cn("h-2 w-2 rounded-full", l.color)} />
+              <span className="font-inter text-[11px] font-medium text-yazz-text-body">{l.label}</span>
+            </li>
+          ))}
+        </ul>
       </div>
 
       {/* Scale bottom-right */}
-      <div className="absolute bottom-4 right-4 z-20 flex items-center gap-2 rounded-yazz-sm bg-yazz-surface/95 px-2.5 py-1.5 yazz-glass">
+      <div className="absolute bottom-3 right-3 z-20 flex items-center gap-2 rounded-yazz-sm bg-yazz-surface/95 px-2.5 py-1.5 yazz-glass">
         <span className="font-outfit text-[10px] font-semibold text-yazz-text-muted">2 km</span>
         <div className="h-1.5 w-12 border-b-2 border-l-2 border-r-2 border-yazz-text-muted" />
       </div>
@@ -261,12 +304,9 @@ export function YazzMapbox({ vehicles, selectedId, onSelect }: YazzMapboxProps) 
         .yazz-mapbox-popup .mapboxgl-popup-tip {
           border-top-color: white;
         }
-        .yazz-mapbox-popup.mapboxgl-popup-anchor-bottom .mapboxgl-popup-tip {
-          border-top-color: white;
-          border-bottom-color: transparent;
-        }
         .mapboxgl-ctrl-top-right {
-          top: 64px !important;
+          top: 12px !important;
+          right: 12px !important;
         }
         .mapboxgl-ctrl-group {
           border-radius: 9px !important;
@@ -275,17 +315,30 @@ export function YazzMapbox({ vehicles, selectedId, onSelect }: YazzMapboxProps) 
           border: 1px solid #dde1f2 !important;
         }
         .mapboxgl-ctrl-group button {
-          width: 36px !important;
-          height: 36px !important;
+          width: 32px !important;
+          height: 32px !important;
         }
         .mapboxgl-ctrl-group button:hover {
           background-color: #f0f1fa !important;
         }
         .mapboxgl-ctrl-attrib {
-          font-size: 10px !important;
+          font-size: 9px !important;
           background: rgba(255,255,255,0.7) !important;
+        }
+        .mapboxgl-ctrl-attrib-button {
+          display: none !important;
         }
       `}</style>
     </div>
   );
+}
+
+function escapeHtml(s: string): string {
+  return s.replace(/[&<>"']/g, (c) => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#39;",
+  }[c] as string));
 }
