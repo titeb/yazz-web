@@ -164,13 +164,24 @@ export function YazzMapbox({ vehicles, selectedId, onSelect }: YazzMapboxProps) 
       const cfg = statusConfig[v.status];
       const isSelected = v.id === selectedId;
 
-      // Build marker DOM element — style YAZZ Flutter (avec tige type pin)
+      // Build marker DOM element — style YAZZ Flutter
+      // ⚠️ IMPORTANT : ne jamais modifier el.style.transform — Mapbox l'utilise
+      // pour positionner le marker à chaque frame (surtout avec pitch 3D).
+      // On wrappe le contenu dans un inner div qui gère le hover via CSS.
       const el = document.createElement("div");
       el.style.cursor = "pointer";
       el.style.display = "flex";
       el.style.flexDirection = "column";
       el.style.alignItems = "center";
-      el.style.transition = "transform 0.2s ease";
+      el.style.lineHeight = "0"; // éviter espace sous la tige
+
+      // Inner wrapper — gère le hover SANS toucher au transform de el
+      const inner = document.createElement("div");
+      inner.style.display = "flex";
+      inner.style.flexDirection = "column";
+      inner.style.alignItems = "center";
+      inner.style.transition = "transform 0.2s ease, filter 0.2s ease";
+      inner.style.transformOrigin = "bottom center"; // le pin grandit depuis le bas
 
       // Tige du pin (petit trait vertical pour effet 3D)
       const stem = document.createElement("div");
@@ -179,7 +190,7 @@ export function YazzMapbox({ vehicles, selectedId, onSelect }: YazzMapboxProps) 
       stem.style.backgroundColor = cfg.color;
       stem.style.opacity = "0.6";
       stem.style.borderRadius = "1px";
-      el.appendChild(stem);
+      inner.appendChild(stem);
 
       // Cercle du marker
       const circle = document.createElement("div");
@@ -202,6 +213,7 @@ export function YazzMapbox({ vehicles, selectedId, onSelect }: YazzMapboxProps) 
         pulse.style.backgroundColor = cfg.color;
         pulse.style.opacity = "0.3";
         pulse.style.animation = "yazz-pulse-ring 2.4s ease-out infinite";
+        pulse.style.pointerEvents = "none"; // ne pas intercepter le hover
         circle.appendChild(pulse);
       }
 
@@ -212,13 +224,22 @@ export function YazzMapbox({ vehicles, selectedId, onSelect }: YazzMapboxProps) 
           ? `<svg width="${iconSize}" height="${iconSize}" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="position:relative;z-index:1"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>`
           : `<svg width="${iconSize}" height="${iconSize}" viewBox="0 0 24 24" fill="white" stroke="white" stroke-width="0.5" style="position:relative;z-index:1;transform:rotate(${v.heading || 0}deg)"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg>`;
       circle.insertAdjacentHTML("beforeend", iconHtml);
-      el.appendChild(circle);
+      inner.appendChild(circle);
+      el.appendChild(inner);
 
+      // Hover : on modifie inner.style.transform (pas el.style.transform !)
+      // Utilisation de listeners pour éviter les conflits avec Mapbox
+      let hoverScale = 1;
+      const applyTransform = () => {
+        inner.style.transform = hoverScale > 1 ? `scale(${hoverScale}) translateY(-3px)` : "scale(1)";
+      };
       el.addEventListener("mouseenter", () => {
-        el.style.transform = "translateY(-3px) scale(1.1)";
+        hoverScale = 1.15;
+        applyTransform();
       });
       el.addEventListener("mouseleave", () => {
-        el.style.transform = "translateY(0) scale(1)";
+        hoverScale = 1;
+        applyTransform();
       });
       el.addEventListener("click", (e) => {
         e.stopPropagation();
