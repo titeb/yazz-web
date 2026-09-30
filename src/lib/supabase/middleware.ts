@@ -61,6 +61,7 @@ export async function updateSession(request: NextRequest) {
   const isPublicRoute =
     pathname === "/login" ||
     pathname.startsWith("/api/auth") ||
+    pathname.startsWith("/api/debug") ||
     pathname.startsWith("/_next") ||
     pathname === "/favicon.ico" ||
     pathname.match(/\.(svg|png|jpg|jpeg|gif|webp|ico|woff|woff2|ttf)$/);
