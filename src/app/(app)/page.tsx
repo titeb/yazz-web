@@ -1,16 +1,14 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { YazzStatCard } from "@/components/yazz/yazz-stat-card";
 import { YazzMapPanel } from "@/components/yazz/yazz-map-panel";
 import { YazzVehicleDetail } from "@/components/yazz/yazz-vehicle-detail";
 import { useUserVehicles, type VehicleWithPosition } from "@/hooks/use-user-vehicles";
-import { useUserStats } from "@/hooks/use-user-stats";
 import { isSupabaseConfigured } from "@/lib/supabase/client";
-import { Loader2, AlertTriangle, Database } from "lucide-react";
+import { Database } from "lucide-react";
 
 // Véhicules mockés — utilisés en fallback si Supabase n'est pas configuré
-import { vehicles as mockVehicles, stats as mockStats } from "@/lib/yazz/mock-data";
+import { vehicles as mockVehicles } from "@/lib/yazz/mock-data";
 
 function toMockVehicle(v: VehicleWithPosition) {
   return {
@@ -35,8 +33,7 @@ export default function DashboardPage() {
   const [selectedVehicleId, setSelectedVehicleId] = useState<string | undefined>(undefined);
 
   const isSupabaseReady = isSupabaseConfigured();
-  const { vehicles: realVehicles, loading: vehiclesLoading, error: vehiclesError } = useUserVehicles();
-  const { stats: realStats, loading: statsLoading } = useUserStats();
+  const { vehicles: realVehicles } = useUserVehicles();
 
   // ── Choix : vraies données Supabase ou mockées ──────────────────
   const useMockData = !isSupabaseReady;
@@ -45,124 +42,41 @@ export default function DashboardPage() {
     return realVehicles.map(toMockVehicle);
   }, [realVehicles, useMockData]);
 
-  const stats = useMemo(() => {
-    if (useMockData) return mockStats;
-    return [
-      {
-        id: "s1",
-        label: "Total véhicules",
-        value: String(realStats.totalVehicles),
-        delta: realStats.totalVehicles > 0 ? `${realStats.totalVehicles} actif${realStats.totalVehicles > 1 ? "s" : ""}` : undefined,
-        trend: "up" as const,
-        icon: "car" as const,
-        accent: "primary" as const,
-      },
-      {
-        id: "s2",
-        label: "En mouvement",
-        value: String(realStats.movingVehicles),
-        delta:
-          realStats.totalVehicles > 0
-            ? `${Math.round((realStats.movingVehicles / Math.max(realStats.totalVehicles, 1)) * 100)}% actif`
-            : undefined,
-        trend: "up" as const,
-        icon: "moving" as const,
-        accent: "success" as const,
-      },
-      {
-        id: "s3",
-        label: "Alertes actives",
-        value: String(realStats.activeAlerts),
-        delta: realStats.activeAlerts > 0 ? "non lues" : "rien à signaler",
-        trend: realStats.activeAlerts > 0 ? ("up" as const) : ("flat" as const),
-        icon: "alert" as const,
-        accent: realStats.activeAlerts > 0 ? ("warning" as const) : ("success" as const),
-      },
-      {
-        id: "s4",
-        label: "Crédit solde",
-        value: realStats.creditIsActive
-          ? `${realStats.creditBalance.toLocaleString("fr-FR")} ${realStats.creditCurrency}`
-          : "Inactif",
-        delta: realStats.daysUntilExpiry !== null ? `${realStats.daysUntilExpiry}j restants` : undefined,
-        trend: realStats.daysUntilExpiry !== null && realStats.daysUntilExpiry < 3 ? ("down" as const) : ("flat" as const),
-        icon: "credit" as const,
-        accent: realStats.daysUntilExpiry !== null && realStats.daysUntilExpiry < 3 ? ("warning" as const) : ("info" as const),
-      },
-    ];
-  }, [realStats, useMockData]);
-
   const selectedVehicle = vehicles.find((v) => v.id === selectedVehicleId);
 
   return (
-    <div className="h-full overflow-y-auto">
-      {/* Bannière si Supabase pas configuré */}
+    <div className="relative h-full overflow-hidden">
+      {/* Bannière si Supabase pas configuré (mode démo) */}
       {!isSupabaseReady && (
-        <div className="mx-4 mt-4 rounded-yazz-md border-l-4 border-l-yazz-warning bg-yazz-warning/10 p-4 md:mx-6">
-          <div className="flex items-start gap-3">
-            <Database className="h-5 w-5 shrink-0 text-yazz-warning" />
+        <div className="absolute left-4 right-4 top-4 z-30 rounded-yazz-md border-l-4 border-l-yazz-warning bg-yazz-warning/10 p-3 backdrop-blur-sm md:left-6">
+          <div className="flex items-start gap-2.5">
+            <Database className="h-4 w-4 shrink-0 text-yazz-warning" />
             <div>
-              <p className="font-outfit text-[13px] font-bold text-yazz-text-dark">Mode démo — Supabase non configuré</p>
-              <p className="font-inter mt-0.5 text-[12px] text-yazz-text-muted">
-                Les données affichées sont fictives. Configure <code className="mx-1 rounded bg-yazz-surface px-1.5 py-0.5 text-[11px] font-mono">.env.local</code> avec les credentials Supabase pour activer les vraies données.
+              <p className="font-outfit text-[12px] font-bold text-yazz-text-dark">Mode démo</p>
+              <p className="font-inter text-[11px] text-yazz-text-muted">
+                Données fictives — configurez <code className="font-mono">.env.local</code> pour les vraies données.
               </p>
             </div>
           </div>
         </div>
       )}
 
-      {/* Erreur véhicules */}
-      {vehiclesError && (
-        <div className="mx-4 mt-4 rounded-yazz-md border-l-4 border-l-yazz-error bg-yazz-error/10 p-4 md:mx-6">
-          <div className="flex items-start gap-3">
-            <AlertTriangle className="h-5 w-5 shrink-0 text-yazz-error" />
-            <div>
-              <p className="font-outfit text-[13px] font-bold text-yazz-text-dark">Erreur de chargement des véhicules</p>
-              <p className="font-inter mt-0.5 text-[12px] text-yazz-error">{vehiclesError}</p>
-            </div>
-          </div>
+      {/* Carte plein écran (100% du viewport restant) */}
+      <YazzMapPanel
+        vehicles={vehicles}
+        selectedId={selectedVehicleId}
+        onSelect={setSelectedVehicleId}
+      />
+
+      {/* Panneau détail en overlay à droite quand un véhicule est sélectionné */}
+      {selectedVehicle && (
+        <div className="absolute right-4 top-4 bottom-4 z-20 w-[340px] max-w-[calc(100vw-2rem)] overflow-hidden rounded-yazz-xl border border-yazz-border-light bg-yazz-surface yazz-shadow-high yazz-animate-slide-in-right md:right-6">
+          <YazzVehicleDetail
+            vehicle={selectedVehicle}
+            onClose={() => setSelectedVehicleId(undefined)}
+          />
         </div>
       )}
-
-      {/* Stats row */}
-      <div className="px-4 pt-4 md:px-6">
-        <div className="grid grid-cols-2 gap-3 md:gap-4 lg:grid-cols-4">
-          {stats.map((s) => (
-            <YazzStatCard key={s.id} {...s} />
-          ))}
-        </div>
-      </div>
-
-      {/* Loading state */}
-      {isSupabaseReady && (vehiclesLoading || statsLoading) && (
-        <div className="flex items-center justify-center px-4 pt-4 md:px-6">
-          <div className="flex items-center gap-3 rounded-yazz-md bg-yazz-surface px-4 py-3 yazz-shadow-soft">
-            <Loader2 className="h-4 w-4 animate-spin text-yazz-primary" />
-            <span className="font-inter text-[12px] font-medium text-yazz-text-muted">
-              Chargement de vos véhicules…
-            </span>
-          </div>
-        </div>
-      )}
-
-      {/* Map plein écran (~90% hauteur) avec panneau détail en overlay si véhicule sélectionné */}
-      <div className="relative h-[calc(100vh-220px)] min-h-[400px] p-4 md:px-6 md:pb-6">
-        <YazzMapPanel
-          vehicles={vehicles}
-          selectedId={selectedVehicleId}
-          onSelect={setSelectedVehicleId}
-        />
-
-        {/* Panneau détail en overlay à droite quand un véhicule est sélectionné */}
-        {selectedVehicle && (
-          <div className="absolute right-6 top-4 bottom-4 z-20 w-[340px] max-w-[calc(100vw-3rem)] overflow-hidden rounded-yazz-xl border border-yazz-border-light bg-yazz-surface yazz-shadow-high yazz-animate-slide-in-right">
-            <YazzVehicleDetail
-              vehicle={selectedVehicle}
-              onClose={() => setSelectedVehicleId(undefined)}
-            />
-          </div>
-        )}
-      </div>
     </div>
   );
 }

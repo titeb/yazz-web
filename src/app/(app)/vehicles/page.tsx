@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import { useUserDevices, type UserDevice } from "@/hooks/use-user-devices";
 import { isSupabaseConfigured } from "@/lib/supabase/client";
 import {
@@ -51,9 +52,21 @@ export default function VehiclesPage() {
   const isReady = isSupabaseConfigured();
   const { devices, loading, error, addDevice, updateDevice, removeDevice, toggleActive } = useUserDevices();
 
+  const searchParams = useSearchParams();
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingDevice, setEditingDevice] = useState<UserDevice | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<UserDevice | null>(null);
+
+  // Si ?add=1 dans l'URL, on ouvre automatiquement le modal d'ajout
+  useEffect(() => {
+    if (searchParams.get("add") === "1") {
+      setShowAddModal(true);
+      // Nettoie l'URL pour éviter de rouvrir au prochain mount
+      const url = new URL(window.location.href);
+      url.searchParams.delete("add");
+      window.history.replaceState({}, "", url.toString());
+    }
+  }, [searchParams]);
 
   return (
     <div className="h-full overflow-y-auto">

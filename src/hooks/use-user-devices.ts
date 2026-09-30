@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { createClientSafe, isSupabaseConfigured } from "@/lib/supabase/client";
 
 export type UserDevice = {
@@ -58,11 +58,18 @@ export type UseUserDevicesResult = {
  * Inclut : fetch, add, update, remove, toggle active.
  * Realtime : re-fetch automatique sur changements user_devices et last_known_positions.
  */
+let userDevicesChannelCounter = 0;
+
 export function useUserDevices(): UseUserDevicesResult {
   const supabase = createClientSafe();
   const [devices, setDevices] = useState<UserDevice[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const channelNameRef = useRef<string | null>(null);
+
+  if (!channelNameRef.current) {
+    channelNameRef.current = `yazz-user-devices-realtime-${++userDevicesChannelCounter}`;
+  }
 
   const fetchDevices = useCallback(async () => {
     if (!supabase || !isSupabaseConfigured()) return;
@@ -149,12 +156,12 @@ export function useUserDevices(): UseUserDevicesResult {
   }, [supabase]);
 
   useEffect(() => {
-    if (!supabase) return;
+    if (!supabase || !channelNameRef.current) return;
 
     fetchDevices();
 
     const channel = supabase
-      .channel("yazz-user-devices-realtime")
+      .channel(channelNameRef.current)
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "user_devices" },

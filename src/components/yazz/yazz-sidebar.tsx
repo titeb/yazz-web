@@ -14,6 +14,7 @@ import {
   ChevronLeft,
   LifeBuoy,
   LogOut,
+  BarChart3,
   type LucideIcon,
 } from "lucide-react";
 import { YazzLogo } from "./yazz-logo";
@@ -31,6 +32,7 @@ type NavItem = {
 const navItems: NavItem[] = [
   { id: "dashboard", label: "Tableau de bord", icon: LayoutDashboard, href: "/" },
   { id: "vehicles", label: "Mes véhicules", icon: Car, href: "/vehicles" },
+  { id: "stats", label: "Statistiques", icon: BarChart3, href: "/stats" },
   { id: "history", label: "Historique trajets", icon: Route, href: "/history" },
   { id: "geofences", label: "Géofences", icon: MapPin, href: "/geofences" },
   { id: "alerts", label: "Alertes", icon: Bell, href: "/alerts" },

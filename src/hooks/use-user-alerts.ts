@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { createClientSafe, isSupabaseConfigured } from "@/lib/supabase/client";
 import type { Database } from "@/lib/yazz/types/database";
 
@@ -29,11 +29,15 @@ export type UseUserAlertsResult = {
   markAllAsRead: () => Promise<void>;
 };
 
+// Compteur global pour générer des noms de channel uniques
+// (sinon Supabase casse quand le même hook est monté 2x avec le même channel name)
+let channelCounter = 0;
+
 const VEHICLE_NAME_CACHE = new Map<string, { name: string; plate: string | null }>();
 
 /**
  * Hook qui récupère les notifications de l'utilisateur (feed alertes).
- * Top 20 notifications triées par date desc.
+ * Top N notifications triées par date desc.
  * Realtime : nouvelle notification → re-fetch automatique.
  */
 export function useUserAlerts(limit = 20): UseUserAlertsResult {
@@ -41,6 +45,11 @@ export function useUserAlerts(limit = 20): UseUserAlertsResult {
   const [alerts, setAlerts] = useState<AlertItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const channelNameRef = useRef<string | null>(null);
+
+  if (!channelNameRef.current) {
+    channelNameRef.current = `yazz-alerts-realtime-${++channelCounter}`;
+  }
 
   const fetchAlerts = useCallback(async () => {
     if (!supabase || !isSupabaseConfigured()) return;
@@ -123,12 +132,12 @@ export function useUserAlerts(limit = 20): UseUserAlertsResult {
   }, [supabase, limit]);
 
   useEffect(() => {
-    if (!supabase) return;
+    if (!supabase || !channelNameRef.current) return;
 
     fetchAlerts();
 
     const channel = supabase
-      .channel("yazz-alerts-realtime")
+      .channel(channelNameRef.current)
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "notifications" },

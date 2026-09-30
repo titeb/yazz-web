@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { createClientSafe, isSupabaseConfigured } from "@/lib/supabase/client";
 
 export type UserProfile = {
@@ -31,11 +31,18 @@ type UseUserProfileResult = {
  * - Update via Supabase JS direct (RLS user read/write own)
  * - Realtime : re-fetch sur UPDATE
  */
+let profileChannelCounter = 0;
+
 export function useUserProfile(): UseUserProfileResult {
   const supabase = createClientSafe();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const channelNameRef = useRef<string | null>(null);
+
+  if (!channelNameRef.current) {
+    channelNameRef.current = `yazz-user-profile-realtime-${++profileChannelCounter}`;
+  }
 
   const fetchProfile = useCallback(async () => {
     if (!supabase || !isSupabaseConfigured()) return;
@@ -104,12 +111,12 @@ export function useUserProfile(): UseUserProfileResult {
   }, [supabase]);
 
   useEffect(() => {
-    if (!supabase) return;
+    if (!supabase || !channelNameRef.current) return;
 
     fetchProfile();
 
     const channel = supabase
-      .channel("yazz-user-profile-realtime")
+      .channel(channelNameRef.current)
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "users" },

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { createClientSafe, isSupabaseConfigured } from "@/lib/supabase/client";
 
 export type UserStats = {
@@ -29,9 +29,12 @@ const DEFAULT_STATS: UserStats = {
   error: null,
 };
 
+// Compteur global pour noms de channel uniques
+let statsChannelCounter = 0;
+
 /**
  * Hook qui récupère les statistiques utilisateur en temps réel.
- * - Total véhicules (user_devices actifs)
+ * - Total véhicules (user_devices)
  * - Véhicules en mouvement (last_known_positions.speed > 0 + connecté < 10 min)
  * - Alertes actives (notifications non lues)
  * - Solde crédit (user_credits)
@@ -41,6 +44,11 @@ const DEFAULT_STATS: UserStats = {
 export function useUserStats() {
   const supabase = createClientSafe();
   const [stats, setStats] = useState<UserStats>(DEFAULT_STATS);
+  const channelNameRef = useRef<string | null>(null);
+
+  if (!channelNameRef.current) {
+    channelNameRef.current = `yazz-user-stats-realtime-${++statsChannelCounter}`;
+  }
 
   const fetchStats = useCallback(async () => {
     if (!supabase || !isSupabaseConfigured()) {
@@ -135,13 +143,13 @@ export function useUserStats() {
   }, [supabase]);
 
   useEffect(() => {
-    if (!supabase) return;
+    if (!supabase || !channelNameRef.current) return;
 
     fetchStats();
 
     // ── Realtime subscriptions ──────────────────────────────────
     const channel = supabase
-      .channel("yazz-user-stats-realtime")
+      .channel(channelNameRef.current)
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "user_devices" },

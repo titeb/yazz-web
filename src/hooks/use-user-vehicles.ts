@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { createClientSafe, isSupabaseConfigured } from "@/lib/supabase/client";
 import type { Database } from "@/lib/yazz/types/database";
 
@@ -32,11 +32,18 @@ export type VehicleWithPosition = {
  * Si Supabase n'est pas configuré, retourne un tableau vide
  * (l'app utilise alors les données mockées en fallback).
  */
+let vehiclesChannelCounter = 0;
+
 export function useUserVehicles() {
   const supabase = createClientSafe();
   const [vehicles, setVehicles] = useState<VehicleWithPosition[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const channelNameRef = useRef<string | null>(null);
+
+  if (!channelNameRef.current) {
+    channelNameRef.current = `yazz-vehicles-realtime-${++vehiclesChannelCounter}`;
+  }
 
   const computeStatus = (
     pos: LastKnownPosition | null,
@@ -190,12 +197,12 @@ export function useUserVehicles() {
   }, [supabase]);
 
   useEffect(() => {
-    if (!supabase) return;
+    if (!supabase || !channelNameRef.current) return;
 
     fetchVehicles();
 
     const channel = supabase
-      .channel("yazz-vehicles-realtime")
+      .channel(channelNameRef.current)
       .on(
         "postgres_changes",
         {
