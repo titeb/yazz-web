@@ -6,7 +6,7 @@ export default function SharingPagePlaceholder() {
   return (
     <div className="grid h-full place-items-center px-4 py-12">
       <div className="max-w-md text-center">
-        <div className="mx-auto mb-4 grid h-16 w-16 place-items-center rounded-yazz-xl bg-yazz-gradient-subtle">
+        <div className="mx-auto mb-4 grid h-16 w-16 place-items-center rounded-yazz-xl yazz-gradient-subtle">
           <Share2 className="h-7 w-7 text-yazz-primary" />
         </div>
         <h1 className="font-outfit text-[24px] font-bold tracking-[-0.02em] text-yazz-text-dark">

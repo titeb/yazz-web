@@ -249,7 +249,7 @@ function LoginContent() {
   return (
     <div className="relative grid min-h-screen lg:grid-cols-2">
       {/* Brand panel (gauche, desktop) */}
-      <div className="relative hidden overflow-hidden bg-yazz-gradient-primary lg:flex lg:flex-col lg:items-center lg:justify-center lg:p-12">
+      <div className="relative hidden overflow-hidden yazz-gradient-primary lg:flex lg:flex-col lg:items-center lg:justify-center lg:p-12">
         {/* Decorative grid */}
         <div className="absolute inset-0 opacity-20">
           <svg className="h-full w-full" preserveAspectRatio="none" viewBox="0 0 100 100">

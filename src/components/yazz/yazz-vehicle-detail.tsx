@@ -77,7 +77,7 @@ export function YazzVehicleDetail({ vehicle, onClose }: YazzVehicleDetailProps) 
         </button>
 
         <div className="flex items-start gap-3">
-          <div className="grid h-12 w-12 place-items-center rounded-yazz-lg bg-yazz-gradient-primary text-white shadow-yazz-medium">
+          <div className="grid h-12 w-12 place-items-center rounded-yazz-lg yazz-gradient-primary text-white shadow-yazz-medium">
             <Navigation
               className="h-5 w-5"
               style={{ transform: `rotate(${vehicle.heading}deg)` }}
@@ -163,7 +163,7 @@ export function YazzVehicleDetail({ vehicle, onClose }: YazzVehicleDetailProps) 
         </div>
 
         {/* Address block */}
-        <div className="mt-3 rounded-yazz-md bg-yazz-gradient-subtle p-3">
+        <div className="mt-3 rounded-yazz-md yazz-gradient-subtle p-3">
           <p className="font-inter mb-1 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-yazz-text-caption">
             <MapPin className="h-3 w-3" />
             Position actuelle
@@ -176,7 +176,7 @@ export function YazzVehicleDetail({ vehicle, onClose }: YazzVehicleDetailProps) 
         {/* Driver */}
         {vehicle.driver && (
           <div className="mt-3 flex items-center gap-3 rounded-yazz-md border border-yazz-border-light p-3">
-            <div className="font-outfit grid h-10 w-10 place-items-center rounded-full bg-yazz-gradient-primary text-xs font-bold text-white">
+            <div className="font-outfit grid h-10 w-10 place-items-center rounded-full yazz-gradient-primary text-xs font-bold text-white">
               {(vehicle.driver || "?").split(" ").map((p) => p[0]).join("").slice(0, 2) || "?"}
             </div>
             <div className="flex-1">

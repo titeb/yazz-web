@@ -70,7 +70,7 @@ export function YazzTopbar({ onMobileMenu }: YazzTopbarProps) {
 
         {/* User */}
         <button className="flex items-center gap-2 rounded-yazz-sm p-1 pr-2 transition-colors hover:bg-yazz-accent">
-          <div className="font-outfit grid h-8 w-8 place-items-center rounded-full bg-yazz-gradient-primary text-[11px] font-bold text-white">
+          <div className="font-outfit grid h-8 w-8 place-items-center rounded-full yazz-gradient-primary text-[11px] font-bold text-white">
             HT
           </div>
           <div className="hidden flex-col items-start leading-none md:flex">

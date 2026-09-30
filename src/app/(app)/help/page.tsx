@@ -62,7 +62,7 @@ export default function HelpPage() {
       <div className="mx-auto max-w-3xl px-4 py-6 md:px-6 md:py-8">
         {/* Header */}
         <div className="mb-6 flex items-center gap-3">
-          <div className="grid h-12 w-12 place-items-center rounded-yazz-lg bg-yazz-gradient-primary text-white shadow-yazz-medium">
+          <div className="grid h-12 w-12 place-items-center rounded-yazz-lg yazz-gradient-primary text-white shadow-yazz-medium">
             <LifeBuoy className="h-6 w-6" />
           </div>
           <div>
@@ -164,7 +164,7 @@ export default function HelpPage() {
         </div>
 
         {/* Footer */}
-        <div className="rounded-yazz-md bg-yazz-gradient-subtle p-4 text-center">
+        <div className="rounded-yazz-md yazz-gradient-subtle p-4 text-center">
           <p className="font-outfit text-[14px] font-bold text-yazz-text-dark">YAZZ GPS Tracking</p>
           <p className="font-inter mt-1 text-[11px] text-yazz-text-muted">
             Plateforme de suivi GPS temps réel pour véhicules en RDC.

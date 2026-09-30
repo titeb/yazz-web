@@ -178,7 +178,7 @@ export default function PaymentsPage() {
         </div>
 
         {/* Solde */}
-        <div className="mb-6 rounded-yazz-xl bg-yazz-gradient-primary p-5 text-white yazz-shadow-medium">
+        <div className="mb-6 rounded-yazz-xl yazz-gradient-primary p-5 text-white yazz-shadow-medium">
           <div className="flex items-start justify-between">
             <div>
               <p className="font-inter text-[11px] uppercase tracking-wide text-white/70">

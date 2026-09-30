@@ -138,7 +138,7 @@ export default function VehiclesPage() {
                   {/* Header */}
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex items-start gap-3 min-w-0">
-                      <div className={cn("grid h-11 w-11 shrink-0 place-items-center rounded-yazz-lg", d.isActive ? "bg-yazz-gradient-primary text-white" : "bg-yazz-accent text-yazz-text-muted")}>
+                      <div className={cn("grid h-11 w-11 shrink-0 place-items-center rounded-yazz-lg", d.isActive ? "yazz-gradient-primary text-white" : "bg-yazz-accent text-yazz-text-muted")}>
                         <Car className="h-5 w-5" />
                       </div>
                       <div className="min-w-0">
@@ -185,7 +185,7 @@ export default function VehiclesPage() {
 
                   {/* Address */}
                   {d.latitude !== null && d.longitude !== null && (
-                    <div className="mt-2 flex items-center gap-1.5 rounded-yazz-sm bg-yazz-gradient-subtle px-2 py-1.5">
+                    <div className="mt-2 flex items-center gap-1.5 rounded-yazz-sm yazz-gradient-subtle px-2 py-1.5">
                       <MapPin className="h-3 w-3 shrink-0 text-yazz-primary" />
                       <p className="font-inter truncate text-[10px] text-yazz-text-muted">
                         {d.latitude.toFixed(4)}, {d.longitude.toFixed(4)}
