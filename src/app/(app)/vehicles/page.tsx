@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { useUserDevices, type UserDevice } from "@/hooks/use-user-devices";
 import { isSupabaseConfigured } from "@/lib/supabase/client";
@@ -49,6 +49,22 @@ function getDeviceStatus(d: UserDevice): { label: string; color: string; dot: st
 }
 
 export default function VehiclesPage() {
+  return (
+    <Suspense fallback={<VehiclesLoading />}>
+      <VehiclesContent />
+    </Suspense>
+  );
+}
+
+function VehiclesLoading() {
+  return (
+    <div className="grid h-full place-items-center">
+      <div className="h-8 w-8 animate-spin rounded-full border-2 border-yazz-border-light border-t-yazz-primary" />
+    </div>
+  );
+}
+
+function VehiclesContent() {
   const isReady = isSupabaseConfigured();
   const { devices, loading, error, addDevice, updateDevice, removeDevice, toggleActive } = useUserDevices();
 
