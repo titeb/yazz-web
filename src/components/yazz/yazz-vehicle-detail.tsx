@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import {
   X,
   Navigation,
@@ -17,6 +18,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Vehicle } from "@/lib/yazz/mock-data";
+import { YazzEngineCutModal } from "./yazz-engine-cut-modal";
 
 type YazzVehicleDetailProps = {
   vehicle: Vehicle;
@@ -56,6 +58,12 @@ function StatItem({
 }
 
 export function YazzVehicleDetail({ vehicle, onClose }: YazzVehicleDetailProps) {
+  const [showEngineCut, setShowEngineCut] = useState(false);
+
+  // Pour le mock (sans engineCutState), on suppose false (moteur non coupé)
+  const engineCutState = (vehicle as any).engineCutState ?? false;
+  const isCut = engineCutState === true;
+
   return (
     <div className="flex h-full flex-col bg-yazz-surface">
       {/* Header */}
@@ -99,9 +107,19 @@ export function YazzVehicleDetail({ vehicle, onClose }: YazzVehicleDetailProps) 
 
       {/* Action buttons */}
       <div className="grid grid-cols-3 gap-2 border-b border-yazz-border-light p-3">
-        <button className="font-inter flex flex-col items-center gap-1 rounded-yazz-md bg-yazz-error/10 py-2.5 text-yazz-error transition-all hover:bg-yazz-error/15 active:scale-95">
+        <button
+          onClick={() => setShowEngineCut(true)}
+          className={cn(
+            "font-inter flex flex-col items-center gap-1 rounded-yazz-md py-2.5 transition-all active:scale-95",
+            isCut
+              ? "bg-yazz-success/10 text-yazz-success hover:bg-yazz-success/15"
+              : "bg-yazz-error/10 text-yazz-error hover:bg-yazz-error/15"
+          )}
+        >
           <Power className="h-[18px] w-[18px]" />
-          <span className="text-[10px] font-semibold">Coupe-moteur</span>
+          <span className="text-[10px] font-semibold">
+            {isCut ? "Restaurer" : "Coupe-moteur"}
+          </span>
         </button>
         <button className="font-inter flex flex-col items-center gap-1 rounded-yazz-md bg-yazz-info/10 py-2.5 text-yazz-info transition-all hover:bg-yazz-info/15 active:scale-95">
           <Share2 className="h-[18px] w-[18px]" />
@@ -198,6 +216,22 @@ export function YazzVehicleDetail({ vehicle, onClose }: YazzVehicleDetailProps) 
           </div>
         )}
       </div>
+
+      {/* Modal Coupe-moteur */}
+      {showEngineCut && (
+        <YazzEngineCutModal
+          deviceId={vehicle.imei || vehicle.id}
+          deviceName={vehicle.name}
+          currentCutState={isCut}
+          speed={vehicle.speed}
+          onClose={() => setShowEngineCut(false)}
+          onSuccess={(newState) => {
+            // TODO : mettre à jour le state parent (vehicle.engineCutState)
+            console.log("[engine-cut] succès, nouvel état:", newState);
+            setShowEngineCut(false);
+          }}
+        />
+      )}
     </div>
   );
 }
