@@ -304,24 +304,28 @@ function OptionsModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center" onClick={onClose}>
-      <div className="absolute inset-0 bg-yazz-text-dark/50 backdrop-blur-sm" />
+      <div className="absolute inset-0 bg-yazz-text-dark/50 backdrop-blur-md" />
       <div
-        className="relative w-full max-w-md rounded-t-yazz-xl sm:rounded-yazz-xl bg-yazz-surface p-5 yazz-shadow-high yazz-animate-fade-in-up max-h-[80vh] overflow-y-auto"
+        className="relative w-full max-w-md rounded-t-yazz-xl sm:rounded-yazz-xl bg-yazz-surface yazz-shadow-high yazz-animate-fade-in-up max-h-[80vh] flex flex-col overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
-        <button
-          onClick={onClose}
-          className="absolute right-3 top-3 grid h-8 w-8 place-items-center rounded-yazz-sm text-yazz-text-muted hover:bg-yazz-accent hover:text-yazz-primary"
-        >
-          <X className="h-4 w-4" />
-        </button>
+        {/* Header fixe (pas affecté par le scroll) */}
+        <div className="relative shrink-0 border-b border-yazz-border-light p-5 pb-3">
+          <button
+            onClick={onClose}
+            className="absolute right-3 top-3 grid h-8 w-8 place-items-center rounded-yazz-sm text-yazz-text-muted hover:bg-yazz-accent hover:text-yazz-primary"
+          >
+            <X className="h-4 w-4" />
+          </button>
 
-        <h2 className="font-outfit mb-1 text-[16px] font-bold tracking-[-0.01em] text-yazz-text-dark">
-          Options
-        </h2>
-        <p className="font-inter mb-4 text-[12px] text-yazz-text-muted">{vehicleName}</p>
+          <h2 className="font-outfit text-[16px] font-bold tracking-[-0.01em] text-yazz-text-dark">
+            Options
+          </h2>
+          <p className="font-inter text-[12px] text-yazz-text-muted">{vehicleName}</p>
+        </div>
 
-        <ul className="space-y-1">
+        {/* Liste scrollable */}
+        <ul className="flex-1 overflow-y-auto p-3 space-y-1">
           {options.map((opt, idx) => {
             const Icon = opt.icon;
             return (

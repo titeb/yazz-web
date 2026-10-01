@@ -122,14 +122,14 @@ export function YazzVehicleCard({ vehicles, selectedId, onSelect }: YazzVehicleC
                     isSelected ? "bg-yazz-primary/8 ring-1 ring-yazz-primary/30" : "hover:bg-yazz-accent/60"
                   )}
                 >
-                  {/* Status icon + dot */}
+                  {/* Status icon — style carré arrondi comme modal options */}
                   <div className="relative mt-0.5 shrink-0">
-                    <div className={cn("grid h-8 w-8 place-items-center rounded-yazz-lg", cfg.bg)}>
+                    <div className={cn("grid h-9 w-9 place-items-center rounded-[14px]", cfg.bg)}>
                       {v.status === "alert" ? (
-                        <AlertTriangle className={cn("h-3.5 w-3.5", cfg.badgeClass.split(" ")[1])} />
+                        <AlertTriangle className={cn("h-[18px] w-[18px]", cfg.badgeClass.split(" ")[1])} />
                       ) : (
                         <Navigation
-                          className={cn("h-3.5 w-3.5", cfg.badgeClass.split(" ")[1])}
+                          className={cn("h-[18px] w-[18px]", cfg.badgeClass.split(" ")[1])}
                           style={{ transform: `rotate(${v.heading || 0}deg)` }}
                         />
                       )}
