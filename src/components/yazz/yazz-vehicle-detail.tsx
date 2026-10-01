@@ -30,6 +30,7 @@ import type { Vehicle } from "@/lib/yazz/mock-data";
 import { useReverseGeocode } from "@/hooks/use-reverse-geocode";
 import { YazzEngineCutModal } from "./yazz-engine-cut-modal";
 import { createClientSafe } from "@/lib/supabase/client";
+import { useYazzToast, YazzToastContainer } from "./yazz-toast";
 
 type YazzVehicleDetailProps = {
   vehicle: Vehicle;
@@ -63,7 +64,7 @@ export function YazzVehicleDetail({ vehicle, onClose }: YazzVehicleDetailProps) 
   const [showEngineCut, setShowEngineCut] = useState(false);
   const [showOptions, setShowOptions] = useState(false);
   const [parkingActive, setParkingActive] = useState(false);
-  const [toast, setToast] = useState<{ type: "success" | "error"; message: string } | null>(null);
+  const { toasts: toastList, showToast, dismissToast } = useYazzToast();
   const engineCutState = vehicle.engineCutState ?? false;
   const isCut = engineCutState === true;
   const accOn = vehicle.accOn ?? true;
@@ -79,9 +80,8 @@ export function YazzVehicleDetail({ vehicle, onClose }: YazzVehicleDetailProps) 
       .then(({ data }) => setParkingActive(data?.parking_mode ?? false));
   }, [supabase, vehicle.id]);
 
-  const showToast = (type: "success" | "error", message: string) => {
-    setToast({ type, message });
-    setTimeout(() => setToast(null), 3000);
+  const showToastMsg = (type: "success" | "error", title: string, message?: string) => {
+    showToast(type, title, message);
   };
 
   // Toggle parking mode — Flutter _toggleParkingMode
@@ -95,15 +95,15 @@ export function YazzVehicleDetail({ vehicle, onClose }: YazzVehicleDetailProps) 
         .eq("id", vehicle.id);
       if (error) throw error;
       setParkingActive(newValue);
-      showToast("success", newValue ? "Mode parking activé" : "Mode parking désactivé");
+      showToastMsg("success", newValue ? "Mode parking activé" : "Mode parking désactivé");
     } catch (err: any) {
-      showToast("error", err.message || "Erreur");
+      showToastMsg("error", "Erreur", err.message || "Une erreur est survenue");
     }
   };
 
-  // SOS — Flutter navigate vers sos_trigger_page
+  // SOS — navigate vers la page SOS dédiée
   const handleSOS = () => {
-    router.push("/alerts?type=sos");
+    router.push("/sos");
   };
 
   const badge = getStatusBadge(vehicle.status);
@@ -242,16 +242,10 @@ export function YazzVehicleDetail({ vehicle, onClose }: YazzVehicleDetailProps) 
         </button>
       </div>
 
-      {/* Toast feedback */}
-      {toast && (
-        <div className={cn(
-          "shrink-0 border-b p-2.5",
-          toast.type === "success" ? "border-l-4 border-l-yazz-success bg-yazz-success/10" : "border-l-4 border-l-yazz-error bg-yazz-error/10"
-        )}>
-          <p className={cn("font-inter text-[12px] font-semibold", toast.type === "success" ? "text-yazz-success" : "text-yazz-error")}>
-            {toast.message}
-          </p>
-        </div>
+      {/* Toast container — slide-in du haut style yazz user */}
+      {typeof window !== "undefined" && createPortal(
+        <YazzToastContainer toasts={toastList} onDismiss={dismissToast} />,
+        document.body
       )}
 
       {/* Body */}
@@ -582,13 +576,13 @@ function OptionsModal({
                   aria-checked={deviceActive}
                   className={cn(
                     "relative h-6 w-11 shrink-0 rounded-full transition-colors",
-                    deviceActive ? "bg-yazz-primary" : "bg-yazz-border-medium"
+                    deviceActive ? "bg-yazz-success" : "bg-yazz-border-medium"
                   )}
                 >
                   <span
                     className={cn(
                       "absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-yazz-soft transition-transform",
-                      deviceActive ? "translate-x-[22px]" : "translate-x-0.5"
+                      deviceActive ? "translate-x-[21px]" : "translate-x-1"
                     )}
                   />
                 </button>
