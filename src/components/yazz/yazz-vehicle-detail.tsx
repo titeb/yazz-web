@@ -308,26 +308,41 @@ function OptionsModal({
   const [activeSubModal, setActiveSubModal] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
   const [actionResult, setActionResult] = useState<{ type: "success" | "error"; message: string } | null>(null);
+  const [deviceActive, setDeviceActive] = useState(true);
 
   const supabase = createClientSafe();
+
+  // Charger l'état is_active du device au montage
+  useEffect(() => {
+    if (!supabase) return;
+    supabase.from("user_devices").select("is_active").eq("id", vehicleId).maybeSingle()
+      .then(({ data }) => setDeviceActive(data?.is_active ?? true));
+  }, [supabase, vehicleId]);
 
   const showResult = (type: "success" | "error", message: string) => {
     setActionResult({ type, message });
     setTimeout(() => setActionResult(null), 3000);
   };
 
-  // Action: toggle device active (désactiver/activer)
+  // Action: toggle device active (désactiver/activer) — comme Flutter _toggleDeviceActive
   const toggleDeviceActive = async () => {
     if (!supabase) return;
     setActionLoading(true);
     try {
+      // Lire l'état actuel
+      const { data: current } = await supabase
+        .from("user_devices")
+        .select("is_active")
+        .eq("id", vehicleId)
+        .maybeSingle();
+      const newValue = !current?.is_active;
       const { error } = await supabase
         .from("user_devices")
-        .update({ is_active: false, updated_at: new Date().toISOString() })
+        .update({ is_active: newValue, updated_at: new Date().toISOString() })
         .eq("id", vehicleId);
       if (error) throw error;
-      showResult("success", "Capteur désactivé");
-      setTimeout(() => { onClose(); router.push("/vehicles"); }, 1500);
+      setDeviceActive(newValue);
+      showResult("success", newValue ? "Capteur activé" : "Capteur désactivé");
     } catch (err: any) {
       showResult("error", err.message || "Erreur");
     } finally {
@@ -392,41 +407,14 @@ function OptionsModal({
     }
   };
 
-  // Action: toggle parking mode
-  const toggleParkingMode = async () => {
-    if (!supabase) return;
-    setActionLoading(true);
-    try {
-      const { data: current } = await supabase
-        .from("user_devices")
-        .select("parking_mode")
-        .eq("id", vehicleId)
-        .maybeSingle();
-      const newValue = !current?.parking_mode;
-      const { error } = await supabase
-        .from("user_devices")
-        .update({ parking_mode: newValue, updated_at: new Date().toISOString() })
-        .eq("id", vehicleId);
-      if (error) throw error;
-      showResult("success", newValue ? "Mode parking activé" : "Mode parking désactivé");
-      setTimeout(() => setActiveSubModal(null), 1500);
-    } catch (err: any) {
-      showResult("error", err.message || "Erreur");
-    } finally {
-      setActionLoading(false);
-    }
-  };
-
-  const options = [
+  // Options — exactement comme Flutter SensorOptionsModal
+  // Pas de "mode parking" ni "SOS" ici (ils sont dans capteurDetailPage, pas dans le modal)
+  const navOptions = [
     { icon: Route, title: "Historique des trajets", subtitle: "Consulter les parcours passés", action: () => { onClose(); router.push("/history"); } },
     { icon: GeofenceIcon, title: "Zones géofence", subtitle: "Définir des périmètres de sécurité", action: () => { onClose(); router.push("/geofences"); } },
-    { icon: SpeedIcon, title: "Limite de vitesse", subtitle: "Définir une vitesse maximum", action: () => setActiveSubModal("speedLimit") },
-    { icon: Clock, title: "Alerte arrêt prolongé", subtitle: "Notification après immobilité prolongée", action: () => setActiveSubModal("prolongedStop") },
-    { icon: ShieldAlert, title: "Mode parking", subtitle: "Surveillance antivol à l'arrêt", action: () => { setActiveSubModal("parking"); toggleParkingMode(); } },
-    { icon: Siren, title: "Alerte SOS", subtitle: "Signaler une urgence", action: () => { onClose(); router.push("/alerts?type=sos"); } },
+    { icon: SpeedIcon, title: "Limite de vitesse", subtitle: "Configurer les alertes d'excès", action: () => setActiveSubModal("speedLimit") },
+    { icon: Clock, title: "Alerte arrêt prolongé", subtitle: "Notification en cas d'immobilité", action: () => setActiveSubModal("prolongedStop") },
     { icon: Pencil, title: "Modifier le capteur", subtitle: "Nom, véhicule et photo", action: () => { onClose(); router.push(`/vehicles?edit=${vehicleId}`); } },
-    { icon: Power, title: "Désactiver le capteur", subtitle: "Stopper le suivi temporairement", danger: true, action: () => setActiveSubModal("disable") },
-    { icon: Trash2, title: "Supprimer le capteur", subtitle: "Retirer définitivement de votre compte", danger: true, action: () => setActiveSubModal("delete") },
   ];
 
   return (
@@ -464,9 +452,8 @@ function OptionsModal({
 
         {/* Liste scrollable */}
         <ul className="flex-1 overflow-y-auto p-3 space-y-1">
-          {options.map((opt, idx) => {
+          {navOptions.map((opt, idx) => {
             const Icon = opt.icon;
-            const isDanger = (opt as any).danger;
             return (
               <li key={idx}>
                 <button
@@ -474,14 +461,11 @@ function OptionsModal({
                   disabled={actionLoading}
                   className="flex w-full items-center gap-3 rounded-yazz-md p-3 text-left transition-colors hover:bg-yazz-accent disabled:opacity-50"
                 >
-                  <div className={cn(
-                    "grid h-9 w-9 shrink-0 place-items-center rounded-[14px]",
-                    isDanger ? "bg-yazz-error/10" : "bg-yazz-primary/10"
-                  )}>
-                    <Icon className={cn("h-[18px] w-[18px]", isDanger ? "text-yazz-error" : "text-yazz-primary")} />
+                  <div className="grid h-9 w-9 shrink-0 place-items-center rounded-[14px] bg-yazz-primary/10">
+                    <Icon className="h-[18px] w-[18px] text-yazz-primary" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className={cn("font-outfit text-[13px] font-semibold", isDanger ? "text-yazz-error" : "text-yazz-text-dark")}>
+                    <p className="font-outfit text-[13px] font-semibold text-yazz-text-dark">
                       {opt.title}
                     </p>
                     <p className="font-inter text-[11px] text-yazz-text-muted">
@@ -492,6 +476,70 @@ function OptionsModal({
               </li>
             );
           })}
+
+          {/* Divider avant switch */}
+          <li className="my-1 h-px bg-yazz-border-light" />
+
+          {/* Switch désactiver/activer — Flutter _buildOptionTile avec Switch */}
+          <li>
+            <div className="flex w-full items-center gap-3 rounded-yazz-md p-3">
+              <div className="grid h-9 w-9 shrink-0 place-items-center rounded-[14px] bg-yazz-primary/10">
+                <Power className="h-[18px] w-[18px] text-yazz-primary" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-outfit text-[13px] font-semibold text-yazz-text-dark">
+                  {deviceActive ? "Capteur actif" : "Capteur inactif"}
+                </p>
+                <p className="font-inter text-[11px] text-yazz-text-muted">
+                  {deviceActive ? "Mettre en pause le suivi en direct" : "Réactiver le suivi en direct"}
+                </p>
+              </div>
+              {actionLoading ? (
+                <Loader2 className="h-5 w-5 animate-spin text-yazz-primary" />
+              ) : (
+                <button
+                  onClick={toggleDeviceActive}
+                  role="switch"
+                  aria-checked={deviceActive}
+                  className={cn(
+                    "relative h-6 w-11 shrink-0 rounded-full transition-colors",
+                    deviceActive ? "bg-yazz-primary" : "bg-yazz-border-medium"
+                  )}
+                >
+                  <span
+                    className={cn(
+                      "absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-yazz-soft transition-transform",
+                      deviceActive ? "translate-x-[22px]" : "translate-x-0.5"
+                    )}
+                  />
+                </button>
+              )}
+            </div>
+          </li>
+
+          {/* Divider avant supprimer */}
+          <li className="my-1 h-px bg-yazz-border-light" />
+
+          {/* Supprimer le capteur — Flutter _confirmDelete */}
+          <li>
+            <button
+              onClick={() => setActiveSubModal("delete")}
+              disabled={actionLoading}
+              className="flex w-full items-center gap-3 rounded-yazz-md p-3 text-left transition-colors hover:bg-yazz-error/10 disabled:opacity-50"
+            >
+              <div className="grid h-9 w-9 shrink-0 place-items-center rounded-[14px] bg-yazz-error/10">
+                <Trash2 className="h-[18px] w-[18px] text-yazz-error" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-outfit text-[13px] font-semibold text-yazz-error">
+                  Supprimer le capteur
+                </p>
+                <p className="font-inter text-[11px] text-yazz-text-muted">
+                  Retirer définitivement ce tracker
+                </p>
+              </div>
+            </button>
+          </li>
         </ul>
 
         {/* Sub-modals pour les actions avec input */}
@@ -504,31 +552,6 @@ function OptionsModal({
         {activeSubModal === "prolongedStop" && (
           <SubModal title="Alerte arrêt prolongé" onClose={() => setActiveSubModal(null)}>
             <ProlongedStopForm onSubmit={setProlongedStop} loading={actionLoading} />
-          </SubModal>
-        )}
-
-        {activeSubModal === "disable" && (
-          <SubModal title="Désactiver le capteur ?" onClose={() => setActiveSubModal(null)}>
-            <div className="space-y-3">
-              <div className="rounded-yazz-sm border-l-4 border-l-yazz-warning bg-yazz-warning/10 p-3">
-                <p className="font-inter text-[12px] text-yazz-text-body">
-                  Le capteur <strong>{vehicleName}</strong> sera désactivé. Vous ne recevrez plus d'alertes (vitesse, géofence, SOS...). Vous pourrez le réactiver à tout moment.
-                </p>
-              </div>
-              <div className="flex gap-2">
-                <button onClick={() => setActiveSubModal(null)} className="font-inter flex-1 rounded-yazz-sm border border-yazz-border-light py-2.5 text-[12px] font-semibold text-yazz-text-body hover:bg-yazz-accent">
-                  Annuler
-                </button>
-                <button
-                  onClick={toggleDeviceActive}
-                  disabled={actionLoading}
-                  className="font-inter flex flex-1 items-center justify-center gap-2 rounded-yazz-sm bg-yazz-warning py-2.5 text-[12px] font-semibold text-white hover:bg-yazz-warning/90 disabled:opacity-50"
-                >
-                  {actionLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Power className="h-4 w-4" />}
-                  Désactiver
-                </button>
-              </div>
-            </div>
           </SubModal>
         )}
 
