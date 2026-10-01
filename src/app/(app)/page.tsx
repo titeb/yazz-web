@@ -28,6 +28,9 @@ function toMockVehicle(v: VehicleWithPosition) {
     heading: v.heading,
     address: v.address,
     todayDistanceKm: v.todayDistanceKm,
+    urlImage: v.urlImage,
+    accOn: v.accOn,
+    engineCutState: v.engineCutState,
     alerts: [],
   };
 }
@@ -84,7 +87,7 @@ export default function DashboardPage() {
 
       {/* Panneau détail en overlay à droite quand un véhicule est sélectionné */}
       {selectedVehicle && (
-        <div className="absolute right-4 top-4 bottom-4 z-20 w-[340px] max-w-[calc(100vw-2rem)] overflow-hidden rounded-yazz-xl border border-yazz-border-light bg-yazz-surface yazz-shadow-high yazz-animate-slide-in-right md:right-6">
+        <div className="absolute right-4 top-4 z-20 max-h-[calc(100vh-120px)] w-[340px] max-w-[calc(100vw-2rem)] overflow-hidden rounded-yazz-xl border border-yazz-border-light bg-yazz-surface yazz-shadow-high yazz-animate-slide-in-right md:right-6">
           <YazzVehicleDetail
             vehicle={selectedVehicle}
             onClose={() => setSelectedVehicleId(undefined)}

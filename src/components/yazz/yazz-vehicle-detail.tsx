@@ -10,9 +10,12 @@ import {
   Share2,
   Settings,
   Zap,
+  Loader2,
+  Navigation,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Vehicle } from "@/lib/yazz/mock-data";
+import { useReverseGeocode } from "@/hooks/use-reverse-geocode";
 import { YazzEngineCutModal } from "./yazz-engine-cut-modal";
 
 type YazzVehicleDetailProps = {
@@ -46,30 +49,53 @@ export function YazzVehicleDetail({ vehicle, onClose }: YazzVehicleDetailProps) 
   const [showEngineCut, setShowEngineCut] = useState(false);
   const engineCutState = (vehicle as any).engineCutState ?? false;
   const isCut = engineCutState === true;
-  const accOn = (vehicle as any).accOn ?? true; // pas d'info acc dans le mock → défaut true
+  const accOn = (vehicle as any).accOn ?? true;
   const isOffline = vehicle.status === "offline";
+  const vehiclePhoto = (vehicle as any).urlImage || (vehicle as any).vehiclePhoto || null;
 
   const badge = getStatusBadge(vehicle.status);
   const battColor = getBatteryColor(vehicle.battery);
   const firstLetter = (vehicle.name || "?")[0]?.toUpperCase() || "?";
 
+  // Reverse geocoding — afficher l'adresse réelle
+  const { address, loading: addressLoading } = useReverseGeocode(
+    vehicle.lat ?? null,
+    vehicle.lng ?? null
+  );
+
+  // Construire l'affichage de l'adresse (rue, quartier, commune)
+  const addressParts: string[] = [];
+  if (address?.street) addressParts.push(address.street);
+  if (address?.quarter) addressParts.push(address.quarter);
+  if (address?.commune) addressParts.push(address.commune);
+  if (address?.city && address.city !== address.commune) addressParts.push(address.city);
+  const addressDisplay = addressParts.length > 0 ? addressParts.join(", ") : address?.fullAddress || "Localisation en cours…";
+
   return (
-    <div className="flex h-full flex-col bg-yazz-surface">
+    <div className="flex max-h-full flex-col bg-yazz-surface overflow-hidden rounded-yazz-xl">
       {/* Header — style Flutter tracking_card.dart */}
-      <div className="border-b border-yazz-border-light p-4">
+      <div className="relative border-b border-yazz-border-light p-4">
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-start gap-3 min-w-0 flex-1">
-            {/* Avatar avec première lettre — Flutter CircleAvatar */}
-            <div className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-yazz-primary/10">
-              <span className="font-outfit text-[18px] font-bold text-yazz-primary">
-                {firstLetter}
-              </span>
-            </div>
+            {/* Avatar — photo véhicule si dispo, sinon première lettre */}
+            {vehiclePhoto ? (
+              <img
+                src={vehiclePhoto}
+                alt={vehicle.name}
+                className="grid h-11 w-11 shrink-0 place-items-center rounded-full object-cover"
+              />
+            ) : (
+              <div className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-yazz-primary/10">
+                <span className="font-outfit text-[18px] font-bold text-yazz-primary">
+                  {firstLetter}
+                </span>
+              </div>
+            )}
             <div className="min-w-0 flex-1">
               <p className="font-outfit truncate text-[15px] font-bold tracking-[-0.02em] text-yazz-text-dark">
                 {vehicle.name}
               </p>
-              {/* Ligne contact + batterie — Flutter Row ligne 130-175 */}
+              {/* Ligne contact + batterie */}
               <div className="mt-1 flex items-center gap-2">
                 <Zap
                   className={cn("h-3.5 w-3.5", accOn && !isOffline ? "text-yazz-success" : "text-yazz-text-caption")}
@@ -85,7 +111,7 @@ export function YazzVehicleDetail({ vehicle, onClose }: YazzVehicleDetailProps) 
             </div>
           </div>
 
-          {/* Badge statut — Flutter _buildStatusBadge */}
+          {/* Badge statut */}
           <div className="flex flex-col items-end gap-1 shrink-0">
             <span className={cn("inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[10px] font-semibold", badge.bg, badge.color)}>
               <span className={cn("h-1.5 w-1.5 rounded-full", badge.color.replace("text-", "bg-"))} />
@@ -130,7 +156,7 @@ export function YazzVehicleDetail({ vehicle, onClose }: YazzVehicleDetailProps) 
 
       {/* Body — info lines style Flutter _infoLine */}
       <div className="flex-1 overflow-y-auto p-4">
-        {/* Vitesse */}
+        {/* Vitesse — afficher la valeur réelle (pas "À l'arrêt") */}
         <div className="flex items-start gap-3">
           <div className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-yazz-primary/10">
             <Gauge className="h-[18px] w-[18px] text-yazz-primary" />
@@ -140,14 +166,14 @@ export function YazzVehicleDetail({ vehicle, onClose }: YazzVehicleDetailProps) 
               {isOffline ? "Dernière vitesse enregistrée" : "Vitesse actuelle"}
             </p>
             <p className={cn("font-outfit text-[14px] font-bold", isOffline ? "text-yazz-text-muted" : "text-yazz-text-dark")}>
-              {vehicle.speed > 0 ? `${vehicle.speed.toFixed(1)} km/h` : "À l'arrêt"}
+              {(vehicle.speed ?? 0).toFixed(1)} km/h
             </p>
           </div>
         </div>
 
         <div className="my-3 h-px bg-yazz-border-light" />
 
-        {/* Position */}
+        {/* Position — adresse réelle via reverse geocoding */}
         <div className="flex items-start gap-3">
           <div className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-yazz-primary/10">
             <MapPin className="h-[18px] w-[18px] text-yazz-primary" />
@@ -156,10 +182,17 @@ export function YazzVehicleDetail({ vehicle, onClose }: YazzVehicleDetailProps) 
             <p className="font-inter text-[11px] text-yazz-text-muted">
               {isOffline ? "Dernière position connue" : "Position actuelle"}
             </p>
-            <p className={cn("font-inter text-[12px] leading-snug", isOffline ? "text-yazz-text-muted" : "text-yazz-text-dark")}>
-              {vehicle.address && vehicle.address !== "—" ? vehicle.address : "Localisation en cours…"}
-            </p>
-            {vehicle.lat && vehicle.lng && (
+            {addressLoading ? (
+              <div className="flex items-center gap-1.5">
+                <Loader2 className="h-3 w-3 animate-spin text-yazz-primary" />
+                <p className="font-inter text-[12px] text-yazz-text-muted">Localisation en cours…</p>
+              </div>
+            ) : (
+              <p className={cn("font-inter text-[12px] leading-snug", isOffline ? "text-yazz-text-muted" : "text-yazz-text-dark")}>
+                {addressDisplay}
+              </p>
+            )}
+            {vehicle.lat && vehicle.lng && !addressLoading && (
               <p className="font-inter mt-0.5 text-[10px] text-yazz-text-caption">
                 {vehicle.lat.toFixed(4)}, {vehicle.lng.toFixed(4)}
               </p>
@@ -167,7 +200,7 @@ export function YazzVehicleDetail({ vehicle, onClose }: YazzVehicleDetailProps) 
           </div>
         </div>
 
-        {/* Stats supplémentaires */}
+        {/* Stats compactes */}
         <div className="mt-4 grid grid-cols-2 gap-2">
           <div className="rounded-yazz-md bg-yazz-background/60 p-2.5">
             <p className="font-inter text-[10px] uppercase tracking-wide text-yazz-text-caption">Cap</p>
@@ -177,12 +210,6 @@ export function YazzVehicleDetail({ vehicle, onClose }: YazzVehicleDetailProps) 
             <p className="font-inter text-[10px] uppercase tracking-wide text-yazz-text-caption">Distance jour</p>
             <p className="font-outfit text-[14px] font-bold text-yazz-text-dark">{vehicle.todayDistanceKm} km</p>
           </div>
-        </div>
-
-        {/* IMEI */}
-        <div className="mt-4 rounded-yazz-md bg-yazz-background/60 p-2.5">
-          <p className="font-inter text-[10px] uppercase tracking-wide text-yazz-text-caption">IMEI</p>
-          <p className="font-mono text-[12px] font-bold text-yazz-text-dark">{vehicle.imei}</p>
         </div>
 
         {/* Alertes actives */}

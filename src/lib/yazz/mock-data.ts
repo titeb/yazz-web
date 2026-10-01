@@ -20,6 +20,12 @@ export type Vehicle = {
   address: string;
   todayDistanceKm: number;
   alerts?: { type: "geofence" | "speed" | "battery" | "parking" | "sos"; label: string; ts: string }[];
+  // Champs supplémentaires pour les vraies données Supabase
+  lat?: number;
+  lng?: number;
+  urlImage?: string | null;
+  accOn?: boolean;
+  engineCutState?: boolean;
 };
 
 export const vehicles: Vehicle[] = [

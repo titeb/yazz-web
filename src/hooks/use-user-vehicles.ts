@@ -23,6 +23,9 @@ export type VehicleWithPosition = {
   heading: number;
   address: string;
   todayDistanceKm: number;
+  urlImage: string | null;
+  accOn: boolean;
+  engineCutState: boolean;
 };
 
 /**
@@ -183,6 +186,9 @@ export function useUserVehicles() {
           heading: pos?.heading ?? 0,
           address: "—",
           todayDistanceKm: 0,
+          urlImage: ud.url_image ?? ud.vehicle_photo ?? null,
+          accOn: pos?.acc_status ?? false,
+          engineCutState: ud.engine_cut_state ?? false,
         };
       });
 
