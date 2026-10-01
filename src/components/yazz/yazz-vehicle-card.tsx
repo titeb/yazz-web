@@ -26,6 +26,8 @@ const statusConfig: Record<VehicleStatus, {
   badgeLabel: string;
   badgeClass: string;
 }> = {
+  // Flutter yazz user : tous bleu primary, sauf alerte rouge
+  // L'opacité distingue online vs offline
   moving: {
     dot: "bg-yazz-primary",
     bg: "bg-yazz-primary/10",
@@ -33,14 +35,14 @@ const statusConfig: Record<VehicleStatus, {
     badgeClass: "bg-yazz-primary/10 text-yazz-primary",
   },
   idle: {
-    dot: "bg-yazz-text-muted",
-    bg: "bg-yazz-text-muted/10",
+    dot: "bg-yazz-primary",
+    bg: "bg-yazz-primary/10",
     badgeLabel: "Arrêt",
-    badgeClass: "bg-yazz-text-muted/10 text-yazz-text-muted",
+    badgeClass: "bg-yazz-primary/10 text-yazz-primary",
   },
   offline: {
-    dot: "bg-yazz-text-caption",
-    bg: "bg-yazz-text-caption/10",
+    dot: "bg-yazz-primary opacity-30",
+    bg: "bg-yazz-primary/5",
     badgeLabel: "Hors-ligne",
     badgeClass: "bg-yazz-text-caption/10 text-yazz-text-caption",
   },

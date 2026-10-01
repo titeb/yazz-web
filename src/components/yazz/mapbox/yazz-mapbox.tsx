@@ -13,10 +13,13 @@ type YazzMapboxProps = {
 };
 
 const statusConfig: Record<VehicleStatus, { color: string; label: string }> = {
+  // Flutter yazz user : TOUS les markers sont bleu primary (#2B44EE)
+  // Sauf engine_cut_state=true → rouge (#F44336)
+  // L'opacité distingue online (1.0) vs offline (0.3)
   moving: { color: "#2B44EE", label: "En mouvement" },
-  idle: { color: "#5A5F8A", label: "À l'arrêt" },
-  offline: { color: "#888CA8", label: "Hors-ligne" },
-  alert: { color: "#E53E3E", label: "Alerte" },
+  idle: { color: "#2B44EE", label: "À l'arrêt" },
+  offline: { color: "#2B44EE", label: "Hors-ligne" },
+  alert: { color: "#F44336", label: "Alerte" },
 };
 
 // Kinshasa center — matches Flutter yazz user (lib/ui/features/base/dashboard/dashbord.dart:108)
@@ -166,6 +169,9 @@ export function YazzMapbox({ vehicles, selectedId, onSelect }: YazzMapboxProps) 
       const lngLat = toLngLat(v);
       const cfg = statusConfig[v.status];
       const isSelected = v.id === selectedId;
+      // Flutter dashbord.dart:537 — opacité 1.0 si online, 0.3 si offline
+      const isOffline = v.status === "offline";
+      const markerOpacity = isOffline ? 0.3 : 1.0;
 
       // Build marker DOM element — style YAZZ Flutter
       // ⚠️ IMPORTANT : ne jamais modifier el.style.transform — Mapbox l'utilise
@@ -206,6 +212,7 @@ export function YazzMapbox({ vehicles, selectedId, onSelect }: YazzMapboxProps) 
       circle.style.backgroundColor = cfg.color;
       circle.style.boxShadow = `0 2px 6px rgba(0,0,0,0.3), 0 0 0 3px ${cfg.color}33`;
       circle.style.position = "relative";
+      circle.style.opacity = String(markerOpacity); // Flutter: 0.3 si offline
 
       // Pulse ring — visible pour : moving, alert, ET le marker sélectionné
       // (Flutter : pulse autour du marker actif / en mouvement)
