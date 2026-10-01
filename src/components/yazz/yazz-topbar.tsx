@@ -69,7 +69,7 @@ export function YazzTopbar({ onMobileMenu }: YazzTopbarProps) {
   };
 
   return (
-    <header className="sticky top-0 z-40 flex h-16 items-center gap-3 border-b border-yazz-border-light bg-yazz-surface/90 px-4 backdrop-blur-md yazz-glass md:px-6">
+    <header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-yazz-border-light bg-yazz-surface/90 px-4 backdrop-blur-md yazz-glass md:px-6">
       {/* Mobile menu button */}
       <button
         onClick={onMobileMenu}
