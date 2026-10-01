@@ -90,7 +90,7 @@ export function YazzMapbox({ vehicles, selectedId, onSelect }: YazzMapboxProps) 
       pitch: 0,
       maxPitch: 85,
       bearing: 0,
-      attributionControl: true,
+      attributionControl: false, // désactiver l'attribution Mapbox par défaut
       dragRotate: false,
       touchPitch: true,
       pitchWithRotate: true,
@@ -108,10 +108,10 @@ export function YazzMapbox({ vehicles, selectedId, onSelect }: YazzMapboxProps) 
       }, 200);
     });
 
-    // Navigation controls — zoom only, no compass (rotation disabled)
+    // Navigation controls — déplacés en BAS à droite (pas coincés derrière la card)
     map.current.addControl(
       new mapboxgl.NavigationControl({ visualizePitch: false, showCompass: false }),
-      "top-right"
+      "bottom-right"
     );
 
     // Resize on window resize
@@ -455,12 +455,6 @@ export function YazzMapbox({ vehicles, selectedId, onSelect }: YazzMapboxProps) 
         })}
       </div>
 
-      {/* Scale bottom-right */}
-      <div className="absolute bottom-3 right-3 z-20 flex items-center gap-2 rounded-yazz-sm bg-yazz-surface/95 px-2.5 py-1.5 yazz-glass">
-        <span className="font-outfit text-[10px] font-semibold text-yazz-text-muted">2 km</span>
-        <div className="h-1.5 w-12 border-b-2 border-l-2 border-r-2 border-yazz-text-muted" />
-      </div>
-
       {/* Mapbox CSS overrides */}
       <style jsx global>{`
         .yazz-mapbox-popup .mapboxgl-popup-content {
@@ -473,9 +467,14 @@ export function YazzMapbox({ vehicles, selectedId, onSelect }: YazzMapboxProps) 
         .yazz-mapbox-popup .mapboxgl-popup-tip {
           border-top-color: white;
         }
-        .mapboxgl-ctrl-top-right {
-          top: 12px !important;
+        /* Navigation controls en bas à droite */
+        .mapboxgl-ctrl-bottom-right {
+          bottom: 12px !important;
           right: 12px !important;
+          margin-bottom: 0 !important;
+        }
+        .mapboxgl-ctrl-top-right {
+          display: none !important;
         }
         .mapboxgl-ctrl-group {
           border-radius: 9px !important;
@@ -490,11 +489,14 @@ export function YazzMapbox({ vehicles, selectedId, onSelect }: YazzMapboxProps) 
         .mapboxgl-ctrl-group button:hover {
           background-color: #f0f1fa !important;
         }
-        .mapboxgl-ctrl-attrib {
-          font-size: 9px !important;
-          background: rgba(255,255,255,0.7) !important;
+        /* Attribution Mapbox — masquée complètement */
+        .mapboxgl-ctrl-attrib,
+        .mapboxgl-ctrl-attrib.mapboxgl-compact,
+        .mapboxgl-ctrl-bottom-left {
+          display: none !important;
         }
-        .mapboxgl-ctrl-attrib-button {
+        /* Cacher le scale control par défaut de Mapbox */
+        .mapboxgl-ctrl-scale {
           display: none !important;
         }
       `}</style>
