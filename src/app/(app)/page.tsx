@@ -3,6 +3,7 @@
 import { useState, useMemo } from "react";
 import { YazzMapbox } from "@/components/yazz/mapbox/yazz-mapbox";
 import { YazzVehicleDetail } from "@/components/yazz/yazz-vehicle-detail";
+import { YazzVehicleCard } from "@/components/yazz/yazz-vehicle-card";
 import { useUserVehicles, type VehicleWithPosition } from "@/hooks/use-user-vehicles";
 import { isSupabaseConfigured } from "@/lib/supabase/client";
 import { Database } from "lucide-react";
@@ -69,6 +70,17 @@ export default function DashboardPage() {
         selectedId={selectedVehicleId}
         onSelect={setSelectedVehicleId}
       />
+
+      {/* Carte flottante "Mes véhicules" en haut à droite */}
+      {!selectedVehicle && (
+        <div className="absolute right-4 top-4 z-20 md:right-6">
+          <YazzVehicleCard
+            vehicles={vehicles}
+            selectedId={selectedVehicleId}
+            onSelect={setSelectedVehicleId}
+          />
+        </div>
+      )}
 
       {/* Panneau détail en overlay à droite quand un véhicule est sélectionné */}
       {selectedVehicle && (

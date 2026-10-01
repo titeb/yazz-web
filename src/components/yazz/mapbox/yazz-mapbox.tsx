@@ -365,26 +365,6 @@ export function YazzMapbox({ vehicles, selectedId, onSelect }: YazzMapboxProps) 
         })}
       </div>
 
-      {/* Legend bottom-left */}
-      <div className="absolute bottom-3 left-3 z-20 rounded-yazz-sm bg-yazz-surface/95 p-2.5 yazz-glass">
-        <p className="font-inter mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-yazz-text-caption">
-          Légende
-        </p>
-        <ul className="space-y-1">
-          {([
-            { id: "moving", label: "En mouvement", color: "bg-yazz-primary" },
-            { id: "idle", label: "À l'arrêt", color: "bg-yazz-text-muted" },
-            { id: "alert", label: "Alerte active", color: "bg-yazz-error" },
-            { id: "offline", label: "Hors-ligne", color: "bg-yazz-text-caption" },
-          ] as const).map((l) => (
-            <li key={l.id} className="flex items-center gap-2">
-              <span className={cn("h-2 w-2 rounded-full", l.color)} />
-              <span className="font-inter text-[11px] font-medium text-yazz-text-body">{l.label}</span>
-            </li>
-          ))}
-        </ul>
-      </div>
-
       {/* Scale bottom-right */}
       <div className="absolute bottom-3 right-3 z-20 flex items-center gap-2 rounded-yazz-sm bg-yazz-surface/95 px-2.5 py-1.5 yazz-glass">
         <span className="font-outfit text-[10px] font-semibold text-yazz-text-muted">2 km</span>
