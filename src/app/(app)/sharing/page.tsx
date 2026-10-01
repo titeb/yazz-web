@@ -595,7 +595,7 @@ function AddShareModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" onClick={onClose}>
       <div className="absolute inset-0 bg-yazz-text-dark/50 backdrop-blur-sm" />
       <div className="relative w-full max-w-md rounded-yazz-xl bg-yazz-surface p-5 yazz-shadow-high yazz-animate-fade-in-up" onClick={(e) => e.stopPropagation()}>
         <button onClick={onClose} className="absolute right-3 top-3 grid h-8 w-8 place-items-center rounded-yazz-sm text-yazz-text-muted hover:bg-yazz-accent">
@@ -713,7 +713,7 @@ function ConfirmRevokeModal({
   onConfirm: () => void;
 }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" onClick={onClose}>
       <div className="absolute inset-0 bg-yazz-text-dark/50 backdrop-blur-sm" />
       <div className="relative w-full max-w-md rounded-yazz-xl bg-yazz-surface p-5 yazz-shadow-high yazz-animate-fade-in-up" onClick={(e) => e.stopPropagation()}>
         <div className="mb-4 flex items-center gap-3">

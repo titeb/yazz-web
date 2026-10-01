@@ -303,7 +303,7 @@ function OptionsModal({
   ];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center" onClick={onClose}>
+    <div className="fixed inset-0 z-[100] flex items-end justify-center sm:items-center" onClick={onClose}>
       <div className="absolute inset-0 bg-yazz-text-dark/50 backdrop-blur-md" />
       <div
         className="relative w-full max-w-md rounded-t-yazz-xl sm:rounded-yazz-xl bg-yazz-surface yazz-shadow-high yazz-animate-fade-in-up max-h-[80vh] flex flex-col overflow-hidden"
