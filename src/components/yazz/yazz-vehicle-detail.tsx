@@ -184,60 +184,60 @@ export function YazzVehicleDetail({ vehicle, onClose }: YazzVehicleDetailProps) 
         </button>
       </div>
 
-      {/* Action buttons — grille 5 boutons (Flutter capteurDetailPage style) */}
-      <div className="grid grid-cols-5 gap-1.5 border-b border-yazz-border-light p-2.5">
-        {/* 1. Coupe-moteur */}
+      {/* Action buttons — grille 5 boutons style carré arrondi */}
+      <div className="grid grid-cols-5 gap-2 border-b border-yazz-border-light p-3">
+        {/* 1. Coupe-moteur — rouge clignotant quand actif */}
         <button
           onClick={() => setShowEngineCut(true)}
           className={cn(
-            "font-inter flex flex-col items-center gap-1 rounded-yazz-md py-2 transition-all active:scale-95",
+            "font-inter flex flex-col items-center gap-1.5 rounded-[14px] py-2.5 transition-all active:scale-95",
             isCut
-              ? "bg-yazz-success/10 text-yazz-success hover:bg-yazz-success/15"
-              : "bg-yazz-error/10 text-yazz-error hover:bg-yazz-error/15"
-          )}
-        >
-          <Power className="h-4 w-4" />
-          <span className="text-[9px] font-semibold">{isCut ? "Restaurer" : "Couper"}</span>
-        </button>
-
-        {/* 2. Partager */}
-        <button
-          onClick={handleShare}
-          className="font-inter flex flex-col items-center gap-1 rounded-yazz-md bg-yazz-info/10 py-2 text-yazz-info transition-all hover:bg-yazz-info/15 active:scale-95"
-        >
-          <Share2 className="h-4 w-4" />
-          <span className="text-[9px] font-semibold">Partager</span>
-        </button>
-
-        {/* 3. Parking — toggle avec état actif */}
-        <button
-          onClick={handleToggleParking}
-          className={cn(
-            "font-inter flex flex-col items-center gap-1 rounded-yazz-md py-2 transition-all active:scale-95",
-            parkingActive
-              ? "bg-yazz-primary text-white"
+              ? "bg-yazz-error text-white yazz-blink"
               : "bg-yazz-primary/10 text-yazz-primary hover:bg-yazz-primary/15"
           )}
         >
-          <Car className="h-4 w-4" />
+          <Power className="h-[18px] w-[18px]" />
+          <span className="text-[9px] font-semibold">{isCut ? "Restaurer" : "Couper"}</span>
+        </button>
+
+        {/* 2. Partager — bleu clair par défaut */}
+        <button
+          onClick={handleShare}
+          className="font-inter flex flex-col items-center gap-1.5 rounded-[14px] bg-yazz-primary/10 py-2.5 text-yazz-primary transition-all hover:bg-yazz-primary/15 active:scale-95"
+        >
+          <Share2 className="h-[18px] w-[18px]" />
+          <span className="text-[9px] font-semibold">Partager</span>
+        </button>
+
+        {/* 3. Parking — bleu plein + clignotant quand actif */}
+        <button
+          onClick={handleToggleParking}
+          className={cn(
+            "font-inter flex flex-col items-center gap-1.5 rounded-[14px] py-2.5 transition-all active:scale-95",
+            parkingActive
+              ? "yazz-gradient-primary text-white yazz-blink"
+              : "bg-yazz-primary/10 text-yazz-primary hover:bg-yazz-primary/15"
+          )}
+        >
+          <Car className="h-[18px] w-[18px]" />
           <span className="text-[9px] font-semibold">Parking</span>
         </button>
 
-        {/* 4. SOS — bouton accent rouge */}
+        {/* 4. SOS — rouge clignotant par défaut (toujours actif visuellement) */}
         <button
           onClick={handleSOS}
-          className="font-inter flex flex-col items-center gap-1 rounded-yazz-md bg-yazz-error/10 py-2 text-yazz-error transition-all hover:bg-yazz-error/15 active:scale-95"
+          className="font-inter flex flex-col items-center gap-1.5 rounded-[14px] bg-yazz-error/10 py-2.5 text-yazz-error transition-all hover:bg-yazz-error/15 active:scale-95"
         >
-          <ShieldAlert className="h-4 w-4" />
+          <ShieldAlert className="h-[18px] w-[18px] yazz-blink" />
           <span className="text-[9px] font-semibold">SOS</span>
         </button>
 
         {/* 5. Options */}
         <button
           onClick={() => setShowOptions(true)}
-          className="font-inter flex flex-col items-center gap-1 rounded-yazz-md bg-yazz-accent py-2 text-yazz-primary transition-all hover:bg-yazz-primary/15 active:scale-95"
+          className="font-inter flex flex-col items-center gap-1.5 rounded-[14px] bg-yazz-primary/10 py-2.5 text-yazz-primary transition-all hover:bg-yazz-primary/15 active:scale-95"
         >
-          <MoreVertical className="h-4 w-4" />
+          <MoreVertical className="h-[18px] w-[18px]" />
           <span className="text-[9px] font-semibold">Options</span>
         </button>
       </div>
