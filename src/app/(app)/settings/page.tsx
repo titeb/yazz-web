@@ -427,14 +427,14 @@ function ToggleRow({
         role="switch"
         aria-checked={value}
         className={cn(
-          "relative h-6 w-11 shrink-0 rounded-full transition-colors",
-          value ? "bg-yazz-primary" : "bg-yazz-border-medium"
+          "relative h-5 w-9 shrink-0 rounded-full transition-colors",
+          value ? "bg-yazz-primary" : "bg-yazz-border-light"
         )}
       >
         <span
           className={cn(
-            "absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-yazz-soft transition-transform",
-            value ? "translate-x-[21px]" : "translate-x-1"
+            "absolute top-1/2 h-5 w-5 -translate-y-1/2 rounded-full bg-white shadow-yazz-soft transition-transform border border-yazz-border-light/50",
+            value ? "translate-x-[18px]" : "translate-x-0.5"
           )}
         />
       </button>
