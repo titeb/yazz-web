@@ -576,7 +576,7 @@ function OptionsModal({
                   aria-checked={deviceActive}
                   className={cn(
                     "relative h-6 w-11 shrink-0 rounded-full transition-colors",
-                    deviceActive ? "bg-yazz-success" : "bg-yazz-border-medium"
+                    deviceActive ? "bg-yazz-primary" : "bg-yazz-border-medium"
                   )}
                 >
                   <span

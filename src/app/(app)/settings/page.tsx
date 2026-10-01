@@ -428,7 +428,7 @@ function ToggleRow({
         aria-checked={value}
         className={cn(
           "relative h-6 w-11 shrink-0 rounded-full transition-colors",
-          value ? "bg-yazz-success" : "bg-yazz-border-medium"
+          value ? "bg-yazz-primary" : "bg-yazz-border-medium"
         )}
       >
         <span
