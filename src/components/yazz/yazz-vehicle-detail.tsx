@@ -21,6 +21,7 @@ import {
   AlertTriangle,
   Siren,
   ShieldAlert,
+  Car,
   Trash2,
   Check,
 } from "lucide-react";
