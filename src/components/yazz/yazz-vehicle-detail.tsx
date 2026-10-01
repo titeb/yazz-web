@@ -193,7 +193,7 @@ export function YazzVehicleDetail({ vehicle, onClose }: YazzVehicleDetailProps) 
             "font-inter flex flex-col items-center gap-1.5 rounded-yazz-sm py-2.5 transition-all active:scale-95",
             isCut
               ? "bg-yazz-error text-white yazz-blink"
-              : "bg-yazz-primary/10 text-yazz-primary hover:bg-yazz-primary/15"
+              : "bg-yazz-background text-yazz-text-body hover:bg-yazz-accent"
           )}
         >
           <Power className="h-[18px] w-[18px]" />
@@ -203,7 +203,7 @@ export function YazzVehicleDetail({ vehicle, onClose }: YazzVehicleDetailProps) 
         {/* 2. Partager */}
         <button
           onClick={handleShare}
-          className="font-inter flex flex-col items-center gap-1.5 rounded-yazz-sm bg-yazz-primary/10 py-2.5 text-yazz-primary transition-all hover:bg-yazz-primary/15 active:scale-95"
+          className="font-inter flex flex-col items-center gap-1.5 rounded-yazz-sm bg-yazz-background py-2.5 text-yazz-text-body transition-all hover:bg-yazz-accent active:scale-95"
         >
           <Share2 className="h-[18px] w-[18px]" />
           <span className="text-[9px] font-semibold">Partager</span>
@@ -216,7 +216,7 @@ export function YazzVehicleDetail({ vehicle, onClose }: YazzVehicleDetailProps) 
             "font-inter flex flex-col items-center gap-1.5 rounded-yazz-sm py-2.5 transition-all active:scale-95",
             parkingActive
               ? "yazz-gradient-primary text-white yazz-blink"
-              : "bg-yazz-primary/10 text-yazz-primary hover:bg-yazz-primary/15"
+              : "bg-yazz-background text-yazz-text-body hover:bg-yazz-accent"
           )}
         >
           <Car className="h-[18px] w-[18px]" />
@@ -226,7 +226,7 @@ export function YazzVehicleDetail({ vehicle, onClose }: YazzVehicleDetailProps) 
         {/* 4. SOS */}
         <button
           onClick={handleSOS}
-          className="font-inter flex flex-col items-center gap-1.5 rounded-yazz-sm bg-yazz-error/10 py-2.5 text-yazz-error transition-all hover:bg-yazz-error/15 active:scale-95"
+          className="font-inter flex flex-col items-center gap-1.5 rounded-yazz-sm bg-yazz-background py-2.5 text-yazz-text-body transition-all hover:bg-yazz-accent active:scale-95"
         >
           <ShieldAlert className="h-[18px] w-[18px] yazz-blink" />
           <span className="text-[9px] font-semibold">SOS</span>
@@ -235,7 +235,7 @@ export function YazzVehicleDetail({ vehicle, onClose }: YazzVehicleDetailProps) 
         {/* 5. Options */}
         <button
           onClick={() => setShowOptions(true)}
-          className="font-inter flex flex-col items-center gap-1.5 rounded-yazz-sm bg-yazz-primary/10 py-2.5 text-yazz-primary transition-all hover:bg-yazz-primary/15 active:scale-95"
+          className="font-inter flex flex-col items-center gap-1.5 rounded-yazz-sm bg-yazz-background py-2.5 text-yazz-text-body transition-all hover:bg-yazz-accent active:scale-95"
         >
           <MoreVertical className="h-[18px] w-[18px]" />
           <span className="text-[9px] font-semibold">Options</span>
