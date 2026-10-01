@@ -61,11 +61,49 @@ export function YazzVehicleDetail({ vehicle, onClose }: YazzVehicleDetailProps) 
   const router = useRouter();
   const [showEngineCut, setShowEngineCut] = useState(false);
   const [showOptions, setShowOptions] = useState(false);
+  const [parkingActive, setParkingActive] = useState(false);
+  const [toast, setToast] = useState<{ type: "success" | "error"; message: string } | null>(null);
   const engineCutState = vehicle.engineCutState ?? false;
   const isCut = engineCutState === true;
   const accOn = vehicle.accOn ?? true;
   const isOffline = vehicle.status === "offline";
   const vehiclePhoto = vehicle.urlImage || null;
+
+  const supabase = createClientSafe();
+
+  // Charger l'état parking_mode au montage
+  useEffect(() => {
+    if (!supabase || !vehicle.id) return;
+    supabase.from("user_devices").select("parking_mode").eq("id", vehicle.id).maybeSingle()
+      .then(({ data }) => setParkingActive(data?.parking_mode ?? false));
+  }, [supabase, vehicle.id]);
+
+  const showToast = (type: "success" | "error", message: string) => {
+    setToast({ type, message });
+    setTimeout(() => setToast(null), 3000);
+  };
+
+  // Toggle parking mode — Flutter _toggleParkingMode
+  const handleToggleParking = async () => {
+    if (!supabase) return;
+    try {
+      const newValue = !parkingActive;
+      const { error } = await supabase
+        .from("user_devices")
+        .update({ parking_mode: newValue, updated_at: new Date().toISOString() })
+        .eq("id", vehicle.id);
+      if (error) throw error;
+      setParkingActive(newValue);
+      showToast("success", newValue ? "Mode parking activé" : "Mode parking désactivé");
+    } catch (err: any) {
+      showToast("error", err.message || "Erreur");
+    }
+  };
+
+  // SOS — Flutter navigate vers sos_trigger_page
+  const handleSOS = () => {
+    router.push("/alerts?type=sos");
+  };
 
   const badge = getStatusBadge(vehicle.status);
   const battColor = getBatteryColor(vehicle.battery);
@@ -145,35 +183,75 @@ export function YazzVehicleDetail({ vehicle, onClose }: YazzVehicleDetailProps) 
         </button>
       </div>
 
-      {/* Action buttons */}
-      <div className="grid grid-cols-3 gap-2 border-b border-yazz-border-light p-3">
+      {/* Action buttons — grille 5 boutons (Flutter capteurDetailPage style) */}
+      <div className="grid grid-cols-5 gap-1.5 border-b border-yazz-border-light p-2.5">
+        {/* 1. Coupe-moteur */}
         <button
           onClick={() => setShowEngineCut(true)}
           className={cn(
-            "font-inter flex flex-col items-center gap-1 rounded-yazz-md py-2.5 transition-all active:scale-95",
+            "font-inter flex flex-col items-center gap-1 rounded-yazz-md py-2 transition-all active:scale-95",
             isCut
               ? "bg-yazz-success/10 text-yazz-success hover:bg-yazz-success/15"
               : "bg-yazz-error/10 text-yazz-error hover:bg-yazz-error/15"
           )}
         >
-          <Power className="h-[18px] w-[18px]" />
-          <span className="text-[10px] font-semibold">{isCut ? "Restaurer" : "Coupe-moteur"}</span>
+          <Power className="h-4 w-4" />
+          <span className="text-[9px] font-semibold">{isCut ? "Restaurer" : "Couper"}</span>
         </button>
+
+        {/* 2. Partager */}
         <button
           onClick={handleShare}
-          className="font-inter flex flex-col items-center gap-1 rounded-yazz-md bg-yazz-info/10 py-2.5 text-yazz-info transition-all hover:bg-yazz-info/15 active:scale-95"
+          className="font-inter flex flex-col items-center gap-1 rounded-yazz-md bg-yazz-info/10 py-2 text-yazz-info transition-all hover:bg-yazz-info/15 active:scale-95"
         >
-          <Share2 className="h-[18px] w-[18px]" />
-          <span className="text-[10px] font-semibold">Partager</span>
+          <Share2 className="h-4 w-4" />
+          <span className="text-[9px] font-semibold">Partager</span>
         </button>
+
+        {/* 3. Parking — toggle avec état actif */}
+        <button
+          onClick={handleToggleParking}
+          className={cn(
+            "font-inter flex flex-col items-center gap-1 rounded-yazz-md py-2 transition-all active:scale-95",
+            parkingActive
+              ? "bg-yazz-primary text-white"
+              : "bg-yazz-primary/10 text-yazz-primary hover:bg-yazz-primary/15"
+          )}
+        >
+          <Car className="h-4 w-4" />
+          <span className="text-[9px] font-semibold">Parking</span>
+        </button>
+
+        {/* 4. SOS — bouton accent rouge */}
+        <button
+          onClick={handleSOS}
+          className="font-inter flex flex-col items-center gap-1 rounded-yazz-md bg-yazz-error/10 py-2 text-yazz-error transition-all hover:bg-yazz-error/15 active:scale-95"
+        >
+          <ShieldAlert className="h-4 w-4" />
+          <span className="text-[9px] font-semibold">SOS</span>
+        </button>
+
+        {/* 5. Options */}
         <button
           onClick={() => setShowOptions(true)}
-          className="font-inter flex flex-col items-center gap-1 rounded-yazz-md bg-yazz-accent py-2.5 text-yazz-primary transition-all hover:bg-yazz-primary/15 active:scale-95"
+          className="font-inter flex flex-col items-center gap-1 rounded-yazz-md bg-yazz-accent py-2 text-yazz-primary transition-all hover:bg-yazz-primary/15 active:scale-95"
         >
-          <MoreVertical className="h-[18px] w-[18px]" />
-          <span className="text-[10px] font-semibold">Options</span>
+          <MoreVertical className="h-4 w-4" />
+          <span className="text-[9px] font-semibold">Options</span>
         </button>
       </div>
+
+      {/* Toast feedback */}
+      {toast && (
+        <div className={cn(
+          "shrink-0 border-b p-2.5",
+          toast.type === "success" ? "border-l-4 border-l-yazz-success bg-yazz-success/10" : "border-l-4 border-l-yazz-error bg-yazz-error/10"
+        )}>
+          <p className={cn("font-inter text-[12px] font-semibold", toast.type === "success" ? "text-yazz-success" : "text-yazz-error")}>
+            {toast.message}
+          </p>
+        </div>
+      )}
 
       {/* Body */}
       <div className="flex-1 overflow-y-auto p-4">
