@@ -29,7 +29,7 @@ const MIN_ZOOM = 10;
 const MAX_ZOOM = 18;
 const INITIAL_ZOOM = 13;
 // Animation flyTo — Flutter yazz user (dashbord.dart:786, 500ms duration)
-const FLYTO_ZOOM = 17.6; // +2 niveaux par rapport au Flutter (15.6) pour voir plus près
+const FLYTO_ZOOM = 16.6; // +2 niveaux par rapport au Flutter (15.6) pour voir plus près
 const FLYTO_PITCH = 45; // inclinaison 3D
 const FLYTO_DURATION = 500; // ms (Flutter: 500ms, throttle 1500ms)
 
