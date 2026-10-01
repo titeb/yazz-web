@@ -84,14 +84,16 @@ export function YazzMapbox({ vehicles, selectedId, onSelect }: YazzMapboxProps) 
       zoom: INITIAL_ZOOM,
       minZoom: MIN_ZOOM,
       maxZoom: MAX_ZOOM,
-      pitch: 0, // démarrer flat, flyTo mettra le pitch à 45°
+      pitch: 0,
+      maxPitch: 85,
       bearing: 0,
       attributionControl: true,
-      // Désactiver la rotation (Flutter: rotateEnabled: false)
       dragRotate: false,
       touchPitch: true,
       pitchWithRotate: true,
     });
+    // Expose map instance for debugging
+    (window as any).__yazzMap = map.current;
 
     map.current.on("load", () => {
       setMapReady(true);
@@ -122,12 +124,13 @@ export function YazzMapbox({ vehicles, selectedId, onSelect }: YazzMapboxProps) 
   }, []);
 
   // Re-fit bounds quand les véhicules changent (au premier chargement)
+  // ⚠️ Ne pas fit si un véhicule est sélectionné (sinon reset pitch/zoom)
   useEffect(() => {
-    if (!mapReady || !map.current || vehicles.length === 0) return;
+    if (!mapReady || !map.current || vehicles.length === 0 || selectedId) return;
     // Petit délai pour que les markers soient créés
     const t = setTimeout(() => fitAllMarkers(), 300);
     return () => clearTimeout(t);
-  }, [mapReady, vehicles, fitAllMarkers]);
+  }, [mapReady, vehicles, fitAllMarkers, selectedId]);
 
   // Convert vehicle position to [lng, lat]
   const toLngLat = (v: Vehicle): [number, number] => {
@@ -204,16 +207,20 @@ export function YazzMapbox({ vehicles, selectedId, onSelect }: YazzMapboxProps) 
       circle.style.boxShadow = `0 2px 6px rgba(0,0,0,0.3), 0 0 0 3px ${cfg.color}33`;
       circle.style.position = "relative";
 
-      // Pulse ring for moving & alert
-      if (v.status === "moving" || v.status === "alert") {
+      // Pulse ring — visible pour : moving, alert, ET le marker sélectionné
+      // (Flutter : pulse autour du marker actif / en mouvement)
+      const showPulse = v.status === "moving" || v.status === "alert" || isSelected;
+      if (showPulse) {
         const pulse = document.createElement("div");
         pulse.style.position = "absolute";
-        pulse.style.inset = "-4px";
+        pulse.style.inset = isSelected ? "-10px" : "-4px";
         pulse.style.borderRadius = "50%";
+        pulse.style.border = `2px solid ${cfg.color}`;
         pulse.style.backgroundColor = cfg.color;
-        pulse.style.opacity = "0.3";
+        pulse.style.opacity = "0.4";
         pulse.style.animation = "yazz-pulse-ring 2.4s ease-out infinite";
-        pulse.style.pointerEvents = "none"; // ne pas intercepter le hover
+        pulse.style.pointerEvents = "none";
+        pulse.style.zIndex = "0";
         circle.appendChild(pulse);
       }
 
@@ -293,19 +300,95 @@ export function YazzMapbox({ vehicles, selectedId, onSelect }: YazzMapboxProps) 
     });
   }, [vehicles, filter, selectedId, mapReady, onSelect]);
 
-  // Center on selected vehicle — style Flutter yazz user
+  // Throttle pour le follow Realtime (Flutter: 1500ms)
+  const lastFollowRef = useRef<number>(0);
+  const userInteractingRef = useRef<boolean>(false);
+
+  // Détecter quand l'utilisateur manipule la carte manuellement
   useEffect(() => {
-    if (!mapReady || !map.current || !selectedId) return;
+    if (!map.current) return;
+    const onDragStart = () => { userInteractingRef.current = true; };
+    const onDragEnd = () => {
+      // Petit délai avant de réautoriser le follow (évite re-center immédiat)
+      setTimeout(() => { userInteractingRef.current = false; }, 3000);
+    };
+    const onZoomStart = () => { userInteractingRef.current = true; };
+    const onZoomEnd = () => {
+      setTimeout(() => { userInteractingRef.current = false; }, 3000);
+    };
+    map.current.on("dragstart", onDragStart);
+    map.current.on("dragend", onDragEnd);
+    map.current.on("zoomstart", onZoomStart);
+    map.current.on("zoomend", onZoomEnd);
+    return () => {
+      map.current?.off("dragstart", onDragStart);
+      map.current?.off("dragend", onDragEnd);
+      map.current?.off("zoomstart", onZoomStart);
+      map.current?.off("zoomend", onZoomEnd);
+    };
+  }, [mapReady]);
+
+  // Suivi du véhicule sélectionné
+  // - Au clic (selectedId change) → flyTo immédiat (agressif)
+  // - Position update (vehicles change mais selectedId identique) → easeTo fluide avec throttle
+  const prevSelectedRef = useRef<string | undefined>(undefined);
+  const prevPositionRef = useRef<string>("");
+
+  useEffect(() => {
+    if (!mapReady || !map.current || !selectedId) {
+      prevSelectedRef.current = selectedId;
+      return;
+    }
+
     const v = vehicles.find((x) => x.id === selectedId);
-    if (!v) return;
-    map.current.flyTo({
-      center: toLngLat(v),
-      zoom: FLYTO_ZOOM,
-      pitch: FLYTO_PITCH,
-      bearing: 0,
-      duration: FLYTO_DURATION,
-      essential: true,
-    });
+    if (!v) {
+      prevSelectedRef.current = selectedId;
+      return;
+    }
+
+    const lngLat = toLngLat(v);
+    const posKey = `${lngLat[0].toFixed(5)},${lngLat[1].toFixed(5)}`;
+    const isNewSelection = prevSelectedRef.current !== selectedId;
+    const positionChanged = prevPositionRef.current !== posKey;
+
+    // Ne rien faire si l'utilisateur est en train de manipuler la carte
+    // ET que ce n'est pas une nouvelle sélection
+    if (userInteractingRef.current && !isNewSelection) {
+      prevSelectedRef.current = selectedId;
+      return;
+    }
+
+    if (isNewSelection) {
+      // Nouvelle sélection → flyTo agressif (comme Flutter ligne 969)
+      map.current.flyTo({
+        center: lngLat,
+        zoom: FLYTO_ZOOM,
+        pitch: FLYTO_PITCH,
+        bearing: 0,
+        duration: FLYTO_DURATION,
+        essential: true,
+      });
+      // Force le pitch après l'animation (parfois flyTo ne l'applique pas)
+      setTimeout(() => {
+        if (map.current && map.current.getPitch() < 1) {
+          map.current.setPitch(FLYTO_PITCH);
+        }
+      }, FLYTO_DURATION + 100);
+    } else if (positionChanged) {
+      // Position mise à jour via Realtime → easeTo fluide avec throttle 1.5s
+      const now = Date.now();
+      if (now - lastFollowRef.current >= 1500) {
+        lastFollowRef.current = now;
+        map.current.easeTo({
+          center: lngLat,
+          duration: 800,
+          essential: true,
+        });
+      }
+    }
+
+    prevSelectedRef.current = selectedId;
+    prevPositionRef.current = posKey;
   }, [selectedId, mapReady, vehicles]);
 
   const counts = useMemo(() => ({
