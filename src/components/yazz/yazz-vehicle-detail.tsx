@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import {
   X,
@@ -253,8 +254,8 @@ export function YazzVehicleDetail({ vehicle, onClose }: YazzVehicleDetailProps) 
         )}
       </div>
 
-      {/* Modal Coupe-moteur */}
-      {showEngineCut && (
+      {/* Modal Coupe-moteur — Portal vers body pour z-index global */}
+      {showEngineCut && typeof window !== "undefined" && createPortal(
         <YazzEngineCutModal
           deviceId={vehicle.imei || vehicle.id}
           deviceName={vehicle.name}
@@ -262,11 +263,12 @@ export function YazzVehicleDetail({ vehicle, onClose }: YazzVehicleDetailProps) 
           speed={vehicle.speed}
           onClose={() => setShowEngineCut(false)}
           onSuccess={() => setShowEngineCut(false)}
-        />
+        />,
+        document.body
       )}
 
-      {/* Modal Options — style Flutter SensorOptionsModal */}
-      {showOptions && (
+      {/* Modal Options — Portal vers body */}
+      {showOptions && typeof window !== "undefined" && createPortal(
         <OptionsModal
           vehicleName={vehicle.name}
           onClose={() => setShowOptions(false)}
@@ -274,7 +276,8 @@ export function YazzVehicleDetail({ vehicle, onClose }: YazzVehicleDetailProps) 
             setShowOptions(false);
             router.push(path);
           }}
-        />
+        />,
+        document.body
       )}
     </div>
   );
