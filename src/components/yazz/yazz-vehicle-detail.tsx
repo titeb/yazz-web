@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   X,
   Battery,
@@ -8,10 +9,18 @@ import {
   MapPin,
   Power,
   Share2,
-  Settings,
+  MoreVertical,
   Zap,
   Loader2,
-  Navigation,
+  Route,
+  MapPin as GeofenceIcon,
+  Gauge as SpeedIcon,
+  Clock,
+  Pencil,
+  AlertTriangle,
+  Siren,
+  ShieldAlert,
+  Car,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Vehicle } from "@/lib/yazz/mock-data";
@@ -46,24 +55,24 @@ function getStatusBadge(status: string): { color: string; bg: string; label: str
 }
 
 export function YazzVehicleDetail({ vehicle, onClose }: YazzVehicleDetailProps) {
+  const router = useRouter();
   const [showEngineCut, setShowEngineCut] = useState(false);
-  const engineCutState = (vehicle as any).engineCutState ?? false;
+  const [showOptions, setShowOptions] = useState(false);
+  const engineCutState = vehicle.engineCutState ?? false;
   const isCut = engineCutState === true;
-  const accOn = (vehicle as any).accOn ?? true;
+  const accOn = vehicle.accOn ?? true;
   const isOffline = vehicle.status === "offline";
-  const vehiclePhoto = (vehicle as any).urlImage || (vehicle as any).vehiclePhoto || null;
+  const vehiclePhoto = vehicle.urlImage || null;
 
   const badge = getStatusBadge(vehicle.status);
   const battColor = getBatteryColor(vehicle.battery);
   const firstLetter = (vehicle.name || "?")[0]?.toUpperCase() || "?";
 
-  // Reverse geocoding — afficher l'adresse réelle
   const { address, loading: addressLoading } = useReverseGeocode(
     vehicle.lat ?? null,
     vehicle.lng ?? null
   );
 
-  // Construire l'affichage de l'adresse (rue, quartier, commune)
   const addressParts: string[] = [];
   if (address?.street) addressParts.push(address.street);
   if (address?.quarter) addressParts.push(address.quarter);
@@ -71,56 +80,59 @@ export function YazzVehicleDetail({ vehicle, onClose }: YazzVehicleDetailProps) 
   if (address?.city && address.city !== address.commune) addressParts.push(address.city);
   const addressDisplay = addressParts.length > 0 ? addressParts.join(", ") : address?.fullAddress || "Localisation en cours…";
 
+  const handleShare = () => {
+    // Rediriger vers la page partages avec le véhicule pré-sélectionné
+    router.push(`/sharing?device=${vehicle.imei || vehicle.id}`);
+  };
+
   return (
     <div className="flex max-h-full flex-col bg-yazz-surface overflow-hidden rounded-yazz-xl">
-      {/* Header — style Flutter tracking_card.dart */}
-      <div className="relative border-b border-yazz-border-light p-4">
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex items-start gap-3 min-w-0 flex-1">
-            {/* Avatar — photo véhicule si dispo, sinon première lettre */}
-            {vehiclePhoto ? (
+      {/* Header */}
+      <div className="relative border-b border-yazz-border-light p-4 pr-12">
+        <div className="flex items-start gap-3">
+          {/* Avatar — photo véhicule en carré arrondi (Flutter: ClipRRect radius 14) */}
+          {vehiclePhoto ? (
+            <div className="h-12 w-12 shrink-0 overflow-hidden rounded-[14px]">
               <img
                 src={vehiclePhoto}
                 alt={vehicle.name}
-                className="grid h-11 w-11 shrink-0 place-items-center rounded-full object-cover"
+                className="h-full w-full object-cover"
               />
-            ) : (
-              <div className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-yazz-primary/10">
-                <span className="font-outfit text-[18px] font-bold text-yazz-primary">
-                  {firstLetter}
-                </span>
-              </div>
-            )}
-            <div className="min-w-0 flex-1">
-              <p className="font-outfit truncate text-[15px] font-bold tracking-[-0.02em] text-yazz-text-dark">
-                {vehicle.name}
-              </p>
-              {/* Ligne contact + batterie */}
-              <div className="mt-1 flex items-center gap-2">
-                <Zap
-                  className={cn("h-3.5 w-3.5", accOn && !isOffline ? "text-yazz-success" : "text-yazz-text-caption")}
-                />
-                <span className={cn("font-inter text-[11px]", accOn && !isOffline ? "text-yazz-success" : "text-yazz-text-muted")}>
-                  {accOn ? "Contact mis" : "Contact coupé"}
-                </span>
-                <Battery className={cn("h-3.5 w-3.5 ml-1", !isOffline && vehicle.battery !== null ? battColor : "text-yazz-text-caption")} />
-                <span className={cn("font-inter text-[11px]", !isOffline ? "text-yazz-text-muted" : "text-yazz-text-caption")}>
-                  {vehicle.battery !== null ? `${vehicle.battery}%` : "—"}
-                </span>
-              </div>
             </div>
-          </div>
-
-          {/* Badge statut */}
-          <div className="flex flex-col items-end gap-1 shrink-0">
-            <span className={cn("inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[10px] font-semibold", badge.bg, badge.color)}>
-              <span className={cn("h-1.5 w-1.5 rounded-full", badge.color.replace("text-", "bg-"))} />
-              {badge.label}
-            </span>
+          ) : (
+            <div className="grid h-12 w-12 shrink-0 place-items-center rounded-[14px] bg-yazz-primary/10">
+              <span className="font-outfit text-[18px] font-bold text-yazz-primary">
+                {firstLetter}
+              </span>
+            </div>
+          )}
+          <div className="min-w-0 flex-1">
+            <p className="font-outfit truncate text-[15px] font-bold tracking-[-0.02em] text-yazz-text-dark">
+              {vehicle.name}
+            </p>
+            <div className="mt-1 flex items-center gap-2">
+              <Zap
+                className={cn("h-3.5 w-3.5", accOn && !isOffline ? "text-yazz-success" : "text-yazz-text-caption")}
+              />
+              <span className={cn("font-inter text-[11px]", accOn && !isOffline ? "text-yazz-success" : "text-yazz-text-muted")}>
+                {accOn ? "Contact mis" : "Contact coupé"}
+              </span>
+              <Battery className={cn("h-3.5 w-3.5 ml-1", !isOffline && vehicle.battery !== null ? battColor : "text-yazz-text-caption")} />
+              <span className={cn("font-inter text-[11px]", !isOffline ? "text-yazz-text-muted" : "text-yazz-text-caption")}>
+                {vehicle.battery !== null ? `${vehicle.battery}%` : "—"}
+              </span>
+            </div>
+            {/* Badge statut — sous la ligne contact, pas à droite */}
+            <div className="mt-2">
+              <span className={cn("inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[10px] font-semibold", badge.bg, badge.color)}>
+                <span className={cn("h-1.5 w-1.5 rounded-full", badge.color.replace("text-", "bg-"))} />
+                {badge.label}
+              </span>
+            </div>
           </div>
         </div>
 
-        {/* Bouton fermer */}
+        {/* Bouton fermer — repositionné pour ne pas chevaucher le badge */}
         <button
           onClick={onClose}
           aria-label="Fermer"
@@ -144,19 +156,25 @@ export function YazzVehicleDetail({ vehicle, onClose }: YazzVehicleDetailProps) 
           <Power className="h-[18px] w-[18px]" />
           <span className="text-[10px] font-semibold">{isCut ? "Restaurer" : "Coupe-moteur"}</span>
         </button>
-        <button className="font-inter flex flex-col items-center gap-1 rounded-yazz-md bg-yazz-info/10 py-2.5 text-yazz-info transition-all hover:bg-yazz-info/15 active:scale-95">
+        <button
+          onClick={handleShare}
+          className="font-inter flex flex-col items-center gap-1 rounded-yazz-md bg-yazz-info/10 py-2.5 text-yazz-info transition-all hover:bg-yazz-info/15 active:scale-95"
+        >
           <Share2 className="h-[18px] w-[18px]" />
           <span className="text-[10px] font-semibold">Partager</span>
         </button>
-        <button className="font-inter flex flex-col items-center gap-1 rounded-yazz-md bg-yazz-accent py-2.5 text-yazz-primary transition-all hover:bg-yazz-primary/15 active:scale-95">
-          <Settings className="h-[18px] w-[18px]" />
-          <span className="text-[10px] font-semibold">Configurer</span>
+        <button
+          onClick={() => setShowOptions(true)}
+          className="font-inter flex flex-col items-center gap-1 rounded-yazz-md bg-yazz-accent py-2.5 text-yazz-primary transition-all hover:bg-yazz-primary/15 active:scale-95"
+        >
+          <MoreVertical className="h-[18px] w-[18px]" />
+          <span className="text-[10px] font-semibold">Options</span>
         </button>
       </div>
 
-      {/* Body — info lines style Flutter _infoLine */}
+      {/* Body */}
       <div className="flex-1 overflow-y-auto p-4">
-        {/* Vitesse — afficher la valeur réelle (pas "À l'arrêt") */}
+        {/* Vitesse */}
         <div className="flex items-start gap-3">
           <div className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-yazz-primary/10">
             <Gauge className="h-[18px] w-[18px] text-yazz-primary" />
@@ -173,7 +191,7 @@ export function YazzVehicleDetail({ vehicle, onClose }: YazzVehicleDetailProps) 
 
         <div className="my-3 h-px bg-yazz-border-light" />
 
-        {/* Position — adresse réelle via reverse geocoding */}
+        {/* Position */}
         <div className="flex items-start gap-3">
           <div className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-yazz-primary/10">
             <MapPin className="h-[18px] w-[18px] text-yazz-primary" />
@@ -243,12 +261,92 @@ export function YazzVehicleDetail({ vehicle, onClose }: YazzVehicleDetailProps) 
           currentCutState={isCut}
           speed={vehicle.speed}
           onClose={() => setShowEngineCut(false)}
-          onSuccess={(newState) => {
-            console.log("[engine-cut] succès, nouvel état:", newState);
-            setShowEngineCut(false);
+          onSuccess={() => setShowEngineCut(false)}
+        />
+      )}
+
+      {/* Modal Options — style Flutter SensorOptionsModal */}
+      {showOptions && (
+        <OptionsModal
+          vehicleName={vehicle.name}
+          onClose={() => setShowOptions(false)}
+          onNavigate={(path) => {
+            setShowOptions(false);
+            router.push(path);
           }}
         />
       )}
+    </div>
+  );
+}
+
+// ============================================================
+// Modal Options — reproduit le SensorOptionsModal du Flutter
+// ============================================================
+function OptionsModal({
+  vehicleName,
+  onClose,
+  onNavigate,
+}: {
+  vehicleName: string;
+  onClose: () => void;
+  onNavigate: (path: string) => void;
+}) {
+  const options = [
+    { icon: Route, title: "Historique des trajets", subtitle: "Consulter les parcours passés", path: "/history" },
+    { icon: GeofenceIcon, title: "Zones géofence", subtitle: "Définir des périmètres de sécurité", path: "/geofences" },
+    { icon: SpeedIcon, title: "Limite de vitesse", subtitle: "Définir une vitesse maximum", path: "/vehicles" },
+    { icon: Clock, title: "Alerte arrêt prolongé", subtitle: "Notification après immobilité prolongée", path: "/vehicles" },
+    { icon: Siren, title: "Alerte SOS", subtitle: "Activer le mode vigile SOS", path: "/vehicles" },
+    { icon: ShieldAlert, title: "Mode parking", subtitle: "Surveillance antivol à l'arrêt", path: "/vehicles" },
+    { icon: Pencil, title: "Modifier le capteur", subtitle: "Nom, véhicule et photo", path: "/vehicles" },
+  ];
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center" onClick={onClose}>
+      <div className="absolute inset-0 bg-yazz-text-dark/50 backdrop-blur-sm" />
+      <div
+        className="relative w-full max-w-md rounded-t-yazz-xl sm:rounded-yazz-xl bg-yazz-surface p-5 yazz-shadow-high yazz-animate-fade-in-up max-h-[80vh] overflow-y-auto"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <button
+          onClick={onClose}
+          className="absolute right-3 top-3 grid h-8 w-8 place-items-center rounded-yazz-sm text-yazz-text-muted hover:bg-yazz-accent hover:text-yazz-primary"
+        >
+          <X className="h-4 w-4" />
+        </button>
+
+        <h2 className="font-outfit mb-1 text-[16px] font-bold tracking-[-0.01em] text-yazz-text-dark">
+          Options
+        </h2>
+        <p className="font-inter mb-4 text-[12px] text-yazz-text-muted">{vehicleName}</p>
+
+        <ul className="space-y-1">
+          {options.map((opt, idx) => {
+            const Icon = opt.icon;
+            return (
+              <li key={idx}>
+                <button
+                  onClick={() => onNavigate(opt.path)}
+                  className="flex w-full items-center gap-3 rounded-yazz-md p-3 text-left transition-colors hover:bg-yazz-accent"
+                >
+                  <div className="grid h-9 w-9 shrink-0 place-items-center rounded-[14px] bg-yazz-primary/10">
+                    <Icon className="h-[18px] w-[18px] text-yazz-primary" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-outfit text-[13px] font-semibold text-yazz-text-dark">
+                      {opt.title}
+                    </p>
+                    <p className="font-inter text-[11px] text-yazz-text-muted">
+                      {opt.subtitle}
+                    </p>
+                  </div>
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      </div>
     </div>
   );
 }
