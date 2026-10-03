@@ -155,10 +155,18 @@ export function YazzVehicleCard({ vehicles, selectedId, onSelect }: YazzVehicleC
 
                     {/* Stats line */}
                     <div className="mt-1 flex items-center gap-1.5">
-                      {v.speed > 0 ? (
+                      {v.status === "offline" ? (
+                        <span className="font-outfit text-[10px] font-semibold text-yazz-text-caption">
+                          Hors-ligne
+                        </span>
+                      ) : v.speed > 0 ? (
                         <span className="font-outfit flex items-center gap-0.5 text-[10px] font-bold text-yazz-primary">
                           <Zap className="h-2.5 w-2.5" />
                           {v.speed} km/h
+                        </span>
+                      ) : v.status === "alert" ? (
+                        <span className="font-outfit text-[10px] font-semibold text-yazz-error">
+                          Alerte
                         </span>
                       ) : (
                         <span className="font-outfit text-[10px] font-semibold text-yazz-text-muted">
