@@ -1,13 +1,24 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { usePathname } from "next/navigation";
 import { YazzSidebar } from "@/components/yazz/yazz-sidebar";
 import { YazzTopbar } from "@/components/yazz/yazz-topbar";
+import { GlobalLoading, useGlobalLoading } from "@/components/yazz/yazz-global-loading";
 import { X } from "lucide-react";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const pathname = usePathname();
+  const { loading, showLoading, hideLoading } = useGlobalLoading();
+
+  // Show loading on route change
+  useEffect(() => {
+    showLoading("Chargement...");
+    const timer = setTimeout(() => hideLoading(), 500);
+    return () => clearTimeout(timer);
+  }, [pathname]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div className="flex h-screen w-full overflow-hidden bg-yazz-background">
@@ -49,6 +60,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         <YazzTopbar onMobileMenu={() => setMobileSidebarOpen(true)} />
         <main className="relative flex-1 overflow-y-auto">{children}</main>
       </div>
+
+      {/* Global loading overlay */}
+      <GlobalLoading state={loading} />
     </div>
   );
 }
