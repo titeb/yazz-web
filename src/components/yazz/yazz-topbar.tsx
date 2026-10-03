@@ -1,6 +1,7 @@
 "use client";
 
-import { Search, Bell, Sun, Moon, Menu, Plus, LogOut, ChevronDown, X, Loader2, User, AlertTriangle, createPortal } from "lucide-react";
+import { Search, Bell, Sun, Moon, Menu, Plus, LogOut, ChevronDown, X, Loader2, User, AlertTriangle } from "lucide-react";
+import { createPortal } from "react-dom";
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
