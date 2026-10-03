@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
+import { createPortal } from "react-dom";
 import {
   LayoutDashboard,
   Car,
@@ -15,6 +16,8 @@ import {
   LifeBuoy,
   LogOut,
   BarChart3,
+  Loader2,
+  AlertTriangle,
   type LucideIcon,
 } from "lucide-react";
 import { YazzLogo } from "./yazz-logo";
@@ -52,6 +55,7 @@ export function YazzSidebar({ collapsed, onToggle, active }: YazzSidebarProps) {
   const pathname = usePathname();
   const supabase = createClientSafe();
   const [signingOut, setSigningOut] = useState(false);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
   // Détermine l'item actif par pathname
   const getIsActive = (href: string) => {
@@ -68,6 +72,8 @@ export function YazzSidebar({ collapsed, onToggle, active }: YazzSidebarProps) {
     setSigningOut(true);
     try {
       await supabase.auth.signOut();
+      const storageKey = `sb-twkdvsuefjewykxsnrwu-auth-token`;
+      document.cookie = `${storageKey}=; path=/; max-age=0`;
       router.push("/login");
       router.refresh();
     } catch (err) {
@@ -167,7 +173,7 @@ export function YazzSidebar({ collapsed, onToggle, active }: YazzSidebarProps) {
           </li>
           <li>
             <button
-              onClick={handleSignOut}
+              onClick={() => setShowLogoutConfirm(true)}
               disabled={signingOut}
               className={cn(
                 "group flex w-full items-center gap-3 rounded-yazz-sm px-3 py-2.5 font-inter text-[13px] font-medium text-yazz-error/80 transition-colors",
@@ -182,6 +188,37 @@ export function YazzSidebar({ collapsed, onToggle, active }: YazzSidebarProps) {
           </li>
         </ul>
       </div>
+
+      {/* Dialog de déconnexion — Portal vers body */}
+      {showLogoutConfirm && typeof window !== "undefined" && createPortal(
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" onClick={() => !signingOut && setShowLogoutConfirm(false)}>
+          <div className="absolute inset-0 bg-yazz-text-dark/50 backdrop-blur-md yazz-animate-fade-in" />
+          <div className="relative w-full max-w-sm rounded-yazz-xl bg-yazz-surface p-5 yazz-shadow-high yazz-animate-fade-in-up" onClick={(e) => e.stopPropagation()}>
+            <div className="mb-4 flex items-center gap-3">
+              <div className="grid h-11 w-11 shrink-0 place-items-center rounded-yazz-lg bg-yazz-error/10">
+                {signingOut ? <Loader2 className="h-5 w-5 animate-spin text-yazz-primary" /> : <LogOut className="h-5 w-5 text-yazz-error" />}
+              </div>
+              <div>
+                <h2 className="font-outfit text-[16px] font-bold tracking-[-0.01em] text-yazz-text-dark">
+                  {signingOut ? "Déconnexion..." : "Déconnexion"}
+                </h2>
+                <p className="font-inter text-[11px] text-yazz-text-muted">Êtes-vous sûr de vouloir vous déconnecter ?</p>
+              </div>
+            </div>
+            <p className="font-inter mb-4 text-[12px] leading-relaxed text-yazz-text-muted">
+              Vous devrez vous reconnecter pour accéder à votre tableau de bord et suivre vos véhicules.
+            </p>
+            <div className="flex gap-2">
+              <button onClick={() => setShowLogoutConfirm(false)} disabled={signingOut} className="font-inter flex-1 rounded-yazz-sm border border-yazz-border-light bg-yazz-surface py-2.5 text-[12px] font-semibold text-yazz-text-body transition-colors hover:bg-yazz-accent disabled:opacity-50">Annuler</button>
+              <button onClick={handleSignOut} disabled={signingOut} className="font-inter flex flex-1 items-center justify-center gap-2 rounded-yazz-sm bg-yazz-error py-2.5 text-[12px] font-semibold text-white shadow-yazz-medium transition-all hover:bg-yazz-error/90 disabled:opacity-50">
+                {signingOut ? <Loader2 className="h-4 w-4 animate-spin" /> : <LogOut className="h-4 w-4" />}
+                {signingOut ? "Déconnexion..." : "Se déconnecter"}
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
     </aside>
   );
 }
