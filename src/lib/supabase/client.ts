@@ -1,11 +1,10 @@
-import { createClient as createSupabaseClient } from "@supabase/supabase-js";
+import { createClient as createSupabaseClient, SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/yazz/types/database";
 
 /**
- * Supabase client côté navigateur.
- * Utilise @supabase/supabase-js directement (pas @supabase/ssr) car
- * @supabase/ssr createBrowserClient ne crée pas le WebSocket Realtime
- * automatiquement. @supabase/supabase-js gère le Realtime nativement.
+ * Supabase client côté navigateur — SINGLETON.
+ * Un seul client partagé entre tous les hooks pour que le WebSocket
+ * Realtime ne soit ouvert qu'une seule fois et reste connecté.
  */
 
 export function isSupabaseConfigured(): boolean {
@@ -19,6 +18,31 @@ export function isSupabaseConfigured(): boolean {
   );
 }
 
+// Singleton — une seule instance partagée
+let _client: SupabaseClient<Database> | null = null;
+
+function getOrCreateClient(): SupabaseClient<Database> {
+  if (_client) return _client;
+
+  _client = createSupabaseClient<Database>(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      auth: {
+        persistSession: true,
+        autoRefreshToken: true,
+        detectSessionInUrl: true,
+      },
+      realtime: {
+        params: {
+          eventsPerSecond: 10,
+        },
+      },
+    }
+  );
+  return _client;
+}
+
 export function createClient() {
   if (!isSupabaseConfigured()) {
     throw new Error(
@@ -26,40 +50,10 @@ export function createClient() {
       "Configurez NEXT_PUBLIC_SUPABASE_URL et NEXT_PUBLIC_SUPABASE_ANON_KEY dans .env.local"
     );
   }
-  return createSupabaseClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      auth: {
-        persistSession: true,
-        autoRefreshToken: true,
-        detectSessionInUrl: true,
-      },
-      realtime: {
-        params: {
-          eventsPerSecond: 10,
-        },
-      },
-    }
-  );
+  return getOrCreateClient();
 }
 
 export function createClientSafe() {
   if (!isSupabaseConfigured()) return null;
-  return createSupabaseClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      auth: {
-        persistSession: true,
-        autoRefreshToken: true,
-        detectSessionInUrl: true,
-      },
-      realtime: {
-        params: {
-          eventsPerSecond: 10,
-        },
-      },
-    }
-  );
+  return getOrCreateClient();
 }
