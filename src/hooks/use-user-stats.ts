@@ -145,35 +145,30 @@ export function useUserStats() {
   useEffect(() => {
     if (!supabase || !channelNameRef.current) return;
 
-    fetchStats();
+    let channel: any = null;
 
-    // ── Realtime subscriptions ──────────────────────────────────
-    const channel = supabase
-      .channel(channelNameRef.current)
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "user_devices" },
-        () => fetchStats()
-      )
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "last_known_positions" },
-        () => fetchStats()
-      )
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "notifications" },
-        () => fetchStats()
-      )
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "user_credits" },
-        () => fetchStats()
-      )
-      .subscribe();
+    const init = async () => {
+      // Ensure session is loaded before subscribing to Realtime
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+
+      // Fetch initial data
+      fetchStats();
+
+      // Subscribe to Realtime — session is ready
+      channel = supabase
+        .channel(channelNameRef.current)
+        .on("postgres_changes", { event: "*", schema: "public", table: "user_devices" }, () => fetchStats())
+        .on("postgres_changes", { event: "*", schema: "public", table: "last_known_positions" }, () => fetchStats())
+        .on("postgres_changes", { event: "*", schema: "public", table: "notifications" }, () => fetchStats())
+        .on("postgres_changes", { event: "*", schema: "public", table: "user_credits" }, () => fetchStats())
+        .subscribe();
+    };
+
+    init();
 
     return () => {
-      supabase.removeChannel(channel);
+      if (channel) supabase.removeChannel(channel);
     };
   }, [fetchStats, supabase]);
 

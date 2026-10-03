@@ -205,32 +205,36 @@ export function useUserVehicles() {
   useEffect(() => {
     if (!supabase || !channelNameRef.current) return;
 
-    fetchVehicles();
+    let channel: any = null;
 
-    const channel = supabase
-      .channel(channelNameRef.current)
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "last_known_positions",
-        },
-        () => fetchVehicles()
-      )
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "user_devices",
-        },
-        () => fetchVehicles()
-      )
-      .subscribe();
+    const init = async () => {
+      // Ensure session is loaded before subscribing to Realtime
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+
+      // Fetch initial data
+      fetchVehicles();
+
+      // Subscribe to Realtime — session is ready, WebSocket will open
+      channel = supabase
+        .channel(channelNameRef.current)
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: "last_known_positions" },
+          () => fetchVehicles()
+        )
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: "user_devices" },
+          () => fetchVehicles()
+        )
+        .subscribe();
+    };
+
+    init();
 
     return () => {
-      supabase.removeChannel(channel);
+      if (channel) supabase.removeChannel(channel);
     };
   }, [fetchVehicles, supabase]);
 

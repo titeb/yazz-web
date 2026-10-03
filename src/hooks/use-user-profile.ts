@@ -113,19 +113,31 @@ export function useUserProfile(): UseUserProfileResult {
   useEffect(() => {
     if (!supabase || !channelNameRef.current) return;
 
-    fetchProfile();
+    let channel: any = null;
 
-    const channel = supabase
+    const init = async () => {
+      // Ensure session is loaded before subscribing to Realtime
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+
+      // Fetch initial data
+      fetchProfile();
+
+      // Subscribe to Realtime — session is ready
+      channel = supabase
       .channel(channelNameRef.current)
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "users" },
         () => fetchProfile()
       )
-      .subscribe();
+        .subscribe();
+    };
+
+    init();
 
     return () => {
-      supabase.removeChannel(channel);
+      if (channel) supabase.removeChannel(channel);
     };
   }, [fetchProfile, supabase]);
 
