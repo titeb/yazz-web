@@ -18,13 +18,17 @@ export function isSupabaseConfigured(): boolean {
   );
 }
 
-// Singleton — une seule instance partagée
-let _client: SupabaseClient<Database> | null = null;
+// Singleton via globalThis — évite les multiples instances quand Next.js
+// bundle le module dans plusieurs chunks séparés
+const g = globalThis as any;
+if (!g.__yazzSupabaseClient) {
+  g.__yazzSupabaseClient = null;
+}
 
 function getOrCreateClient(): SupabaseClient<Database> {
-  if (_client) return _client;
+  if (g.__yazzSupabaseClient) return g.__yazzSupabaseClient;
 
-  _client = createSupabaseClient<Database>(
+  g.__yazzSupabaseClient = createSupabaseClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
@@ -40,7 +44,7 @@ function getOrCreateClient(): SupabaseClient<Database> {
       },
     }
   );
-  return _client;
+  return g.__yazzSupabaseClient;
 }
 
 export function createClient() {
