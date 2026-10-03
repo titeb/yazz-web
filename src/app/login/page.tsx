@@ -96,44 +96,21 @@ function LoginContent() {
     return TEST_PHONES.has(digits);
   };
 
-  // Récupère le code OTP test via un proxy Next.js (évite le CORS du backend)
-  // Cf. src/app/api/auth/test-code/route.ts
+  // Pour les numéros test, Supabase est configuré avec sms_test_otp
+  // → le code est toujours "123456" (pas besoin de fetch depuis le backend)
   const fetchTestOtpCode = async (phoneDigits: string) => {
     if (isFetchingTestCode || testOtpCode) return;
     setIsFetchingTestCode(true);
     try {
-      const url = `/api/auth/test-code?phone=${phoneDigits}&key=${TEST_CODE_KEY}`;
-      const res = await fetch(url, { method: "GET" });
-      if (res.ok) {
-        const data = await res.json();
-        const code = data?.code as string | undefined;
-        if (code && code.length === 6) {
-          setTestOtpCode(code);
-          setOtp(code);
-          // Auto-valider après 500ms (comme le Flutter)
-          setTimeout(() => {
-            if (code.length === 6) verifyOtpWithCode(code, phoneDigits);
-          }, 500);
-          return;
-        }
-      }
-      // Code pas encore disponible → réessayer dans 2s (max 5 essais)
-      setTestFetchAttempts((prev) => {
-        const next = prev + 1;
-        if (next < 5) {
-          fetchTimerRef.current = setTimeout(() => fetchTestOtpCode(phoneDigits), 2000);
-        }
-        return next;
-      });
+      // Supabase test OTP = toujours "123456" pour les numéros test
+      const code = "123456";
+      setTestOtpCode(code);
+      setOtp(code);
+      // Auto-valider après 500ms
+      setTimeout(() => {
+        if (code.length === 6) verifyOtpWithCode(code, phoneDigits);
+      }, 500);
     } catch {
-      setTestFetchAttempts((prev) => {
-        const next = prev + 1;
-        if (next < 5) {
-          fetchTimerRef.current = setTimeout(() => fetchTestOtpCode(phoneDigits), 2000);
-        }
-        return next;
-      });
-    } finally {
       setIsFetchingTestCode(false);
     }
   };
