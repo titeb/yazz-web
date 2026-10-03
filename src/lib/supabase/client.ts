@@ -1,18 +1,11 @@
-import { createBrowserClient } from "@supabase/ssr";
+import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/yazz/types/database";
 
 /**
- * Client Supabase côté navigateur.
- * Utilisé dans les Client Components pour :
- *   - Auth (signIn, signUp, signOut, onAuthStateChange)
- *   - Realtime subscriptions
- *   - Queries directes (avec RLS appliquée automatiquement)
- *
- * ⚠️ N'utiliser QUE l'anon key côté client.
- * Ne jamais importer la service_role key dans ce fichier.
- *
- * Si les variables d'env ne sont pas configurées (mode démo),
- * `isSupabaseConfigured()` retourne false et le client n'est pas créé.
+ * Supabase client côté navigateur.
+ * Utilise @supabase/supabase-js directement (pas @supabase/ssr) car
+ * @supabase/ssr createBrowserClient ne crée pas le WebSocket Realtime
+ * automatiquement. @supabase/supabase-js gère le Realtime nativement.
  */
 
 export function isSupabaseConfigured(): boolean {
@@ -33,10 +26,15 @@ export function createClient() {
       "Configurez NEXT_PUBLIC_SUPABASE_URL et NEXT_PUBLIC_SUPABASE_ANON_KEY dans .env.local"
     );
   }
-  return createBrowserClient<Database>(
+  return createSupabaseClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
+      auth: {
+        persistSession: true,
+        autoRefreshToken: true,
+        detectSessionInUrl: true,
+      },
       realtime: {
         params: {
           eventsPerSecond: 10,
@@ -46,16 +44,17 @@ export function createClient() {
   );
 }
 
-/**
- * Crée un client Supabase safe — retourne null si pas configuré.
- * À utiliser dans les hooks/components qui doivent fonctionner en mode démo.
- */
 export function createClientSafe() {
   if (!isSupabaseConfigured()) return null;
-  return createBrowserClient<Database>(
+  return createSupabaseClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
+      auth: {
+        persistSession: true,
+        autoRefreshToken: true,
+        detectSessionInUrl: true,
+      },
       realtime: {
         params: {
           eventsPerSecond: 10,
