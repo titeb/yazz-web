@@ -155,6 +155,18 @@ function LoginContent() {
     }
   };
 
+  // Sync localStorage session to cookies for middleware (SSR)
+  const syncSessionToCookies = async () => {
+    // @supabase/supabase-js stores in localStorage, but middleware reads cookies.
+    // We need to manually set the cookie that @supabase/ssr expects.
+    const storageKey = `sb-${process.env.NEXT_PUBLIC_SUPABASE_URL?.split("//")[1]?.split(".")[0]}-auth-token`;
+    const token = localStorage.getItem(storageKey);
+    if (token) {
+      // Set cookie for middleware to read
+      document.cookie = `${storageKey}=${encodeURIComponent(token)}; path=/; max-age=3600; SameSite=Lax`;
+    }
+  };
+
   // Verify avec code fourni explicitement (pour auto-validation test)
   const verifyOtpWithCode = async (code: string, phoneDigitsParam?: string) => {
     setError(null);
@@ -168,6 +180,8 @@ function LoginContent() {
         type: "sms",
       });
       if (error) throw error;
+      // Sync session to cookies for middleware
+      await syncSessionToCookies();
       router.push(redirectTo);
       router.refresh();
     } catch (err: any) {
@@ -192,6 +206,8 @@ function LoginContent() {
         type: "sms",
       });
       if (error) throw error;
+      // Sync session to cookies for middleware
+      await syncSessionToCookies();
       router.push(redirectTo);
       router.refresh();
     } catch (err: any) {
@@ -214,6 +230,8 @@ function LoginContent() {
         password,
       });
       if (error) throw error;
+      // Sync session to cookies for middleware
+      await syncSessionToCookies();
       router.push(redirectTo);
       router.refresh();
     } catch (err: any) {
