@@ -11,10 +11,16 @@ import {
   AlertTriangle,
   ShieldAlert,
   X,
+  RefreshCw,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-type SOSState = "idle" | "countdown" | "sending" | "active" | "cancelled";
+type SOSState = "idle" | "countdown" | "confirm" | "sending" | "active" | "cancelled";
+
+// Génère un code aléatoire à 4 chiffres pour la confirmation
+function generateConfirmCode(): string {
+  return Math.floor(1000 + Math.random() * 9000).toString();
+}
 
 export default function SOSPage() {
   const router = useRouter();
@@ -22,12 +28,19 @@ export default function SOSPage() {
   const [state, setState] = useState<SOSState>("idle");
   const [countdown, setCountdown] = useState(3);
   const [error, setError] = useState<string | null>(null);
+  const [confirmCode, setConfirmCode] = useState("");
+  const [userInput, setUserInput] = useState("");
 
-  // Countdown timer
+  // Countdown timer — après le compte à rebours, on passe à l'étape de confirmation
+  // (code à recopier) au lieu de déclencher le SOS directement
   useEffect(() => {
     if (state !== "countdown") return;
     if (countdown <= 0) {
-      triggerSOS();
+      // Générer un code de confirmation aléatoire et passer à l'étape confirm
+      setConfirmCode(generateConfirmCode());
+      setUserInput("");
+      setError(null);
+      setState("confirm");
       return;
     }
     const t = setTimeout(() => setCountdown((c) => c - 1), 1000);
@@ -43,6 +56,23 @@ export default function SOSPage() {
   const cancelCountdown = () => {
     setState("idle");
     setCountdown(3);
+  };
+
+  // Valide le code de confirmation saisi par l'utilisateur
+  const handleConfirmSubmit = () => {
+    if (userInput === confirmCode) {
+      // Bon code → déclencher le SOS
+      triggerSOS();
+    } else {
+      setError("Code incorrect. Vérifiez et réessayez.");
+    }
+  };
+
+  // Régénère un nouveau code (en cas d'erreur de saisie répétée)
+  const regenerateCode = () => {
+    setConfirmCode(generateConfirmCode());
+    setUserInput("");
+    setError(null);
   };
 
   const triggerSOS = async () => {
@@ -266,7 +296,7 @@ export default function SOSPage() {
               </span>
             </div>
             <p className="font-outfit mt-6 text-[18px] font-bold text-white">
-              Déclenchement dans {countdown}s
+              Préparation... {countdown}s
             </p>
             <button
               onClick={cancelCountdown}
@@ -274,6 +304,90 @@ export default function SOSPage() {
             >
               Annuler
             </button>
+          </>
+        )}
+
+        {state === "confirm" && (
+          <>
+            <div className="mb-6 grid h-20 w-20 place-items-center rounded-full bg-yazz-warning/20">
+              <ShieldAlert className="h-10 w-10 text-yazz-warning" />
+            </div>
+            <h2 className="font-outfit text-center text-[20px] font-bold text-white">
+              Confirmez le déclenchement
+            </h2>
+            <p className="font-inter mt-2 max-w-xs text-center text-[12px] leading-relaxed text-white/60">
+              Pour éviter un déclenchement accidentel, recopiez le code ci-dessous pour confirmer l'alerte SOS.
+            </p>
+
+            {error && (
+              <div className="mt-4 w-full max-w-xs rounded-yazz-md border-l-4 border-l-yazz-error bg-yazz-error/10 p-3">
+                <p className="font-inter text-[12px] text-yazz-error">{error}</p>
+              </div>
+            )}
+
+            {/* Code à recopier */}
+            <div className="mt-6 flex flex-col items-center gap-3">
+              <div className="rounded-yazz-lg bg-white/10 px-6 py-3 backdrop-blur-sm">
+                <p className="font-inter text-[10px] uppercase tracking-wide text-white/40">Code de confirmation</p>
+                <p className="font-outfit text-[32px] font-bold tracking-[0.3em] text-white">
+                  {confirmCode}
+                </p>
+              </div>
+
+              {/* Input utilisateur */}
+              <input
+                type="text"
+                inputMode="numeric"
+                autoFocus
+                maxLength={4}
+                value={userInput}
+                onChange={(e) => {
+                  const val = e.target.value.replace(/\D/g, "").slice(0, 4);
+                  setUserInput(val);
+                  if (error) setError(null);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && userInput.length === 4) {
+                    handleConfirmSubmit();
+                  }
+                }}
+                placeholder="----"
+                className="font-outfit h-14 w-40 rounded-yazz-md border-2 border-white/20 bg-white/5 text-center text-[28px] font-bold tracking-[0.3em] text-white placeholder-white/20 backdrop-blur-sm focus:border-yazz-primary focus:outline-none"
+              />
+
+              <div className="flex gap-2">
+                <button
+                  onClick={regenerateCode}
+                  className="font-inter flex items-center gap-1.5 rounded-yazz-sm bg-white/10 px-3 py-2 text-[11px] font-semibold text-white/70 backdrop-blur-sm transition-colors hover:bg-white/20"
+                >
+                  <RefreshCw className="h-3.5 w-3.5" />
+                  Nouveau code
+                </button>
+              </div>
+            </div>
+
+            {/* Boutons */}
+            <div className="mt-6 flex w-full max-w-xs gap-2">
+              <button
+                onClick={() => {
+                  setState("idle");
+                  setCountdown(3);
+                  setUserInput("");
+                  setError(null);
+                }}
+                className="font-inter flex-1 rounded-yazz-sm bg-white/10 px-4 py-3 text-[13px] font-semibold text-white backdrop-blur-sm transition-colors hover:bg-white/20"
+              >
+                Annuler
+              </button>
+              <button
+                onClick={handleConfirmSubmit}
+                disabled={userInput.length !== 4}
+                className="font-inter flex flex-1 items-center justify-center gap-2 rounded-yazz-sm bg-yazz-error px-4 py-3 text-[13px] font-bold text-white shadow-[0_0_30px_rgba(229,62,62,0.4)] transition-all hover:bg-yazz-error/90 disabled:opacity-40 active:scale-95"
+              >
+                <Siren className="h-4 w-4" />
+                Déclencher
+              </button>
+            </div>
           </>
         )}
 
