@@ -5,12 +5,11 @@ import { useRouter } from "next/navigation";
 import { createClientSafe } from "@/lib/supabase/client";
 import {
   Siren,
-  ChevronLeft,
+  X,
   Loader2,
   CheckCircle2,
   AlertTriangle,
   ShieldAlert,
-  X,
   RefreshCw,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -205,14 +204,17 @@ export default function SOSPage() {
 
   const cancelSOS = async () => {
     if (!supabase) {
-      router.back();
+      router.push("/");
       return;
     }
     try {
       const {
         data: { user },
       } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!user) {
+        router.push("/");
+        return;
+      }
 
       // Mark active SOS as false_alarm
       await supabase
@@ -221,9 +223,9 @@ export default function SOSPage() {
         .eq("declared_by", user.id)
         .eq("status", "active");
 
-      router.back();
+      router.push("/");
     } catch (err) {
-      router.back();
+      router.push("/");
     }
   };
 
@@ -245,10 +247,11 @@ export default function SOSPage() {
       {/* Top bar */}
       <div className="relative z-10 flex items-center justify-between p-4">
         <button
-          onClick={() => router.back()}
+          onClick={() => router.push("/")}
+          aria-label="Fermer"
           className="grid h-10 w-10 place-items-center rounded-yazz-sm bg-white/10 text-white backdrop-blur-sm transition-colors hover:bg-white/20"
         >
-          <ChevronLeft className="h-5 w-5" />
+          <X className="h-5 w-5" />
         </button>
         <h1 className="font-outfit text-[16px] font-bold text-white">Alerte SOS</h1>
         <div className="h-10 w-10" />
