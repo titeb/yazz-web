@@ -139,6 +139,32 @@ export default function SOSPage() {
         }
       }
 
+      // Notifier les vigiles proches via le backend (FCM push)
+      // Hybride : si le backend échoue, l'alerte est quand même visible via Realtime
+      if (alertData?.id) {
+        try {
+          const { data: { session } } = await supabase.auth.getSession();
+          if (session?.access_token) {
+            const backendUrl = process.env.NEXT_PUBLIC_YAZZ_BACKEND_URL;
+            if (backendUrl) {
+              fetch(`${backendUrl}/api/sos/notify-vigiles`, {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  Authorization: `Bearer ${session.access_token}`,
+                },
+                body: JSON.stringify({ alertId: alertData.id }),
+              }).catch((err) => {
+                console.warn("[SOS] Backend notify-vigiles failed (non bloquant):", err);
+              });
+              // Fire-and-forget : ne pas attendre la réponse
+            }
+          }
+        } catch (notifyErr) {
+          console.warn("[SOS] Erreur notification vigiles (non bloquant):", notifyErr);
+        }
+      }
+
       setState("active");
     } catch (err: any) {
       console.error("[SOS] erreur:", err);
