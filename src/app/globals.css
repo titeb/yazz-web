@@ -23,12 +23,6 @@
   --font-gsans: var(--font-google-sans), var(--font-inter), ui-sans-serif, system-ui, sans-serif;
   --font-mono: ui-monospace, "SFMono-Regular", Menlo, monospace;
 
-  /* Rayons YAZZ (arrondis officiels Flutter) */
-  --radius-yazz-sm: 9px;
-  --radius-yazz-md: 14px;
-  --radius-yazz-lg: 18px;
-  --radius-yazz-xl: 22px;
-
   /* Couleurs YAZZ — Design System officiel */
   --color-yazz-primary: #2b44ee;          /* Bleu Électrique — CTA, boutons */
   --color-yazz-secondary: #333984;        /* Bleu Nuit — Icônes, texte support */
