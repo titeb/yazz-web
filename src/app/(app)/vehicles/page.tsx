@@ -7,46 +7,12 @@ import { isSupabaseConfigured } from "@/lib/supabase/client";
 import {
   Plus,
   Car,
-  Battery,
-  Gauge,
-  Clock,
-  Trash2,
-  Power,
-  Pencil,
   X,
   Loader2,
-  AlertTriangle,
-  MapPin,
-  ShieldCheck,
-  Share2,
   CheckCircle2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-
-function timeAgo(iso: string | null): string {
-  if (!iso) return "—";
-  const diff = Date.now() - new Date(iso).getTime();
-  const sec = Math.floor(diff / 1000);
-  if (sec < 60) return `il y a ${sec}s`;
-  const min = Math.floor(sec / 60);
-  if (min < 60) return `il y a ${min} min`;
-  const h = Math.floor(min / 60);
-  if (h < 24) return `il y a ${h}h`;
-  const d = Math.floor(h / 24);
-  return `il y a ${d}j`;
-}
-
-function getDeviceStatus(d: UserDevice): { label: string; color: string; dot: string } {
-  if (!d.lastUpdate) return { label: "Hors-ligne", color: "text-yazz-text-caption", dot: "bg-yazz-text-caption" };
-  const tenMinAgo = Date.now() - 10 * 60 * 1000;
-  const lastTs = new Date(d.lastUpdate).getTime();
-  if (lastTs < tenMinAgo) return { label: "Hors-ligne", color: "text-yazz-text-caption", dot: "bg-yazz-text-caption" };
-  if (d.engineCutState) return { label: "Moteur coupé", color: "text-yazz-error", dot: "bg-yazz-error yazz-blink" };
-  if ((d.batteryPercent ?? 100) < 20) return { label: "Batterie faible", color: "text-yazz-warning", dot: "bg-yazz-warning" };
-  if ((d.speed ?? 0) > 0) return { label: "En mouvement", color: "text-yazz-primary", dot: "bg-yazz-primary" };
-  if (d.parkingMode) return { label: "Mode parking", color: "text-yazz-info", dot: "bg-yazz-info" };
-  return { label: "À l'arrêt", color: "text-yazz-text-muted", dot: "bg-yazz-text-muted" };
-}
+import { YazzVehicleGridCard } from "@/components/yazz/yazz-vehicle-grid-card";
 
 export default function VehiclesPage() {
   return (
@@ -57,32 +23,41 @@ export default function VehiclesPage() {
 }
 
 function VehiclesLoading() {
-  return (
-    <div className="grid h-full place-items-center">
-      <div className="h-8 w-8 animate-spin rounded-full border-2 border-yazz-border-light border-t-yazz-primary" />
-    </div>
-  );
+  // Loading minimal silencieux — n'interrompt pas l'interface (pattern dashboard)
+  return <div className="h-full" aria-hidden />;
 }
 
 function VehiclesContent() {
   const isReady = isSupabaseConfigured();
-  const { devices, loading, error, addDevice, updateDevice, removeDevice, toggleActive } = useUserDevices();
+  const { devices, loading, error, addDevice, updateDevice } = useUserDevices();
 
   const searchParams = useSearchParams();
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingDevice, setEditingDevice] = useState<UserDevice | null>(null);
-  const [confirmDelete, setConfirmDelete] = useState<UserDevice | null>(null);
 
-  // Si ?add=1 dans l'URL, on ouvre automatiquement le modal d'ajout
+  // ?add=1 dans l'URL → ouvre le modal d'ajout automatiquement
   useEffect(() => {
     if (searchParams.get("add") === "1") {
       setShowAddModal(true);
-      // Nettoie l'URL pour éviter de rouvrir au prochain mount
       const url = new URL(window.location.href);
       url.searchParams.delete("add");
       window.history.replaceState({}, "", url.toString());
     }
   }, [searchParams]);
+
+  // ?edit=ID dans l'URL → ouvre le modal d'édition pour le device correspondant
+  // (provoqué par l'option "Modifier le capteur" dans le OptionsModal)
+  useEffect(() => {
+    const editId = searchParams.get("edit");
+    if (!editId) return;
+    const target = devices.find((d) => d.id === editId) ?? null;
+    if (target) {
+      setEditingDevice(target);
+      const url = new URL(window.location.href);
+      url.searchParams.delete("edit");
+      window.history.replaceState({}, "", url.toString());
+    }
+  }, [searchParams, devices]);
 
   return (
     <div className="h-full overflow-y-auto">
@@ -125,7 +100,7 @@ function VehiclesContent() {
           </div>
         )}
 
-        {isReady && devices.length === 0 && (
+        {isReady && devices.length === 0 && !loading && (
           <div className="grid place-items-center py-12 text-center">
             <div className="grid h-14 w-14 place-items-center rounded-full bg-yazz-accent">
               <Car className="h-6 w-6 text-yazz-text-muted" />
@@ -144,135 +119,12 @@ function VehiclesContent() {
           </div>
         )}
 
-        {/* Devices grid */}
+        {/* Devices grid — nouvelles cartes redessinées (style dashboard detail) */}
         {isReady && devices.length > 0 && (
-          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-            {devices.map((d) => {
-              const status = getDeviceStatus(d);
-              const vehicleName = d.name || d.vehiclePlate || `Capteur ${d.shortId || d.id.slice(-6)}`;
-              return (
-                <div
-                  key={d.id}
-                  className={cn(
-                    "rounded-yazz-xl border bg-yazz-surface p-4 yazz-shadow-soft transition-all hover:yazz-shadow-elevated",
-                    d.isActive ? "border-yazz-border-light" : "border-yazz-border-light opacity-70"
-                  )}
-                >
-                  {/* Header */}
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex items-start gap-3 min-w-0">
-                      <div className={cn("grid h-11 w-11 shrink-0 place-items-center rounded-yazz-lg", d.isActive ? "yazz-gradient-primary text-white" : "bg-yazz-accent text-yazz-text-muted")}>
-                        <Car className="h-5 w-5" />
-                      </div>
-                      <div className="min-w-0">
-                        <p className="font-outfit truncate text-[14px] font-semibold tracking-[-0.01em] text-yazz-text-dark">
-                          {vehicleName}
-                        </p>
-                        {d.vehiclePlate && (
-                          <p className="font-outfit text-[11px] font-bold uppercase tracking-wide text-yazz-text-caption">
-                            {d.vehiclePlate}
-                          </p>
-                        )}
-                        <p className="font-inter mt-0.5 text-[10px] text-yazz-text-caption">
-                          IMEI: {d.id}
-                        </p>
-                      </div>
-                    </div>
-                    <span className={cn("flex items-center gap-1.5 shrink-0 rounded-full bg-yazz-background px-2 py-1 text-[10px] font-semibold", status.color)}>
-                      <span className={cn("h-1.5 w-1.5 rounded-full", status.dot)} />
-                      {status.label}
-                    </span>
-                  </div>
-
-                  {/* Stats */}
-                  <div className="mt-3 grid grid-cols-3 gap-2">
-                    <div className="rounded-yazz-sm bg-yazz-background/60 p-2">
-                      <p className="font-inter text-[9px] uppercase tracking-wide text-yazz-text-caption">Vitesse</p>
-                      <p className="font-outfit text-[13px] font-bold text-yazz-text-dark">
-                        {d.speed ?? 0}<span className="ml-0.5 text-[10px] font-normal text-yazz-text-caption">km/h</span>
-                      </p>
-                    </div>
-                    <div className="rounded-yazz-sm bg-yazz-background/60 p-2">
-                      <p className="font-inter text-[9px] uppercase tracking-wide text-yazz-text-caption">Batterie</p>
-                      <p className={cn("font-outfit text-[13px] font-bold", (d.batteryPercent ?? 100) < 20 ? "text-yazz-error" : (d.batteryPercent ?? 100) < 50 ? "text-yazz-warning" : "text-yazz-text-dark")}>
-                        {d.batteryPercent ?? "—"}{d.batteryPercent !== null && <span className="ml-0.5 text-[10px] font-normal text-yazz-text-caption">%</span>}
-                      </p>
-                    </div>
-                    <div className="rounded-yazz-sm bg-yazz-background/60 p-2">
-                      <p className="font-inter text-[9px] uppercase tracking-wide text-yazz-text-caption">MAJ</p>
-                      <p className="font-inter text-[11px] font-semibold text-yazz-text-dark">
-                        {timeAgo(d.lastUpdate)}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Address */}
-                  {d.latitude !== null && d.longitude !== null && (
-                    <div className="mt-2 flex items-center gap-1.5 rounded-yazz-sm yazz-gradient-subtle px-2 py-1.5">
-                      <MapPin className="h-3 w-3 shrink-0 text-yazz-primary" />
-                      <p className="font-inter truncate text-[10px] text-yazz-text-muted">
-                        {d.latitude.toFixed(4)}, {d.longitude.toFixed(4)}
-                      </p>
-                    </div>
-                  )}
-
-                  {/* Badges */}
-                  <div className="mt-3 flex flex-wrap gap-1">
-                    {d.parkingMode && (
-                      <span className="rounded-full bg-yazz-info/10 px-2 py-0.5 text-[9px] font-semibold text-yazz-info">
-                        Parking
-                      </span>
-                    )}
-                    {d.engineCutState && (
-                      <span className="rounded-full bg-yazz-error/10 px-2 py-0.5 text-[9px] font-semibold text-yazz-error">
-                        Moteur coupé
-                      </span>
-                    )}
-                    {d.isShared && (
-                      <span className="rounded-full bg-yazz-success/10 px-2 py-0.5 text-[9px] font-semibold text-yazz-success">
-                        Partagé
-                      </span>
-                    )}
-                    {d.speedLimit !== null && (
-                      <span className="rounded-full bg-yazz-accent px-2 py-0.5 text-[9px] font-semibold text-yazz-text-muted">
-                        Limit {d.speedLimit} km/h
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Actions */}
-                  <div className="mt-3 flex items-center gap-1 border-t border-yazz-border-light pt-3">
-                    <button
-                      onClick={() => toggleActive(d.id, !d.isActive)}
-                      className={cn(
-                        "font-inter flex flex-1 items-center justify-center gap-1 rounded-yazz-sm py-2 text-[11px] font-semibold transition-colors",
-                        d.isActive
-                          ? "text-yazz-warning hover:bg-yazz-warning/10"
-                          : "text-yazz-success hover:bg-yazz-success/10"
-                      )}
-                      title={d.isActive ? "Désactiver" : "Activer"}
-                    >
-                      <Power className="h-3.5 w-3.5" />
-                      {d.isActive ? "Désactiver" : "Activer"}
-                    </button>
-                    <button
-                      onClick={() => setEditingDevice(d)}
-                      className="font-inter grid h-8 w-8 place-items-center rounded-yazz-sm text-yazz-text-muted hover:bg-yazz-accent hover:text-yazz-primary"
-                      title="Éditer"
-                    >
-                      <Pencil className="h-3.5 w-3.5" />
-                    </button>
-                    <button
-                      onClick={() => setConfirmDelete(d)}
-                      className="font-inter grid h-8 w-8 place-items-center rounded-yazz-sm text-yazz-error/70 hover:bg-yazz-error/10 hover:text-yazz-error"
-                      title="Supprimer"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {devices.map((d) => (
+              <YazzVehicleGridCard key={d.id} device={d} />
+            ))}
           </div>
         )}
       </div>
@@ -291,7 +143,7 @@ function VehiclesContent() {
         />
       )}
 
-      {/* Modal édition */}
+      {/* Modal édition (déclenchée par ?edit=ID ou directement) */}
       {editingDevice && (
         <EditDeviceModal
           device={editingDevice}
@@ -299,19 +151,6 @@ function VehiclesContent() {
           onUpdate={async (input) => {
             const r = await updateDevice(editingDevice.id, input);
             if (r.success) setEditingDevice(null);
-            return r;
-          }}
-        />
-      )}
-
-      {/* Modal confirmation suppression */}
-      {confirmDelete && (
-        <ConfirmDeleteModal
-          device={confirmDelete}
-          onClose={() => setConfirmDelete(null)}
-          onConfirm={async () => {
-            const r = await removeDevice(confirmDelete.id);
-            if (r.success) setConfirmDelete(null);
             return r;
           }}
         />
@@ -553,68 +392,6 @@ function EditDeviceModal({
           >
             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
             Enregistrer
-          </button>
-        </div>
-      </div>
-    </ModalShell>
-  );
-}
-
-// ============================================================
-// Modal : Confirmer suppression
-// ============================================================
-function ConfirmDeleteModal({
-  device,
-  onClose,
-  onConfirm,
-}: {
-  device: UserDevice;
-  onClose: () => void;
-  onConfirm: () => Promise<{ success: boolean; error?: string }>;
-}) {
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const handleConfirm = async () => {
-    setLoading(true);
-    const r = await onConfirm();
-    setLoading(false);
-    if (!r.success) setError(r.error || "Erreur lors de la suppression.");
-  };
-
-  return (
-    <ModalShell onClose={onClose} title="Supprimer le capteur ?" maxWidth="max-w-md">
-      <div className="space-y-3">
-        <div className="flex items-start gap-3 rounded-yazz-sm bg-yazz-error/10 p-3">
-          <AlertTriangle className="h-5 w-5 shrink-0 text-yazz-error" />
-          <div>
-            <p className="font-inter text-[13px] font-semibold text-yazz-text-dark">
-              Cette action est irréversible.
-            </p>
-            <p className="font-inter mt-1 text-[12px] text-yazz-text-muted">
-              Le capteur <strong>{device.name || device.vehiclePlate || device.id}</strong> sera retiré de votre compte.
-              Vous ne pourrez plus le suivre tant que vous ne l'ajouterez pas à nouveau.
-            </p>
-          </div>
-        </div>
-
-        {error && (
-          <div className="rounded-yazz-sm border-l-2 border-l-yazz-error bg-yazz-error/10 p-2">
-            <p className="font-inter text-[11px] text-yazz-error">{error}</p>
-          </div>
-        )}
-
-        <div className="flex gap-2">
-          <button onClick={onClose} className="font-inter flex-1 rounded-yazz-sm border border-yazz-border-light bg-yazz-surface py-2.5 text-[12px] font-semibold text-yazz-text-body transition-colors hover:bg-yazz-accent">
-            Annuler
-          </button>
-          <button
-            onClick={handleConfirm}
-            disabled={loading}
-            className="font-inter flex flex-1 items-center justify-center gap-2 rounded-yazz-sm bg-yazz-error py-2.5 text-[12px] font-semibold text-white shadow-yazz-medium transition-all hover:bg-yazz-error/90 disabled:opacity-50 active:scale-95"
-          >
-            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
-            Supprimer
           </button>
         </div>
       </div>

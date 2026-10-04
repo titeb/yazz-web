@@ -71,3 +71,6 @@ server.log
 /.zscripts/
 /.next/
 /scripts/
+
+# Reference repos (design references, not YAZZ code)
+/repos/
