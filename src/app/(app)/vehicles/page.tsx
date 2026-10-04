@@ -438,10 +438,14 @@ function ModalShell({
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" onClick={onClose}>
       <div className="absolute inset-0 bg-yazz-text-dark/50 backdrop-blur-sm" />
       <div
-        className={cn("relative w-full rounded-yazz-xl bg-yazz-surface p-5 yazz-shadow-high yazz-animate-fade-in-up", maxWidth)}
+        className={cn(
+          "relative w-full max-h-[85vh] flex flex-col overflow-hidden rounded-yazz-xl bg-yazz-surface yazz-shadow-high yazz-animate-fade-in-up",
+          maxWidth
+        )}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="mb-4 flex items-center justify-between">
+        {/* Header fixe (sticky) */}
+        <div className="shrink-0 flex items-center justify-between border-b border-yazz-border-light p-5 pb-3">
           <h2 className="font-outfit text-[16px] font-bold tracking-[-0.01em] text-yazz-text-dark">{title}</h2>
           <button
             onClick={onClose}
@@ -451,7 +455,10 @@ function ModalShell({
             <X className="h-4 w-4" />
           </button>
         </div>
-        {children}
+        {/* Body scrollable — les inputs et boutons défilent ici */}
+        <div className="flex-1 overflow-y-auto p-5">
+          {children}
+        </div>
       </div>
     </div>
   );
