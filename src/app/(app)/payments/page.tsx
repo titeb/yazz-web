@@ -18,13 +18,40 @@ import {
 import { cn } from "@/lib/utils";
 
 type PaymentStatus = "PENDING" | "SUBMITTED" | "SUCCESS" | "FAILED" | "CANCELLED";
-type PaymentProvider = "shwary" | "pawapay";
+
+type Operator = {
+  id: string;
+  label: string;
+  color: string;
+  bg: string;
+  prefixes: string[]; // 2 digits après +243
+};
+
+// Mapping préfixes RDC → opérateur Mobile Money
+// 81, 82, 84 → Airtel Money (Shwary)
+// 80, 89     → Orange Money (PawaPay)
+// 97, 98, 99 → Vodacom M-Pesa (Shwary)
+const OPERATORS: Operator[] = [
+  { id: "airtel",  label: "Airtel Money",  color: "text-yazz-error",  bg: "bg-yazz-error/10",  prefixes: ["81", "82", "84"] },
+  { id: "orange",  label: "Orange Money",  color: "text-yazz-orange", bg: "bg-yazz-orange/10", prefixes: ["80", "89"] },
+  { id: "mpesa",   label: "M-Pesa",        color: "text-yazz-success", bg: "bg-yazz-success/10", prefixes: ["97", "98", "99"] },
+];
+
+// Détecte l'opérateur depuis le numéro +243XXXXXXXXX
+function detectOperator(phone: string): Operator | null {
+  const digits = phone.replace(/\D/g, "");
+  // Accepte +243XXXXXXXXX ou 0XXXXXXXXX
+  const after243 = digits.startsWith("243") ? digits.slice(3) : (digits.startsWith("0") ? digits.slice(1) : digits);
+  if (after243.length < 2) return null;
+  const prefix = after243.slice(0, 2);
+  return OPERATORS.find((op) => op.prefixes.includes(prefix)) ?? null;
+}
 
 type Payment = {
   id: string;
   amount: number;
   currency: string;
-  provider: PaymentProvider;
+  provider: string | null;
   status: PaymentStatus;
   phone: string | null;
   createdAt: string;
@@ -49,12 +76,14 @@ export default function PaymentsPage() {
   const [amount, setAmount] = useState<number>(5000);
   const [customAmount, setCustomAmount] = useState("");
   const [phone, setPhone] = useState("");
-  const [provider, setProvider] = useState<PaymentProvider>("shwary");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pendingPayment, setPendingPayment] = useState<{ id: string; checkoutUrl?: string | null } | null>(null);
   const [payments, setPayments] = useState<Payment[]>([]);
   const [paymentsLoading, setPaymentsLoading] = useState(false);
+
+  // Détection automatique de l'opérateur (pas de bouton radio — on lit le préfixe)
+  const detectedOperator = detectOperator(phone);
 
   // Fetch historique paiements
   const fetchPayments = useCallback(async () => {
@@ -134,7 +163,6 @@ export default function PaymentsPage() {
         body: JSON.stringify({
           phone: formatPhone(phone),
           amount: finalAmount,
-          provider,
         }),
       });
       const data = await res.json();
@@ -143,7 +171,8 @@ export default function PaymentsPage() {
         throw new Error(data?.error || data?.message || `Erreur ${res.status}`);
       }
 
-      const paymentId = data?.paymentId || data?.id;
+      // Le backend retourne payment_id (snake_case), pas paymentId
+      const paymentId = data?.payment_id || data?.paymentId || data?.id;
       const checkoutUrl = data?.checkoutUrl;
 
       if (checkoutUrl) {
@@ -249,7 +278,7 @@ export default function PaymentsPage() {
             />
           </div>
 
-          {/* Téléphone */}
+          {/* Téléphone + détection opérateur */}
           <div className="mb-4">
             <label className="font-inter mb-1.5 block text-[11px] font-medium text-yazz-text-body">
               Numéro Mobile Money
@@ -261,32 +290,31 @@ export default function PaymentsPage() {
                 placeholder="+243 8XX XXX XXX"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
-                className="font-inter h-11 w-full rounded-yazz-sm border border-yazz-border-light bg-yazz-background pl-10 pr-3 text-[14px] text-yazz-text-dark focus:border-yazz-primary focus:outline-none focus:ring-2 focus:ring-yazz-primary/20"
+                className={cn(
+                  "font-inter h-11 w-full rounded-yazz-sm border bg-yazz-background pl-10 pr-3 text-[14px] text-yazz-text-dark focus:outline-none focus:ring-2",
+                  detectedOperator
+                    ? "border-yazz-primary/30 focus:border-yazz-primary focus:ring-yazz-primary/20"
+                    : "border-yazz-border-light focus:border-yazz-primary focus:ring-yazz-primary/20"
+                )}
               />
             </div>
-          </div>
-
-          {/* Provider */}
-          <div className="mb-4">
-            <label className="font-inter mb-2 block text-[11px] font-medium text-yazz-text-body">
-              Opérateur Mobile Money
-            </label>
-            <div className="grid grid-cols-2 gap-2">
-              {(["shwary", "pawapay"] as const).map((p) => (
-                <button
-                  key={p}
-                  onClick={() => setProvider(p)}
-                  className={cn(
-                    "font-inter rounded-yazz-sm border py-2.5 text-[12px] font-semibold capitalize transition-all",
-                    provider === p
-                      ? "border-yazz-primary bg-yazz-primary/10 text-yazz-primary"
-                      : "border-yazz-border-light bg-yazz-background text-yazz-text-body hover:border-yazz-border-medium"
-                  )}
-                >
-                  {p === "shwary" ? "Shwary (M-Pesa, Airtel Money)" : "PawaPay (Orange Money)"}
-                </button>
-              ))}
-            </div>
+            {/* Badge opérateur détecté */}
+            {detectedOperator && (
+              <div className="mt-2 flex items-center gap-2">
+                <span className={cn("inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-bold", detectedOperator.bg, detectedOperator.color)}>
+                  <span className={cn("h-1.5 w-1.5 rounded-full", detectedOperator.color.replace("text-", "bg-"))} />
+                  {detectedOperator.label}
+                </span>
+                <span className="font-inter text-[10px] text-yazz-text-caption">
+                  opérateur détecté automatiquement
+                </span>
+              </div>
+            )}
+            {phone && !detectedOperator && phone.replace(/\D/g, "").length >= 5 && (
+              <p className="font-inter mt-2 text-[10px] text-yazz-warning">
+                Préfixe non reconnu. Utilisez un numéro Airtel (81/82/84), Orange (80/89) ou Vodacom (97/98/99).
+              </p>
+            )}
           </div>
 
           {/* Erreur */}
