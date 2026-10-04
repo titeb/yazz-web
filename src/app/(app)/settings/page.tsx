@@ -101,14 +101,6 @@ export default function SettingsPage() {
     );
   }
 
-  if (loading && !profile) {
-    return (
-      <div className="grid h-full place-items-center">
-        <Loader2 className="h-8 w-8 animate-spin text-yazz-primary" />
-      </div>
-    );
-  }
-
   if (error && !profile) {
     return (
       <div className="grid h-full place-items-center px-4 py-12">

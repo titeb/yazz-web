@@ -357,13 +357,7 @@ export default function PaymentsPage() {
             </button>
           </div>
 
-          {paymentsLoading && (
-            <div className="grid place-items-center py-8">
-              <Loader2 className="h-6 w-6 animate-spin text-yazz-primary" />
-            </div>
-          )}
-
-          {!paymentsLoading && payments.length === 0 && (
+          {payments.length === 0 && (
             <div className="grid place-items-center py-8 text-center">
               <div className="grid h-12 w-12 place-items-center rounded-full bg-yazz-accent">
                 <Wallet className="h-5 w-5 text-yazz-text-muted" />
@@ -377,7 +371,7 @@ export default function PaymentsPage() {
             </div>
           )}
 
-          {!paymentsLoading && payments.length > 0 && (
+          {payments.length > 0 && (
             <ul className="space-y-2">
               {payments.map((p) => {
                 const cfg = statusConfig[p.status] || statusConfig.PENDING;

@@ -125,13 +125,7 @@ function VehiclesContent() {
           </div>
         )}
 
-        {isReady && loading && (
-          <div className="grid place-items-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-yazz-primary" />
-          </div>
-        )}
-
-        {isReady && !loading && devices.length === 0 && (
+        {isReady && devices.length === 0 && (
           <div className="grid place-items-center py-12 text-center">
             <div className="grid h-14 w-14 place-items-center rounded-full bg-yazz-accent">
               <Car className="h-6 w-6 text-yazz-text-muted" />
@@ -151,7 +145,7 @@ function VehiclesContent() {
         )}
 
         {/* Devices grid */}
-        {isReady && !loading && devices.length > 0 && (
+        {isReady && devices.length > 0 && (
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
             {devices.map((d) => {
               const status = getDeviceStatus(d);

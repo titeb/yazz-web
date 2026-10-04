@@ -5,7 +5,7 @@ import { useUserAlerts } from "@/hooks/use-user-alerts";
 import { isSupabaseConfigured } from "@/lib/supabase/client";
 import { YazzStatCard } from "@/components/yazz/yazz-stat-card";
 import { stats as mockStats } from "@/lib/yazz/mock-data";
-import { Database, AlertTriangle, Loader2 } from "lucide-react";
+import { Database, AlertTriangle } from "lucide-react";
 
 function timeAgo(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime();
@@ -115,13 +115,7 @@ export default function StatsPage() {
             )}
           </div>
 
-          {isReady && loading && (
-            <div className="grid place-items-center py-8">
-              <Loader2 className="h-6 w-6 animate-spin text-yazz-primary" />
-            </div>
-          )}
-
-          {isReady && !loading && alerts.length === 0 && (
+          {isReady && alerts.length === 0 && (
             <div className="grid place-items-center py-8 text-center">
               <div className="grid h-12 w-12 place-items-center rounded-full bg-yazz-success/10">
                 <AlertTriangle className="h-5 w-5 text-yazz-success" />
@@ -135,7 +129,7 @@ export default function StatsPage() {
             </div>
           )}
 
-          {isReady && !loading && alerts.length > 0 && (
+          {isReady && alerts.length > 0 && (
             <ul className="space-y-2">
               {alerts.map((a) => (
                 <li

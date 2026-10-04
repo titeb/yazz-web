@@ -235,15 +235,8 @@ export default function HistoryPage() {
               </div>
             )}
 
-            {/* Loading */}
-            {loading && (
-              <div className="grid place-items-center py-12">
-                <Loader2 className="h-8 w-8 animate-spin text-yazz-primary" />
-              </div>
-            )}
-
             {/* Empty state */}
-            {!loading && trips.length === 0 && !error && (
+            {trips.length === 0 && !error && (
               <div className="grid place-items-center py-12 text-center">
                 <div className="grid h-14 w-14 place-items-center rounded-full bg-yazz-accent">
                   <Route className="h-6 w-6 text-yazz-text-muted" />
@@ -258,7 +251,7 @@ export default function HistoryPage() {
             )}
 
             {/* Liste des trajets */}
-            {!loading && trips.length > 0 && (
+            {trips.length > 0 && (
               <ul className="space-y-2">
                 {trips.map((trip, idx) => {
                   const duration = trip.endedAt

@@ -330,13 +330,7 @@ export default function SharingPage() {
           </div>
         )}
 
-        {isReady && loading && (
-          <div className="grid place-items-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-yazz-primary" />
-          </div>
-        )}
-
-        {isReady && !loading && (
+        {isReady && (
           <>
             {/* Invitations reçues */}
             {invitations.length > 0 && (

@@ -220,13 +220,7 @@ export default function GeofencesPage() {
           </div>
         )}
 
-        {isReady && loading && (
-          <div className="grid place-items-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-yazz-primary" />
-          </div>
-        )}
-
-        {isReady && !loading && geofences.length === 0 && !error && (
+        {isReady && geofences.length === 0 && !error && (
           <div className="grid place-items-center py-12 text-center">
             <div className="grid h-14 w-14 place-items-center rounded-full bg-yazz-accent">
               <MapPin className="h-6 w-6 text-yazz-text-muted" />
@@ -248,7 +242,7 @@ export default function GeofencesPage() {
         )}
 
         {/* Liste des géofences */}
-        {isReady && !loading && geofences.length > 0 && (
+        {isReady && geofences.length > 0 && (
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
             {geofences.map((gf) => (
               <div

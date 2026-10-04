@@ -53,15 +53,8 @@ export default function AlertsPage() {
           </div>
         )}
 
-        {/* Loading */}
-        {isReady && loading && (
-          <div className="grid place-items-center py-12">
-            <div className="h-8 w-8 animate-spin rounded-full border-2 border-yazz-border-light border-t-yazz-primary" />
-          </div>
-        )}
-
         {/* Liste */}
-        {isReady && !loading && alerts.length === 0 && (
+        {isReady && alerts.length === 0 && (
           <div className="grid place-items-center py-12 text-center">
             <div className="grid h-14 w-14 place-items-center rounded-full bg-yazz-success/10">
               <Bell className="h-6 w-6 text-yazz-success" />
@@ -72,7 +65,7 @@ export default function AlertsPage() {
         )}
 
         {/* Alerts list */}
-        {isReady && !loading && alerts.length > 0 && (
+        {isReady && alerts.length > 0 && (
           <ul className="space-y-2">
             {alerts.map((a) => (
               <li
