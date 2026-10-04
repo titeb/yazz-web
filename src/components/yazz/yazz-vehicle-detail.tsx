@@ -112,6 +112,10 @@ export function YazzVehicleDetail({ vehicle, onClose }: YazzVehicleDetailProps) 
   if (address?.quarter) addressParts.push(address.quarter);
   if (address?.commune) addressParts.push(address.commune);
   if (address?.city && address.city !== address.commune) addressParts.push(address.city);
+  // Province si différente de la ville (ex: "Matadi, Kongo Central")
+  if (address?.region && address.region !== address.city && address.region !== address.commune) {
+    addressParts.push(address.region);
+  }
   const addressDisplay = addressParts.length > 0 ? addressParts.join(", ") : address?.fullAddress || "Localisation en cours…";
 
   const handleShare = () => {

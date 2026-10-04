@@ -8,6 +8,7 @@ type GeoAddress = {
   commune?: string;
   quarter?: string;
   city?: string;
+  region?: string; // province (ex: "Kongo Central", "Kinshasa")
 };
 
 /**
@@ -48,19 +49,43 @@ export function useReverseGeocode(lat: number | null, lng: number | null) {
 
         const context = feature.context || [];
         const fullAddress = feature.place_name || "Adresse inconnue";
+        const placeType = feature.place_type?.[0] as string | undefined;
+        const featureText = feature.text as string | undefined;
 
-        // Extraire les composantes depuis context
+        // Le feature lui-même représente le résultat le plus spécifique.
+        // On l'attribue selon son place_type pour ne pas confondre
+        // une commune (locality) avec une rue (address).
         let commune: string | undefined;
         let quarter: string | undefined;
         let city: string | undefined;
+        let region: string | undefined;
+        let street: string | undefined;
 
+        if (placeType === "address" || placeType === "poi") {
+          street = featureText;
+        } else if (placeType === "neighborhood") {
+          quarter = featureText;
+        } else if (placeType === "locality") {
+          commune = featureText;
+        } else if (placeType === "place") {
+          // Cas important pour la RDC : quand on est dans une ville comme
+          // Matadi (Kongo Central), le feature est de type "place" et
+          // represente la ville. Le context ne contient PAS de "place"
+          // (puisque le feature lui-même l'est). Sans cette ligne, la ville
+          // n'était jamais affichée hors de Kinshasa.
+          city = featureText;
+        } else {
+          street = featureText;
+        }
+
+        // Remplit la hiérarchie parente depuis context
         context.forEach((c: any) => {
-          if (c.id.startsWith("locality")) commune = c.text;
-          else if (c.id.startsWith("neighborhood")) quarter = c.text;
-          else if (c.id.startsWith("place")) city = c.text;
+          const prefix = c.id.split(".")[0];
+          if (prefix === "locality" && !commune) commune = c.text;
+          else if (prefix === "neighborhood" && !quarter) quarter = c.text;
+          else if (prefix === "place" && !city) city = c.text;
+          else if (prefix === "region") region = c.text;
         });
-
-        const street = feature.text;
 
         setAddress({
           fullAddress,
@@ -68,6 +93,7 @@ export function useReverseGeocode(lat: number | null, lng: number | null) {
           commune,
           quarter,
           city,
+          region,
         });
       })
       .catch((err) => {

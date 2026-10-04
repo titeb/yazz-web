@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { YazzVehicleGridCard } from "@/components/yazz/yazz-vehicle-grid-card";
+import { YazzPhotoUpload } from "@/components/yazz/yazz-photo-upload";
 
 export default function VehiclesPage() {
   return (
@@ -175,6 +176,7 @@ function AddDeviceModal({
   const [brand, setBrand] = useState("");
   const [model, setModel] = useState("");
   const [color, setColor] = useState("");
+  const [urlImage, setUrlImage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -192,6 +194,7 @@ function AddDeviceModal({
       vehicleBrand: brand || undefined,
       vehicleModel: model || undefined,
       vehicleColor: color || undefined,
+      urlImage: urlImage || undefined,
     });
     setLoading(false);
     if (!r.success) setError(r.error || "Erreur lors de l'ajout.");
@@ -200,6 +203,9 @@ function AddDeviceModal({
   return (
     <ModalShell onClose={onClose} title="Ajouter un capteur">
       <div className="space-y-3">
+        {/* Photo du capteur */}
+        <YazzPhotoUpload value={urlImage} onChange={setUrlImage} />
+
         <Field label="IMEI du capteur" required>
           <input
             type="text"
@@ -312,6 +318,7 @@ function EditDeviceModal({
   const [model, setModel] = useState(device.vehicleModel ?? "");
   const [color, setColor] = useState(device.vehicleColor ?? "");
   const [speedLimit, setSpeedLimit] = useState(device.speedLimit?.toString() ?? "");
+  const [urlImage, setUrlImage] = useState<string | null>(device.urlImage ?? null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -325,6 +332,7 @@ function EditDeviceModal({
       vehicleModel: model || null,
       vehicleColor: color || null,
       speedLimit: speedLimit ? parseInt(speedLimit, 10) : null,
+      urlImage: urlImage,
     });
     setLoading(false);
     if (!r.success) setError(r.error || "Erreur lors de la mise à jour.");
@@ -333,6 +341,9 @@ function EditDeviceModal({
   return (
     <ModalShell onClose={onClose} title="Éditer le capteur">
       <div className="space-y-3">
+        {/* Photo du capteur */}
+        <YazzPhotoUpload value={urlImage} onChange={setUrlImage} />
+
         <div className="rounded-yazz-sm bg-yazz-background p-2">
           <p className="font-inter text-[10px] text-yazz-text-caption">IMEI</p>
           <p className="font-mono text-[12px] font-bold text-yazz-text-dark">{device.id}</p>

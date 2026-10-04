@@ -44,10 +44,11 @@ export type UseUserDevicesResult = {
     vehicleBrand?: string;
     vehicleModel?: string;
     vehicleColor?: string;
+    urlImage?: string;
   }) => Promise<{ success: boolean; error?: string }>;
   updateDevice: (
     id: string,
-    input: Partial<Pick<UserDevice, "name" | "vehiclePlate" | "vehicleBrand" | "vehicleModel" | "vehicleColor" | "speedLimit">>
+    input: Partial<Pick<UserDevice, "name" | "vehiclePlate" | "vehicleBrand" | "vehicleModel" | "vehicleColor" | "speedLimit" | "urlImage">>
   ) => Promise<{ success: boolean; error?: string }>;
   removeDevice: (id: string) => Promise<{ success: boolean; error?: string }>;
   toggleActive: (id: string, active: boolean) => Promise<{ success: boolean; error?: string }>;
@@ -294,6 +295,7 @@ export function useUserDevices(): UseUserDevicesResult {
       vehicleBrand?: string;
       vehicleModel?: string;
       vehicleColor?: string;
+      urlImage?: string;
     }) => {
       if (!supabase) return { success: false, error: "Supabase non configuré" };
 
@@ -319,6 +321,7 @@ export function useUserDevices(): UseUserDevicesResult {
         if (input.vehicleBrand) insert.vehicle_brand = input.vehicleBrand;
         if (input.vehicleModel) insert.vehicle_model = input.vehicleModel;
         if (input.vehicleColor) insert.vehicle_color = input.vehicleColor;
+        if (input.urlImage) insert.url_image = input.urlImage;
 
         const { error: insertErr } = await supabase.from("user_devices").insert(insert);
 
@@ -344,7 +347,7 @@ export function useUserDevices(): UseUserDevicesResult {
     async (
       id: string,
       input: Partial<
-        Pick<UserDevice, "name" | "vehiclePlate" | "vehicleBrand" | "vehicleModel" | "vehicleColor" | "speedLimit">
+        Pick<UserDevice, "name" | "vehiclePlate" | "vehicleBrand" | "vehicleModel" | "vehicleColor" | "speedLimit" | "urlImage">
       >
     ) => {
       if (!supabase) return { success: false, error: "Supabase non configuré" };
@@ -357,6 +360,7 @@ export function useUserDevices(): UseUserDevicesResult {
         if (input.vehicleModel !== undefined) update.vehicle_model = input.vehicleModel;
         if (input.vehicleColor !== undefined) update.vehicle_color = input.vehicleColor;
         if (input.speedLimit !== undefined) update.speed_limit = input.speedLimit;
+        if (input.urlImage !== undefined) update.url_image = input.urlImage;
 
         const { error: updateErr } = await supabase
           .from("user_devices")
