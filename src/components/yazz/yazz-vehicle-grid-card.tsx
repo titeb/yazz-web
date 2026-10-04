@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { UserDevice } from "@/hooks/use-user-devices";
+import { useVehiclePhotos } from "@/hooks/use-vehicle-photos";
 import { useReverseGeocode } from "@/hooks/use-reverse-geocode";
 import { YazzEngineCutModal } from "./yazz-engine-cut-modal";
 import { OptionsModal } from "./yazz-options-modal";
@@ -165,7 +166,11 @@ export function YazzVehicleGridCard({ device }: { device: UserDevice }) {
   const vehicleName =
     device.name || device.vehiclePlate || `Capteur ${device.shortId || device.id.slice(-6)}`;
   const firstLetter = (vehicleName || "?")[0]?.toUpperCase() || "?";
-  const vehiclePhoto = device.urlImage || device.vehiclePhoto || null;
+  // Photos multiples du véhicule (Realtime) — première photo utilisée comme avatar
+  const { photos: vehiclePhotos } = useVehiclePhotos(device.id);
+
+  // Avatar : priorité à la première photo de la galerie, puis urlImage, puis vehiclePhoto
+  const vehiclePhoto = vehiclePhotos[0]?.url || device.urlImage || device.vehiclePhoto || null;
   const battColor = getBatteryColor(device.batteryPercent);
 
   // ─── Actions ( mêmes comportements que YazzVehicleDetail ) ──────────────

@@ -3,7 +3,7 @@
 import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { useUserDevices, type UserDevice } from "@/hooks/use-user-devices";
-import { isSupabaseConfigured } from "@/lib/supabase/client";
+import { isSupabaseConfigured, createClientSafe } from "@/lib/supabase/client";
 import {
   Plus,
   Car,
@@ -14,6 +14,7 @@ import {
 import { cn } from "@/lib/utils";
 import { YazzVehicleGridCard } from "@/components/yazz/yazz-vehicle-grid-card";
 import { YazzPhotoUpload } from "@/components/yazz/yazz-photo-upload";
+import { YazzPhotoGallery } from "@/components/yazz/yazz-photo-gallery";
 
 export default function VehiclesPage() {
   return (
@@ -177,7 +178,7 @@ function AddDeviceModal({
   const [model, setModel] = useState("");
   const [color, setColor] = useState("");
   const [urlImage, setUrlImage] = useState<string | null>(null);
-  const [vehiclePhoto, setVehiclePhoto] = useState<string | null>(null);
+  const [pendingPhotos, setPendingPhotos] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -196,8 +197,27 @@ function AddDeviceModal({
       vehicleModel: model || undefined,
       vehicleColor: color || undefined,
       urlImage: urlImage || undefined,
-      vehiclePhoto: vehiclePhoto || undefined,
     });
+
+    // Si l'ajout a réussi, insérer les photos multiples dans vehicle_photos
+    if (r.success && pendingPhotos.length > 0) {
+      const supabase = createClientSafe();
+      if (supabase) {
+        const inserts = pendingPhotos.map((url, index) => ({
+          device_id: imei,
+          url,
+          position: index,
+        }));
+        const { error: photoErr } = await supabase
+          .from("vehicle_photos")
+          .insert(inserts);
+        if (photoErr) {
+          console.warn("[AddDevice] Erreur insertion photos:", photoErr.message);
+          // Non bloquant : le capteur est créé, les photos peuvent être rajoutées plus tard
+        }
+      }
+    }
+
     setLoading(false);
     if (!r.success) setError(r.error || "Erreur lors de l'ajout.");
   };
@@ -205,11 +225,15 @@ function AddDeviceModal({
   return (
     <ModalShell onClose={onClose} title="Ajouter un capteur">
       <div className="space-y-3">
-        {/* Photo du capteur */}
+        {/* Photo du capteur (boîtier) */}
         <YazzPhotoUpload value={urlImage} onChange={setUrlImage} label="Photo du capteur" />
 
-        {/* Photo du véhicule (utilisé pour la reconnaissance SOS) */}
-        <YazzPhotoUpload value={vehiclePhoto} onChange={setVehiclePhoto} label="Photo du véhicule (pour SOS)" />
+        {/* Photos du véhicule (jusqu'à 5, pour identification SOS) */}
+        <YazzPhotoGallery
+          deviceId={null}
+          pendingUrls={pendingPhotos}
+          onPendingUrlsChange={setPendingPhotos}
+        />
 
         <Field label="IMEI du capteur" required>
           <input
@@ -324,7 +348,6 @@ function EditDeviceModal({
   const [color, setColor] = useState(device.vehicleColor ?? "");
   const [speedLimit, setSpeedLimit] = useState(device.speedLimit?.toString() ?? "");
   const [urlImage, setUrlImage] = useState<string | null>(device.urlImage ?? null);
-  const [vehiclePhoto, setVehiclePhoto] = useState<string | null>(device.vehiclePhoto ?? null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -339,7 +362,6 @@ function EditDeviceModal({
       vehicleColor: color || null,
       speedLimit: speedLimit ? parseInt(speedLimit, 10) : null,
       urlImage: urlImage,
-      vehiclePhoto: vehiclePhoto,
     });
     setLoading(false);
     if (!r.success) setError(r.error || "Erreur lors de la mise à jour.");
@@ -348,11 +370,11 @@ function EditDeviceModal({
   return (
     <ModalShell onClose={onClose} title="Éditer le capteur">
       <div className="space-y-3">
-        {/* Photo du capteur */}
+        {/* Photo du capteur (boîtier) */}
         <YazzPhotoUpload value={urlImage} onChange={setUrlImage} label="Photo du capteur" />
 
-        {/* Photo du véhicule (utilisé pour la reconnaissance SOS) */}
-        <YazzPhotoUpload value={vehiclePhoto} onChange={setVehiclePhoto} label="Photo du véhicule (pour SOS)" />
+        {/* Photos du véhicule (jusqu'à 5, pour identification SOS) */}
+        <YazzPhotoGallery deviceId={device.id} />
 
         <div className="rounded-yazz-sm bg-yazz-background p-2">
           <p className="font-inter text-[10px] text-yazz-text-caption">IMEI</p>

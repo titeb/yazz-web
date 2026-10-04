@@ -88,24 +88,56 @@ export default function SOSPage() {
         .eq("device_id", device.id)
         .maybeSingle();
 
+      // Fetch vehicle photos from vehicle_photos table (jusqu'à 5, ordre par position)
+      const { data: vehiclePhotos } = await supabase
+        .from("vehicle_photos")
+        .select("url, position")
+        .eq("device_id", device.id)
+        .order("position", { ascending: true })
+        .limit(5);
+
+      // Photo principale = première photo de la galerie, ou fallback vehicle_photo / url_image
+      const primaryPhoto = vehiclePhotos?.[0]?.url ?? device.vehicle_photo ?? device.url_image ?? null;
+
       // Create SOS alert avec TOUTES les infos véhicule pour reconnaissance
       // par les autres utilisateurs (vigiles YAZZ) qui verront l'alerte.
-      const { error: insertErr } = await supabase.from("sos_alerts").insert({
-        device_id: device.id,
-        declared_by: user.id,
-        status: "active",
-        last_lat: position?.latitude ?? null,
-        last_lng: position?.longitude ?? null,
-        device_name: device.name ?? null,
-        vehicle_photo: device.vehicle_photo ?? device.url_image ?? null,
-        vehicle_color: device.vehicle_color ?? null,
-        vehicle_plate: device.vehicle_plate ?? null,
-        vehicle_brand: device.vehicle_brand ?? null,
-        vehicle_model: device.vehicle_model ?? null,
-        created_at: new Date().toISOString(),
-      });
+      const { data: alertData, error: insertErr } = await supabase
+        .from("sos_alerts")
+        .insert({
+          device_id: device.id,
+          declared_by: user.id,
+          status: "active",
+          last_lat: position?.latitude ?? null,
+          last_lng: position?.longitude ?? null,
+          device_name: device.name ?? null,
+          vehicle_photo: primaryPhoto,
+          vehicle_color: device.vehicle_color ?? null,
+          vehicle_plate: device.vehicle_plate ?? null,
+          vehicle_brand: device.vehicle_brand ?? null,
+          vehicle_model: device.vehicle_model ?? null,
+          created_at: new Date().toISOString(),
+        })
+        .select("id")
+        .single();
 
       if (insertErr) throw insertErr;
+
+      // Copier les photos du véhicule dans sos_alert_photos (snapshot)
+      // pour que les vigiles voient les photos même si l'owner les supprime après
+      if (alertData?.id && vehiclePhotos && vehiclePhotos.length > 0) {
+        const photoInserts = vehiclePhotos.map((p: any, index: number) => ({
+          alert_id: alertData.id,
+          url: p.url,
+          position: index,
+        }));
+        const { error: photoInsertErr } = await supabase
+          .from("sos_alert_photos")
+          .insert(photoInserts);
+        if (photoInsertErr) {
+          console.warn("[SOS] Erreur insertion photos alerte:", photoInsertErr.message);
+          // Non bloquant : l'alerte SOS est créée, les photos sont optionnelles
+        }
+      }
 
       setState("active");
     } catch (err: any) {
