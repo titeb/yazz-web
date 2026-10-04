@@ -27,6 +27,8 @@ export type UseUserAlertsResult = {
   refetch: () => Promise<void>;
   markAsRead: (id: string) => Promise<void>;
   markAllAsRead: () => Promise<void>;
+  deleteAlert: (id: string) => Promise<{ success: boolean; error?: string }>;
+  deleteAllRead: () => Promise<{ success: boolean; error?: string; count?: number }>;
 };
 
 // Compteur global pour générer des noms de channel uniques
@@ -189,7 +191,58 @@ export function useUserAlerts(limit = 20): UseUserAlertsResult {
     }
   }, [supabase]);
 
+  // Supprime une notification (RLS: user_id = auth.uid())
+  const deleteAlert = useCallback(
+    async (id: string) => {
+      if (!supabase) return { success: false, error: "Supabase non configuré" };
+      try {
+        // Optimistic : retire immédiatement de la liste
+        setAlerts((prev) => prev.filter((a) => a.id !== id));
+        const { error: deleteErr } = await supabase
+          .from("notifications")
+          .delete()
+          .eq("id", id);
+        if (deleteErr) throw deleteErr;
+        return { success: true };
+      } catch (err: any) {
+        console.error("[useUserAlerts] deleteAlert erreur:", err);
+        // Re-fetch pour réconcilier (en cas d'erreur, on remet la notif)
+        fetchAlerts();
+        return { success: false, error: err.message ?? "Erreur lors de la suppression" };
+      }
+    },
+    [supabase, fetchAlerts]
+  );
+
+  // Supprime toutes les notifications lues (clear read)
+  const deleteAllRead = useCallback(async () => {
+    if (!supabase) return { success: false, error: "Supabase non configuré" };
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) return { success: false, error: "Non authentifié" };
+
+      // Optimistic : retire les lues immédiatement
+      const readCount = alerts.filter((a) => a.isRead).length;
+      setAlerts((prev) => prev.filter((a) => !a.isRead));
+
+      const { error: deleteErr } = await supabase
+        .from("notifications")
+        .delete()
+        .eq("user_id", user.id)
+        .eq("is_read", true);
+
+      if (deleteErr) throw deleteErr;
+      return { success: true, count: readCount };
+    } catch (err: any) {
+      console.error("[useUserAlerts] deleteAllRead erreur:", err);
+      fetchAlerts();
+      return { success: false, error: err.message ?? "Erreur" };
+    }
+  }, [supabase, fetchAlerts, alerts]);
+
   const unreadCount = alerts.filter((a) => !a.isRead).length;
 
-  return { alerts, unreadCount, loading, error, refetch: fetchAlerts, markAsRead, markAllAsRead };
+  return { alerts, unreadCount, loading, error, refetch: fetchAlerts, markAsRead, markAllAsRead, deleteAlert, deleteAllRead };
 }
