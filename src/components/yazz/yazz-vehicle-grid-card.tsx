@@ -56,6 +56,14 @@ type StatusInfo = {
 };
 
 // Dérive le statut depuis les données réelles (vitesse, batterie, parking, engineCut, lastUpdate)
+// Couleurs sémantiques alignées sur le panneau de détail du dashboard (getStatusBadge),
+// avec une couleur distincte par statut pour rester lisible d'un coup d'œil :
+//   - Hors-ligne    → rouge (error) — signal perdu, problème
+//   - Moteur coupé  → rouge clignotant (error + yazz-blink) — alerte critique
+//   - Batterie faible → orange (crawling) — attention, distinct du jaune "à l'arrêt"
+//   - En mouvement  → vert (success) — véhicule actif
+//   - Mode parking  → bleu (info) — état intentionnel
+//   - À l'arrêt     → jaune (warning) — en ligne mais immobilisé
 function deriveStatus(d: UserDevice): StatusInfo {
   const TEN_MIN = 10 * 60 * 1000;
   const lastTs = d.lastUpdate ? new Date(d.lastUpdate).getTime() : 0;
@@ -64,9 +72,9 @@ function deriveStatus(d: UserDevice): StatusInfo {
   if (isOffline) {
     return {
       label: "Hors-ligne",
-      color: "text-yazz-text-caption",
-      dot: "bg-yazz-text-caption",
-      bg: "bg-yazz-text-caption/10",
+      color: "text-yazz-error",
+      dot: "bg-yazz-error",
+      bg: "bg-yazz-error/15 border border-yazz-error/40",
     };
   }
   if (d.engineCutState) {
@@ -74,23 +82,23 @@ function deriveStatus(d: UserDevice): StatusInfo {
       label: "Moteur coupé",
       color: "text-yazz-error",
       dot: "bg-yazz-error yazz-blink",
-      bg: "bg-yazz-error/10",
+      bg: "bg-yazz-error/15 border border-yazz-error/40",
     };
   }
   if ((d.batteryPercent ?? 100) < 20) {
     return {
       label: "Batterie faible",
-      color: "text-yazz-warning",
-      dot: "bg-yazz-warning",
-      bg: "bg-yazz-warning/10",
+      color: "text-yazz-crawling",
+      dot: "bg-yazz-crawling",
+      bg: "bg-yazz-crawling/15 border border-yazz-crawling/40",
     };
   }
   if ((d.speed ?? 0) > 0) {
     return {
       label: "En mouvement",
-      color: "text-yazz-primary",
-      dot: "bg-yazz-primary",
-      bg: "bg-yazz-primary/10",
+      color: "text-yazz-success",
+      dot: "bg-yazz-success",
+      bg: "bg-yazz-success/15 border border-yazz-success/40",
     };
   }
   if (d.parkingMode) {
@@ -98,14 +106,14 @@ function deriveStatus(d: UserDevice): StatusInfo {
       label: "Mode parking",
       color: "text-yazz-info",
       dot: "bg-yazz-info",
-      bg: "bg-yazz-info/10",
+      bg: "bg-yazz-info/15 border border-yazz-info/40",
     };
   }
   return {
     label: "À l'arrêt",
-    color: "text-yazz-text-muted",
-    dot: "bg-yazz-text-muted",
-    bg: "bg-yazz-text-muted/10",
+    color: "text-yazz-warning",
+    dot: "bg-yazz-warning",
+    bg: "bg-yazz-warning/15 border border-yazz-warning/40",
   };
 }
 
