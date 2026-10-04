@@ -14,8 +14,10 @@ import { cn } from "@/lib/utils";
 // 4. La data URL est passée au parent via onChange
 //
 // Ce composant ne dépend pas de Supabase Storage — il stocke l'image
-// compressée directement dans la colonne url_image (type text).
-// Taille typale : 30-50 ko pour 400x400 JPEG, parfaitement adaptée.
+// compressée comme data URL (base64). Le parent décide dans quelle colonne
+// l'enregistrer : url_image (photo du capteur) ou vehicle_photo (photo du
+// véhicule, utilisée pour la reconnaissance SOS par les autres utilisateurs).
+// Taille typique : 30-50 ko pour 400x400 JPEG, parfaitement adaptée.
 // ============================================================
 
 type YazzPhotoUploadProps = {

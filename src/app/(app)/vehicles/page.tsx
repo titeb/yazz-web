@@ -177,6 +177,7 @@ function AddDeviceModal({
   const [model, setModel] = useState("");
   const [color, setColor] = useState("");
   const [urlImage, setUrlImage] = useState<string | null>(null);
+  const [vehiclePhoto, setVehiclePhoto] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -195,6 +196,7 @@ function AddDeviceModal({
       vehicleModel: model || undefined,
       vehicleColor: color || undefined,
       urlImage: urlImage || undefined,
+      vehiclePhoto: vehiclePhoto || undefined,
     });
     setLoading(false);
     if (!r.success) setError(r.error || "Erreur lors de l'ajout.");
@@ -204,7 +206,10 @@ function AddDeviceModal({
     <ModalShell onClose={onClose} title="Ajouter un capteur">
       <div className="space-y-3">
         {/* Photo du capteur */}
-        <YazzPhotoUpload value={urlImage} onChange={setUrlImage} />
+        <YazzPhotoUpload value={urlImage} onChange={setUrlImage} label="Photo du capteur" />
+
+        {/* Photo du véhicule (utilisé pour la reconnaissance SOS) */}
+        <YazzPhotoUpload value={vehiclePhoto} onChange={setVehiclePhoto} label="Photo du véhicule (pour SOS)" />
 
         <Field label="IMEI du capteur" required>
           <input
@@ -319,6 +324,7 @@ function EditDeviceModal({
   const [color, setColor] = useState(device.vehicleColor ?? "");
   const [speedLimit, setSpeedLimit] = useState(device.speedLimit?.toString() ?? "");
   const [urlImage, setUrlImage] = useState<string | null>(device.urlImage ?? null);
+  const [vehiclePhoto, setVehiclePhoto] = useState<string | null>(device.vehiclePhoto ?? null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -333,6 +339,7 @@ function EditDeviceModal({
       vehicleColor: color || null,
       speedLimit: speedLimit ? parseInt(speedLimit, 10) : null,
       urlImage: urlImage,
+      vehiclePhoto: vehiclePhoto,
     });
     setLoading(false);
     if (!r.success) setError(r.error || "Erreur lors de la mise à jour.");
@@ -342,7 +349,10 @@ function EditDeviceModal({
     <ModalShell onClose={onClose} title="Éditer le capteur">
       <div className="space-y-3">
         {/* Photo du capteur */}
-        <YazzPhotoUpload value={urlImage} onChange={setUrlImage} />
+        <YazzPhotoUpload value={urlImage} onChange={setUrlImage} label="Photo du capteur" />
+
+        {/* Photo du véhicule (utilisé pour la reconnaissance SOS) */}
+        <YazzPhotoUpload value={vehiclePhoto} onChange={setVehiclePhoto} label="Photo du véhicule (pour SOS)" />
 
         <div className="rounded-yazz-sm bg-yazz-background p-2">
           <p className="font-inter text-[10px] text-yazz-text-caption">IMEI</p>

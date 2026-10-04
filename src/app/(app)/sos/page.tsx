@@ -65,10 +65,10 @@ export default function SOSPage() {
         return;
       }
 
-      // Get user's first active device
+      // Get user's first active device + ALL vehicle info (for SOS recognition)
       const { data: devices } = await supabase
         .from("user_devices")
-        .select("id, name")
+        .select("id, name, url_image, vehicle_photo, vehicle_color, vehicle_plate, vehicle_brand, vehicle_model")
         .eq("user_id", user.id)
         .eq("is_active", true)
         .limit(1);
@@ -81,11 +81,27 @@ export default function SOSPage() {
 
       const device = devices[0];
 
-      // Create SOS alert
+      // Get current position from last_known_positions (pour last_lat/last_lng dans l'alerte)
+      const { data: position } = await supabase
+        .from("last_known_positions")
+        .select("latitude, longitude")
+        .eq("device_id", device.id)
+        .maybeSingle();
+
+      // Create SOS alert avec TOUTES les infos véhicule pour reconnaissance
+      // par les autres utilisateurs (vigiles YAZZ) qui verront l'alerte.
       const { error: insertErr } = await supabase.from("sos_alerts").insert({
-        user_device_id: device.id,
+        device_id: device.id,
         declared_by: user.id,
         status: "active",
+        last_lat: position?.latitude ?? null,
+        last_lng: position?.longitude ?? null,
+        device_name: device.name ?? null,
+        vehicle_photo: device.vehicle_photo ?? device.url_image ?? null,
+        vehicle_color: device.vehicle_color ?? null,
+        vehicle_plate: device.vehicle_plate ?? null,
+        vehicle_brand: device.vehicle_brand ?? null,
+        vehicle_model: device.vehicle_model ?? null,
         created_at: new Date().toISOString(),
       });
 

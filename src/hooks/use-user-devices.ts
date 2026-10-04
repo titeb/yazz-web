@@ -45,10 +45,11 @@ export type UseUserDevicesResult = {
     vehicleModel?: string;
     vehicleColor?: string;
     urlImage?: string;
+    vehiclePhoto?: string;
   }) => Promise<{ success: boolean; error?: string }>;
   updateDevice: (
     id: string,
-    input: Partial<Pick<UserDevice, "name" | "vehiclePlate" | "vehicleBrand" | "vehicleModel" | "vehicleColor" | "speedLimit" | "urlImage">>
+    input: Partial<Pick<UserDevice, "name" | "vehiclePlate" | "vehicleBrand" | "vehicleModel" | "vehicleColor" | "speedLimit" | "urlImage" | "vehiclePhoto">>
   ) => Promise<{ success: boolean; error?: string }>;
   removeDevice: (id: string) => Promise<{ success: boolean; error?: string }>;
   toggleActive: (id: string, active: boolean) => Promise<{ success: boolean; error?: string }>;
@@ -296,6 +297,7 @@ export function useUserDevices(): UseUserDevicesResult {
       vehicleModel?: string;
       vehicleColor?: string;
       urlImage?: string;
+      vehiclePhoto?: string;
     }) => {
       if (!supabase) return { success: false, error: "Supabase non configuré" };
 
@@ -322,6 +324,7 @@ export function useUserDevices(): UseUserDevicesResult {
         if (input.vehicleModel) insert.vehicle_model = input.vehicleModel;
         if (input.vehicleColor) insert.vehicle_color = input.vehicleColor;
         if (input.urlImage) insert.url_image = input.urlImage;
+        if (input.vehiclePhoto) insert.vehicle_photo = input.vehiclePhoto;
 
         const { error: insertErr } = await supabase.from("user_devices").insert(insert);
 
@@ -347,7 +350,7 @@ export function useUserDevices(): UseUserDevicesResult {
     async (
       id: string,
       input: Partial<
-        Pick<UserDevice, "name" | "vehiclePlate" | "vehicleBrand" | "vehicleModel" | "vehicleColor" | "speedLimit" | "urlImage">
+        Pick<UserDevice, "name" | "vehiclePlate" | "vehicleBrand" | "vehicleModel" | "vehicleColor" | "speedLimit" | "urlImage" | "vehiclePhoto">
       >
     ) => {
       if (!supabase) return { success: false, error: "Supabase non configuré" };
@@ -361,6 +364,7 @@ export function useUserDevices(): UseUserDevicesResult {
         if (input.vehicleColor !== undefined) update.vehicle_color = input.vehicleColor;
         if (input.speedLimit !== undefined) update.speed_limit = input.speedLimit;
         if (input.urlImage !== undefined) update.url_image = input.urlImage;
+        if (input.vehiclePhoto !== undefined) update.vehicle_photo = input.vehiclePhoto;
 
         const { error: updateErr } = await supabase
           .from("user_devices")
