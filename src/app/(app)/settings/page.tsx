@@ -10,6 +10,7 @@ import {
   Phone,
   Bell,
   Shield,
+  ShieldAlert,
   Languages,
   LogOut,
   Trash2,
@@ -33,6 +34,8 @@ export default function SettingsPage() {
   const [gpsFrozenAlerts, setGpsFrozenAlerts] = useState(true);
   const [gpsFrozenThreshold, setGpsFrozenThreshold] = useState(15);
   const [language, setLanguage] = useState("fr");
+  const [sosVigilEnabled, setSosVigilEnabled] = useState(false);
+  const [sosVigileSaving, setSosVigileSaving] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -51,6 +54,46 @@ export default function SettingsPage() {
       synced.current = true;
     }
   }, [profile]);
+
+  // Charger l'état du mode vigile depuis user_preferences
+  useEffect(() => {
+    if (!supabase) return;
+    const loadVigilePref = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data } = await supabase
+        .from("user_preferences")
+        .select("sos_vigil_enabled")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      setSosVigilEnabled(data?.sos_vigil_enabled ?? false);
+    };
+    loadVigilePref();
+  }, [supabase]);
+
+  // Toggle du mode vigile — sauvegarde immédiate dans user_preferences
+  const handleSosVigileToggle = async (v: boolean) => {
+    if (!supabase) return;
+    setSosVigilEnabled(v); // Optimistic update
+    setSosVigileSaving(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { error: upsertErr } = await supabase
+        .from("user_preferences")
+        .upsert({
+          user_id: user.id,
+          sos_vigil_enabled: v,
+          updated_at: new Date().toISOString(),
+        });
+      if (upsertErr) throw upsertErr;
+    } catch (err: any) {
+      console.error("[Settings] vigile toggle erreur:", err);
+      setSosVigilEnabled(!v); // Revert on error
+    } finally {
+      setSosVigileSaving(false);
+    }
+  };
 
   const handleSave = async () => {
     setSaving(true);
@@ -194,6 +237,57 @@ export default function SettingsPage() {
                   onChange={(e) => setGpsFrozenThreshold(parseInt(e.target.value, 10) || 15)}
                   className="font-inter h-10 w-full rounded-yazz-sm border border-yazz-border-light bg-yazz-background px-3 text-[13px] text-yazz-text-dark focus:border-yazz-primary focus:outline-none focus:ring-2 focus:ring-yazz-primary/20"
                 />
+              </div>
+            )}
+          </div>
+        </Section>
+
+        {/* SOS communautaire */}
+        <Section icon={ShieldAlert} title="SOS communautaire">
+          <div className="space-y-1">
+            <div className="flex items-center justify-between gap-3 rounded-yazz-sm p-2 hover:bg-yazz-background/40">
+              <div className="flex items-start gap-3">
+                <div className="grid h-9 w-9 shrink-0 place-items-center rounded-yazz-lg bg-yazz-error/10 text-yazz-error">
+                  <ShieldAlert className="h-[18px] w-[18px]" />
+                </div>
+                <div>
+                  <p className="font-outfit text-[13px] font-semibold text-yazz-text-dark">
+                    Mode vigile SOS
+                  </p>
+                  <p className="font-inter text-[11px] text-yazz-text-muted">
+                    Recevoir les alertes SOS des véhicules proches et aider à les repérer.
+                  </p>
+                </div>
+              </div>
+              {sosVigileSaving ? (
+                <Loader2 className="h-5 w-5 animate-spin text-yazz-primary" />
+              ) : (
+                <button
+                  onClick={() => handleSosVigileToggle(!sosVigilEnabled)}
+                  role="switch"
+                  aria-checked={sosVigilEnabled}
+                  className={cn(
+                    "relative h-5 w-9 shrink-0 rounded-full transition-colors",
+                    sosVigilEnabled ? "bg-yazz-primary" : "bg-yazz-border-light"
+                  )}
+                >
+                  <span
+                    className={cn(
+                      "absolute top-1/2 h-5 w-5 -translate-y-1/2 rounded-full bg-white shadow-yazz-soft transition-transform border border-yazz-border-light/50",
+                      sosVigilEnabled ? "translate-x-[18px]" : "translate-x-0.5"
+                    )}
+                  />
+                </button>
+              )}
+            </div>
+            {sosVigilEnabled && (
+              <div className="ml-11 mt-2 rounded-yazz-sm bg-yazz-error/5 p-3">
+                <p className="font-inter text-[11px] leading-relaxed text-yazz-text-muted">
+                  ✅ Vous êtes maintenant vigile. Vous recevrez les alertes SOS
+                  des véhicules à proximité en temps réel. Allez dans{" "}
+                  <span className="font-semibold text-yazz-text-dark">Mode vigile</span>{" "}
+                  dans le menu pour voir les alertes actives.
+                </p>
               </div>
             )}
           </div>

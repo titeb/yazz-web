@@ -18,6 +18,7 @@ import {
   BarChart3,
   Loader2,
   AlertTriangle,
+  ShieldAlert,
   type LucideIcon,
 } from "lucide-react";
 import { YazzLogo } from "./yazz-logo";
@@ -39,6 +40,7 @@ const navItems: NavItem[] = [
   { id: "history", label: "Historique trajets", icon: Route, href: "/history" },
   { id: "geofences", label: "Géofences", icon: MapPin, href: "/geofences" },
   { id: "alerts", label: "Alertes", icon: Bell, href: "/alerts" },
+  { id: "sos-vigile", label: "Mode vigile", icon: ShieldAlert, href: "/sos/vigile" },
   { id: "payments", label: "Paiements", icon: Wallet, href: "/payments" },
   { id: "sharing", label: "Partages", icon: Share2, href: "/sharing" },
   { id: "settings", label: "Paramètres", icon: Settings, href: "/settings" },
