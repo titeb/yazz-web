@@ -47,6 +47,46 @@ function detectOperator(phone: string): Operator | null {
   return OPERATORS.find((op) => op.prefixes.includes(prefix)) ?? null;
 }
 
+// Traduit un message d'erreur backend/Shwary en message clair pour l'utilisateur.
+// On se base sur les messages réels observés dans la DB (failure_reason).
+function friendlyErrorMessage(rawMessage: string): string {
+  const msg = (rawMessage || "").toLowerCase();
+  // Service indisponible (transient — réessayer plus tard)
+  if (
+    msg.includes("temporarily unavailable") ||
+    msg.includes("merchant api") ||
+    msg.includes("503") ||
+    msg.includes("502") ||
+    msg.includes("timeout") ||
+    msg.includes("econnreset") ||
+    msg.includes("backend unreachable")
+  ) {
+    return "Service Mobile Money temporairement indisponible. Réessayez dans quelques instants.";
+  }
+  // Solde insuffisant sur le compte Mobile Money du client
+  if (msg.includes("not enough funds") || msg.includes("insufficient funds") || msg.includes("solde insuffisant")) {
+    return "Solde Mobile Money insuffisant. Vérifiez le solde de votre compte et réessayez.";
+  }
+  // Numéro invalide côté opérateur
+  if (msg.includes("invalid phone") || msg.includes("numero invalide") || msg.includes("invalid msisdn")) {
+    return "Numéro Mobile Money invalide. Vérifiez le numéro saisi.";
+  }
+  // Opérateur injoignable / client a refusé
+  if (msg.includes("did not specify a reason") || msg.includes("customer rejected") || msg.includes("cancelled by user")) {
+    return "La transaction a été refusée ou annulée par l'opérateur. Réessayez ou contactez votre opérateur.";
+  }
+  // Passerelle non configurée
+  if (msg.includes("passerelle de paiement non configure") || msg.includes("not configured")) {
+    return "Paiement indisponible pour le moment. Contactez le support YAZZ.";
+  }
+  // Montant minimum
+  if (msg.includes("montant minimum") || msg.includes("minimum")) {
+    return rawMessage; // déjà en français, clair
+  }
+  // Par défaut : retourner le message brut (souvent déjà explicite)
+  return rawMessage || "Erreur lors du paiement. Réessayez.";
+}
+
 type Payment = {
   id: string;
   amount: number;
@@ -187,7 +227,7 @@ export default function PaymentsPage() {
         fetchPayments();
       }
     } catch (err: any) {
-      setError(err.message || "Erreur lors de l'initiation du paiement.");
+      setError(friendlyErrorMessage(err.message || "Erreur lors de l'initiation du paiement."));
     } finally {
       setLoading(false);
     }
