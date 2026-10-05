@@ -19,38 +19,14 @@ import { cn } from "@/lib/utils";
 
 type PaymentStatus = "PENDING" | "SUBMITTED" | "SUCCESS" | "FAILED" | "CANCELLED";
 
-type Operator = {
-  id: string;
-  label: string;
-  color: string;
-  bg: string;
-  prefixes: string[]; // 2 digits après +243
-};
-
-// Mapping préfixes RDC → opérateur Mobile Money
-// 81, 82, 84 → Airtel Money (Shwary)
-// 80, 89     → Orange Money (PawaPay)
-// 97, 98, 99 → Vodacom M-Pesa (Shwary)
-const OPERATORS: Operator[] = [
-  { id: "airtel",  label: "Airtel Money",  color: "text-yazz-error",  bg: "bg-yazz-error/10",  prefixes: ["81", "82", "84"] },
-  { id: "orange",  label: "Orange Money",  color: "text-yazz-orange", bg: "bg-yazz-orange/10", prefixes: ["80", "89"] },
-  { id: "mpesa",   label: "M-Pesa",        color: "text-yazz-success", bg: "bg-yazz-success/10", prefixes: ["97", "98", "99"] },
-];
-
-// Détecte l'opérateur depuis le numéro +243XXXXXXXXX
-function detectOperator(phone: string): Operator | null {
-  const digits = phone.replace(/\D/g, "");
-  // Accepte +243XXXXXXXXX ou 0XXXXXXXXX
-  const after243 = digits.startsWith("243") ? digits.slice(3) : (digits.startsWith("0") ? digits.slice(1) : digits);
-  if (after243.length < 2) return null;
-  const prefix = after243.slice(0, 2);
-  return OPERATORS.find((op) => op.prefixes.includes(prefix)) ?? null;
-}
-
 // Traduit un message d'erreur backend/Shwary en message clair pour l'utilisateur.
 // On se base sur les messages réels observés dans la DB (failure_reason).
 function friendlyErrorMessage(rawMessage: string): string {
   const msg = (rawMessage || "").toLowerCase();
+  // Erreur générique du backend — on n'affiche pas ça, on cherche le détail
+  if (msg.includes("echec initiation paiement") || msg.includes("echec initiation")) {
+    return "Le paiement n'a pas pu être initié. Vérifiez votre numéro et réessayez.";
+  }
   // Service indisponible (transient — réessayer plus tard)
   if (
     msg.includes("temporarily unavailable") ||
@@ -121,9 +97,6 @@ export default function PaymentsPage() {
   const [pendingPayment, setPendingPayment] = useState<{ id: string; checkoutUrl?: string | null } | null>(null);
   const [payments, setPayments] = useState<Payment[]>([]);
   const [paymentsLoading, setPaymentsLoading] = useState(false);
-
-  // Détection automatique de l'opérateur (pas de bouton radio — on lit le préfixe)
-  const detectedOperator = detectOperator(phone);
 
   // Fetch historique paiements
   const fetchPayments = useCallback(async () => {
@@ -208,7 +181,10 @@ export default function PaymentsPage() {
       const data = await res.json();
 
       if (!res.ok) {
-        throw new Error(data?.error || data?.message || `Erreur ${res.status}`);
+        // Le backend peut renvoyer { error: 'Echec initiation paiement', details: '<vraie erreur Shwary>' }
+        // On préfère 'details' s'il est présent car il est plus explicite
+        const rawErr = data?.details || data?.error || data?.message || `Erreur ${res.status}`;
+        throw new Error(friendlyErrorMessage(rawErr));
       }
 
       // Le backend retourne payment_id (snake_case), pas paymentId
@@ -318,7 +294,7 @@ export default function PaymentsPage() {
             />
           </div>
 
-          {/* Téléphone + détection opérateur */}
+          {/* Téléphone */}
           <div className="mb-4">
             <label className="font-inter mb-1.5 block text-[11px] font-medium text-yazz-text-body">
               Numéro Mobile Money
@@ -330,31 +306,9 @@ export default function PaymentsPage() {
                 placeholder="+243 8XX XXX XXX"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
-                className={cn(
-                  "font-inter h-11 w-full rounded-yazz-sm border bg-yazz-background pl-10 pr-3 text-[14px] text-yazz-text-dark focus:outline-none focus:ring-2",
-                  detectedOperator
-                    ? "border-yazz-primary/30 focus:border-yazz-primary focus:ring-yazz-primary/20"
-                    : "border-yazz-border-light focus:border-yazz-primary focus:ring-yazz-primary/20"
-                )}
+                className="font-inter h-11 w-full rounded-yazz-sm border border-yazz-border-light bg-yazz-background pl-10 pr-3 text-[14px] text-yazz-text-dark focus:border-yazz-primary focus:outline-none focus:ring-2 focus:ring-yazz-primary/20"
               />
             </div>
-            {/* Badge opérateur détecté */}
-            {detectedOperator && (
-              <div className="mt-2 flex items-center gap-2">
-                <span className={cn("inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-bold", detectedOperator.bg, detectedOperator.color)}>
-                  <span className={cn("h-1.5 w-1.5 rounded-full", detectedOperator.color.replace("text-", "bg-"))} />
-                  {detectedOperator.label}
-                </span>
-                <span className="font-inter text-[10px] text-yazz-text-caption">
-                  opérateur détecté automatiquement
-                </span>
-              </div>
-            )}
-            {phone && !detectedOperator && phone.replace(/\D/g, "").length >= 5 && (
-              <p className="font-inter mt-2 text-[10px] text-yazz-warning">
-                Préfixe non reconnu. Utilisez un numéro Airtel (81/82/84), Orange (80/89) ou Vodacom (97/98/99).
-              </p>
-            )}
           </div>
 
           {/* Erreur */}
