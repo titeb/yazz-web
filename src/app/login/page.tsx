@@ -96,22 +96,43 @@ function LoginContent() {
     return TEST_PHONES.has(digits);
   };
 
-  // Pour les numéros test, Supabase est configuré avec sms_test_otp
-  // → le code est toujours "123456" (pas besoin de fetch depuis le backend)
+  // Pour les numéros test, le backend stocke le code en mémoire (pas de SMS envoyé).
+  // On récupère le code via /api/auth/test-code (proxy → backend).
+  // Le code change à chaque demande (aléatoire, pas de code fixe 123456).
   const fetchTestOtpCode = async (phoneDigits: string) => {
     if (isFetchingTestCode || testOtpCode) return;
     setIsFetchingTestCode(true);
     try {
-      // Supabase test OTP = toujours "123456" pour les numéros test
-      const code = "123456";
-      setTestOtpCode(code);
-      setOtp(code);
-      // Auto-valider après 500ms
-      setTimeout(() => {
-        if (code.length === 6) verifyOtpWithCode(code, phoneDigits);
-      }, 500);
+      const res = await fetch(`/api/auth/test-code?phone=${phoneDigits}&key=${TEST_CODE_KEY}`);
+      const data = await res.json();
+      if (data.code && data.code.length === 6) {
+        // Code trouvé → auto-remplir + auto-valider
+        setTestOtpCode(data.code);
+        setOtp(data.code);
+        setTimeout(() => {
+          verifyOtpWithCode(data.code, phoneDigits);
+        }, 500);
+      } else {
+        // Pas encore de code (le webhook n'a pas encore été traité)
+        // → retry dans 3s, max 10 tentatives (30s total)
+        setIsFetchingTestCode(false);
+        setTestFetchAttempts((prev) => {
+          const next = prev + 1;
+          if (next < 10) {
+            fetchTimerRef.current = setTimeout(() => fetchTestOtpCode(phoneDigits), 3000);
+          }
+          return next;
+        });
+      }
     } catch {
       setIsFetchingTestCode(false);
+      setTestFetchAttempts((prev) => {
+        const next = prev + 1;
+        if (next < 10) {
+          fetchTimerRef.current = setTimeout(() => fetchTestOtpCode(phoneDigits), 3000);
+        }
+        return next;
+      });
     }
   };
 
