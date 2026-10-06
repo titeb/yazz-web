@@ -1,10 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
 
 /**
  * Proxy : POST /api/payments/initiate
  * Body : { phone: "+243XXXXXXXXX", amount: number, provider?: "shwary" | "pawapay" }
+ * Headers : Authorization: Bearer <jwt> (envoyé par le client)
  * Response : { paymentId, provider, providerTransactionId, status, checkoutUrl? }
+ *
+ * Le JWT est lu directement depuis le header Authorization au lieu
+ * d'utiliser les cookies Supabase (qui ne fonctionnent pas correctement
+ * sur Vercel avec Deployment Protection activé).
  */
 export async function POST(request: NextRequest) {
   const body = await request.json();
@@ -16,17 +20,18 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  // Lire le JWT depuis le header Authorization (envoyé par le client)
+  const authHeader = request.headers.get("authorization");
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    return NextResponse.json(
+      { error: "Non authentifié. Token manquant." },
+      { status: 401 }
+    );
+  }
+
+  const accessToken = authHeader.replace("Bearer ", "");
+
   try {
-    const supabase = await createClient();
-    const { data: { session }, error: sessionErr } = await supabase.auth.getSession();
-
-    if (sessionErr || !session?.access_token) {
-      return NextResponse.json(
-        { error: "Non authentifié. Session Supabase manquante." },
-        { status: 401 }
-      );
-    }
-
     const backendUrl = process.env.NEXT_PUBLIC_YAZZ_BACKEND_URL || "https://api.zipbox.online";
     const url = `${backendUrl}/api/payments/initiate`;
 
@@ -34,7 +39,7 @@ export async function POST(request: NextRequest) {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${session.access_token}`,
+        Authorization: `Bearer ${accessToken}`,
       },
       body: JSON.stringify({
         phone: body.phone,

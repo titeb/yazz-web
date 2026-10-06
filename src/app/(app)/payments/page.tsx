@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useUserStats } from "@/hooks/use-user-stats";
-import { isSupabaseConfigured } from "@/lib/supabase/client";
+import { isSupabaseConfigured, createClientSafe } from "@/lib/supabase/client";
 import {
   Wallet,
   Loader2,
@@ -103,7 +103,11 @@ export default function PaymentsPage() {
     if (!isReady) return;
     setPaymentsLoading(true);
     try {
-      const res = await fetch("/api/payments/history?limit=20");
+      const supabase = createClientSafe();
+      const { data: { session } } = await supabase!.auth.getSession();
+      const res = await fetch("/api/payments/history?limit=20", {
+        headers: { ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}) },
+      });
       if (res.ok) {
         const data = await res.json();
         // Format peut varier selon le backend : soit array direct, soit { payments: [...] }
@@ -128,7 +132,9 @@ export default function PaymentsPage() {
     if (!pendingPayment) return;
     const interval = setInterval(async () => {
       try {
-        const res = await fetch(`/api/payments/${pendingPayment.id}/status`);
+        const res = await fetch(`/api/payments/${pendingPayment.id}/status`, {
+        headers: { ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}) },
+      });
         if (!res.ok) return;
         const data = await res.json();
         const status = data?.status as PaymentStatus | undefined;
@@ -170,9 +176,16 @@ export default function PaymentsPage() {
 
     setLoading(true);
     try {
+      // Récupérer le JWT depuis la session Supabase côté client
+      const supabase = createClientSafe();
+      const { data: { session } } = await supabase!.auth.getSession();
+
       const res = await fetch("/api/payments/initiate", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
+        },
         body: JSON.stringify({
           phone: formatPhone(phone),
           amount: finalAmount,
