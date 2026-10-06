@@ -60,8 +60,7 @@ export async function updateSession(request: NextRequest) {
   // Routes publiques
   const isPublicRoute =
     pathname === "/login" ||
-    pathname.startsWith("/api/auth") ||
-    pathname.startsWith("/api/debug") ||
+    pathname.startsWith("/api/") ||  // toutes les routes API gèrent leur propre auth
     pathname.startsWith("/_next") ||
     pathname === "/favicon.ico" ||
     pathname.match(/\.(svg|png|jpg|jpeg|gif|webp|ico|woff|woff2|ttf)$/);
