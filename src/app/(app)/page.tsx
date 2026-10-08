@@ -7,6 +7,7 @@ import { YazzVehicleCard } from "@/components/yazz/yazz-vehicle-card";
 import { useUserVehicles, type VehicleWithPosition } from "@/hooks/use-user-vehicles";
 import { isSupabaseConfigured } from "@/lib/supabase/client";
 import { Database } from "lucide-react";
+import { YazzAssistantFab } from "@/components/yazz/yazz-assistant-fab";
 
 // Véhicules mockés — utilisés en fallback si Supabase n'est pas configuré
 import { vehicles as mockVehicles } from "@/lib/yazz/mock-data";
@@ -94,6 +95,9 @@ export default function DashboardPage() {
           />
         </div>
       )}
+
+      {/* AI Assistant FAB — superposé sur la carte, en bas à gauche, visible uniquement sur le dashboard */}
+      <YazzAssistantFab enabled={true} />
     </div>
   );
 }

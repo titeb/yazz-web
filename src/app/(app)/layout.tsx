@@ -6,7 +6,6 @@ import { YazzSidebar } from "@/components/yazz/yazz-sidebar";
 import { YazzTopbar } from "@/components/yazz/yazz-topbar";
 import { GlobalLoading, useGlobalLoading } from "@/components/yazz/yazz-global-loading";
 import { YazzSosVigileListener } from "@/components/yazz/yazz-sos-vigile-listener";
-import { YazzAssistantFab } from "@/components/yazz/yazz-assistant-fab";
 import { X } from "lucide-react";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
@@ -68,9 +67,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
       {/* SOS vigile listener — affiche un toast quand une alerte SOS arrive */}
       <YazzSosVigileListener />
-
-      {/* AI Assistant FAB — visible si feature flag voice_assistant_enabled = true */}
-      <YazzAssistantFab enabled={true} />
     </div>
   );
 }
