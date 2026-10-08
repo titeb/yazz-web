@@ -250,17 +250,17 @@ export function YazzAssistantModal({ onClose }: { onClose: () => void }) {
       </div>
 
       {/* Transcript */}
-      <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 sm:px-6 pb-4 max-h-[35vh] flex flex-col gap-2">
+      <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 sm:px-8 pb-4 max-h-[35vh] flex flex-col gap-3">
         {messages.map((msg, i) => (
           <div
             key={i}
             className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
           >
             <div
-              className={`rounded-2xl px-4 py-2.5 text-sm leading-relaxed max-w-[75%] sm:max-w-[65%] ${
+              className={`rounded-2xl px-4 py-3 text-[13px] leading-relaxed max-w-[70%] sm:max-w-[60%] ${
                 msg.role === "user"
-                  ? "bg-[#1b6d97] text-white rounded-br-md"
-                  : "bg-white/10 text-white rounded-bl-md"
+                  ? "bg-[#1b6d97] text-white rounded-br-sm"
+                  : "bg-white/8 text-white/90 rounded-bl-sm border border-white/5"
               }`}
             >
               {msg.content}
