@@ -65,6 +65,38 @@ export function YazzAssistantOrb({ state, size = 220 }: { state: OrbState; size?
         </>
       )}
 
+      {/* Particules orbitales pour thinking (8 points qui tournent) */}
+      {state === "thinking" && (
+        <motion.div
+          className="absolute"
+          style={{ width: size, height: size }}
+          animate={{ rotate: 360 }}
+          transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
+        >
+          {Array.from({ length: 8 }).map((_, i) => {
+            const angle = (i * 360) / 8;
+            const radius = size * 0.4;
+            return (
+              <div
+                key={i}
+                className="absolute rounded-full"
+                style={{
+                  width: 6,
+                  height: 6,
+                  backgroundColor: colors.accent,
+                  opacity: 0.7,
+                  left: "50%",
+                  top: "50%",
+                  transform: `rotate(${angle}deg) translateX(${radius}px)`,
+                  marginLeft: -3,
+                  marginTop: -3,
+                }}
+              />
+            );
+          })}
+        </motion.div>
+      )}
+
       {/* Cercle central */}
       <motion.div
         className="relative rounded-full"
