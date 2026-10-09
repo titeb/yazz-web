@@ -46,6 +46,25 @@ export function YazzAssistantModal({ onClose }: { onClose: () => void }) {
   // l'audio (contourne la politique d'autoplay de Chrome/Safari).
   const audioUnlockedRef = useRef(false);
 
+  // Initialise un SEUL élément Audio partagé pour TOUT le playback TTS.
+  // Quand on set audio.src + audio.play(), le navigateur coupe automatiquement
+  // toute lecture en cours → empêche intrinsèquement le chevauchement même
+  // en cas de race condition dans la queue.
+  useEffect(() => {
+    if (typeof Audio !== "undefined" && !audioRef.current) {
+      const a = new Audio();
+      a.preload = "auto";
+      audioRef.current = a;
+      console.log("[AI Assistant] Shared Audio element initialized");
+    }
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.src = "";
+      }
+    };
+  }, []);
+
   // Initialize Web Speech API
   useEffect(() => {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -159,45 +178,74 @@ export function YazzAssistantModal({ onClose }: { onClose: () => void }) {
     };
   }, [unlockAudio]);
 
-  // File d'attente audio — joue les chunks en séquence
-  const playAudioChunk = useCallback(async (url: string, text: string) => {
+  // Joue un chunk audio via l'Audio element partagé.
+  // Quand on set audio.src = url, le navigateur STOPPE la lecture en cours
+  // et charge la nouvelle URL → impossible d'avoir 2 chunks qui jouent en parallèle
+  // (même si la queue avait une race condition).
+  const playAudioChunk = useCallback(async (url: string, text: string, index: number) => {
     if (!url) return;
-    console.log(`[AI Assistant] Playing audio chunk: "${text.substring(0, 40)}..." (${url.length} chars)`);
+    const audio = audioRef.current;
+    if (!audio) {
+      console.warn("[AI Assistant] No shared Audio element — skipping chunk");
+      return;
+    }
+    console.log(`[AI Assistant] ▶ playAudioChunk #${index} START — text="${text.substring(0, 50)}..." (${url.length} chars)`);
     return new Promise<void>((resolve) => {
-      const audio = new Audio(url);
-      audio.onended = () => {
-        console.log("[AI Assistant] Audio chunk ended");
+      let resolved = false;
+      const safeResolve = (reason: string) => {
+        if (resolved) return;
+        resolved = true;
+        console.log(`[AI Assistant] ■ playAudioChunk #${index} END (${reason})`);
+        // Cleanup handlers pour éviter les doublons
+        audio.onended = null;
+        audio.onerror = null;
         resolve();
       };
+
+      audio.onended = () => safeResolve("onended");
       audio.onerror = (e) => {
-        console.error("[AI Assistant] Audio error:", e, "url prefix:", url.substring(0, 50));
-        resolve(); // continue la file même en cas d'erreur
+        console.error(`[AI Assistant] ❌ Audio #${index} onerror:`, e);
+        safeResolve("onerror");
       };
+
+      // ⚠ Important : set src AVANT play() — sinon l'audio précédent continue
+      audio.src = url;
       audio.play().then(() => {
-        console.log("[AI Assistant] Audio play() promise resolved (playing)");
+        console.log(`[AI Assistant] ▶ Audio #${index} play() resolved (now playing)`);
       }).catch((err) => {
-        console.error("[AI Assistant] Audio play() rejected:", err.name, err.message);
-        // Si c'est NotAllowedError (autoplay policy), on tente de ré-unlock
+        console.error(`[AI Assistant] ❌ Audio #${index} play() rejected: ${err.name} — ${err.message}`);
         if (err.name === "NotAllowedError") {
           audioUnlockedRef.current = false;
         }
-        resolve(); // continue la file même en cas d'erreur
+        safeResolve("play rejected");
       });
+
+      // Safety timeout — si un chunk ne termine jamais (rare), on passe au suivant
+      // après 30s max (les chunks Kokoro font 4-9s normalement).
+      setTimeout(() => safeResolve("timeout 30s"), 30_000);
     });
   }, []);
 
-  // Enqueue un chunk audio — sera joué en séquence
+  // Enqueue un chunk audio — sera joué en séquence par le consumer.
+  // Le consumer tourne tant que isPlayingRef=true et queue non-vide.
   const enqueueAudio = useCallback((url: string, text: string) => {
     audioQueueRef.current.push({ url, text });
+    const nextIndex = audioQueueRef.current.length - 1;
+    console.log(`[AI Assistant] 📥 Enqueued audio chunk #${nextIndex} — text="${text.substring(0, 50)}..." queue_len=${audioQueueRef.current.length} isPlaying=${isPlayingRef.current}`);
+
     if (!isPlayingRef.current) {
-      // Démarre le consumer
       isPlayingRef.current = true;
+      console.log("[AI Assistant] 🚀 Starting audio queue consumer");
       (async () => {
+        let chunkIndex = 0;
         while (audioQueueRef.current.length > 0) {
           const chunk = audioQueueRef.current.shift()!;
-          await playAudioChunk(chunk.url, chunk.text);
+          console.log(`[AI Assistant] 🎯 Consumer shifting #${chunkIndex} — remaining=${audioQueueRef.current.length}`);
+          await playAudioChunk(chunk.url, chunk.text, chunkIndex);
+          chunkIndex++;
         }
         isPlayingRef.current = false;
+        console.log("[AI Assistant] ✅ Audio queue empty — consumer stopped");
       })();
     }
   }, [playAudioChunk]);
