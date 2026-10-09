@@ -143,8 +143,13 @@ export function YazzAssistantModal({ onClose }: { onClose: () => void }) {
     }
   }, []);
 
-  // Débloque sur le premier geste (modal open ou click)
+  // Débloque sur le premier geste (modal open ou click).
+  // Aussi : on tente un unlock immédiat à l'ouverture du modal — le click
+  // sur le FAB qui a ouvert le modal compte comme geste utilisateur, donc
+  // audio.play() dans les ~5s suivantes devrait passer la politique d'autoplay.
   useEffect(() => {
+    // Unlock immédiat (tente de profiter du gesture qui a ouvert le modal)
+    unlockAudio();
     const handler = () => unlockAudio();
     window.addEventListener("click", handler, { once: true });
     window.addEventListener("keydown", handler, { once: true });
@@ -238,7 +243,10 @@ export function YazzAssistantModal({ onClose }: { onClose: () => void }) {
       });
 
       if (!res.ok) {
-        const errData = await res.json().catch(() => ({}));
+        const errText = await res.text().catch(() => "");
+        let errData: any = {};
+        try { errData = JSON.parse(errText); } catch { errData = { error: `Erreur ${res.status}` }; }
+        console.error(`[AI Assistant] Fetch failed: HTTP ${res.status} — body="${errText.substring(0, 200)}"`);
         setError(errData.error || `Erreur ${res.status}`);
         setState("error");
         return;
