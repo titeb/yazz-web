@@ -35,6 +35,9 @@ export function YazzAssistantModal({ onClose }: { onClose: () => void }) {
   const recognitionRef = useRef<any>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const scrollRef = useRef<HTMLDivElement | null>(null);
+  // Guard contre l'envoi multiple — Web Speech API peut fire onresult
+  // plusieurs fois avec isFinal=true avant que recognition.stop() ne prenne effet.
+  const isSendingRef = useRef(false);
 
   // Initialize Web Speech API
   useEffect(() => {
@@ -64,10 +67,14 @@ export function YazzAssistantModal({ onClose }: { onClose: () => void }) {
           finalTranscript += event.results[i][0].transcript;
         }
       }
-      if (finalTranscript.trim()) {
+      if (finalTranscript.trim() && !isSendingRef.current) {
         console.log("[AI Assistant] Final transcript:", finalTranscript);
+        isSendingRef.current = true;
         recognition.stop();
-        sendMessage(finalTranscript);
+        sendMessage(finalTranscript).finally(() => {
+          // Réarme le guard après envoi (succès ou échec)
+          isSendingRef.current = false;
+        });
       }
     };
 
@@ -290,9 +297,12 @@ export function YazzAssistantModal({ onClose }: { onClose: () => void }) {
   // Send text input
   const sendText = () => {
     const text = textInput.trim();
-    if (!text) return;
+    if (!text || isSendingRef.current) return;
+    isSendingRef.current = true;
     setTextInput("");
-    sendMessage(text);
+    sendMessage(text).finally(() => {
+      isSendingRef.current = false;
+    });
   };
 
   const stateLabel: Record<OrbState, string> = {
