@@ -38,6 +38,13 @@ export function YazzAssistantModal({ onClose }: { onClose: () => void }) {
   // Guard contre l'envoi multiple — Web Speech API peut fire onresult
   // plusieurs fois avec isFinal=true avant que recognition.stop() ne prenne effet.
   const isSendingRef = useRef(false);
+  // File d'attente pour les chunks audio — on les joue en séquence
+  // (pas en parallèle) pour éviter le chevauchement.
+  const audioQueueRef = useRef<{ url: string; text: string }[]>([]);
+  const isPlayingRef = useRef(false);
+  // audioUnlockedRef — true après qu'un premier gesture utilisateur a "débloqué"
+  // l'audio (contourne la politique d'autoplay de Chrome/Safari).
+  const audioUnlockedRef = useRef(false);
 
   // Initialize Web Speech API
   useEffect(() => {
@@ -113,6 +120,82 @@ export function YazzAssistantModal({ onClose }: { onClose: () => void }) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages]);
+
+  // Débloque l'audio sur le premier geste utilisateur (click/keydown).
+  // Chrome/Safari bloquent audio.play() sans geste. On crée un élément Audio
+  // muet qu'on "play" immédiatement — ça débloque le contexte pour les play() suivants.
+  const unlockAudio = useCallback(() => {
+    if (audioUnlockedRef.current) return;
+    try {
+      // WAV silencieux court (44 bytes header + 0 data) — juste pour débloquer
+      const silentWav = "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=";
+      const a = new Audio(silentWav);
+      a.volume = 0;
+      a.play().then(() => {
+        audioUnlockedRef.current = true;
+        console.log("[AI Assistant] Audio context unlocked");
+        a.pause();
+      }).catch((err) => {
+        console.warn("[AI Assistant] Audio unlock failed:", err.message);
+      });
+    } catch (e) {
+      // ignore
+    }
+  }, []);
+
+  // Débloque sur le premier geste (modal open ou click)
+  useEffect(() => {
+    const handler = () => unlockAudio();
+    window.addEventListener("click", handler, { once: true });
+    window.addEventListener("keydown", handler, { once: true });
+    return () => {
+      window.removeEventListener("click", handler);
+      window.removeEventListener("keydown", handler);
+    };
+  }, [unlockAudio]);
+
+  // File d'attente audio — joue les chunks en séquence
+  const playAudioChunk = useCallback(async (url: string, text: string) => {
+    if (!url) return;
+    console.log(`[AI Assistant] Playing audio chunk: "${text.substring(0, 40)}..." (${url.length} chars)`);
+    return new Promise<void>((resolve) => {
+      const audio = new Audio(url);
+      audio.onended = () => {
+        console.log("[AI Assistant] Audio chunk ended");
+        resolve();
+      };
+      audio.onerror = (e) => {
+        console.error("[AI Assistant] Audio error:", e, "url prefix:", url.substring(0, 50));
+        resolve(); // continue la file même en cas d'erreur
+      };
+      audio.play().then(() => {
+        console.log("[AI Assistant] Audio play() promise resolved (playing)");
+      }).catch((err) => {
+        console.error("[AI Assistant] Audio play() rejected:", err.name, err.message);
+        // Si c'est NotAllowedError (autoplay policy), on tente de ré-unlock
+        if (err.name === "NotAllowedError") {
+          audioUnlockedRef.current = false;
+        }
+        resolve(); // continue la file même en cas d'erreur
+      });
+    });
+  }, []);
+
+  // Enqueue un chunk audio — sera joué en séquence
+  const enqueueAudio = useCallback((url: string, text: string) => {
+    audioQueueRef.current.push({ url, text });
+    if (!isPlayingRef.current) {
+      // Démarre le consumer
+      isPlayingRef.current = true;
+      (async () => {
+        while (audioQueueRef.current.length > 0) {
+          const chunk = audioQueueRef.current.shift()!;
+          await playAudioChunk(chunk.url, chunk.text);
+        }
+        isPlayingRef.current = false;
+      })();
+    }
+  }, [playAudioChunk]);
 
   // Auto-restart listening after AI finishes speaking
   const autoRestartListening = useCallback(() => {
@@ -213,10 +296,12 @@ export function YazzAssistantModal({ onClose }: { onClose: () => void }) {
                   });
                   break;
                 case "audio":
-                  // Jouer le chunk audio immédiatement
+                  // Enqueue le chunk audio (joué en séquence)
+                  console.log(`[AI Assistant] Audio SSE event received: idx=${data.index}, text="${(data.text || "").substring(0, 40)}", audioUrl_len=${(data.audioUrl || "").length}`);
                   if (data.audioUrl) {
-                    const audio = new Audio(data.audioUrl);
-                    audio.play().catch(() => {});
+                    enqueueAudio(data.audioUrl, data.text || "");
+                  } else {
+                    console.warn("[AI Assistant] Audio event has no audioUrl");
                   }
                   break;
                 case "done":
