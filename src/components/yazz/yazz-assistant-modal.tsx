@@ -119,10 +119,10 @@ export function YazzAssistantModal({ onClose }: { onClose: () => void }) {
     }, 800);
   }, []);
 
-  // Send message to backend
+  // Send message to backend (STREAMING via SSE)
   const sendMessage = async (text: string) => {
     if (!text.trim()) return;
-    console.log("[AI Assistant] Sending:", text);
+    console.log("[AI Assistant] Sending (stream):", text);
     setState("thinking");
     setError(null);
     setMessages((prev) => [...prev, { role: "user", content: text }]);
@@ -136,51 +136,132 @@ export function YazzAssistantModal({ onClose }: { onClose: () => void }) {
         return;
       }
 
+      // Utiliser la route SSE /api/ai/chat/stream
       const formData = new FormData();
       formData.append("text", text);
       if (conversationId) formData.append("conversation_id", conversationId);
 
-      const res = await fetch("/api/ai/chat", {
+      const res = await fetch("/api/ai/chat/stream", {
         method: "POST",
         headers: { Authorization: `Bearer ${session.access_token}` },
         body: formData,
       });
 
-      const data = await res.json();
-      console.log("[AI Assistant] Response:", data.state, data.text?.substring(0, 80));
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        setError(errData.error || `Erreur ${res.status}`);
+        setState("error");
+        return;
+      }
 
-      if (data.conversationId) setConversationId(data.conversationId);
+      // Lire le flux SSE
+      const reader = res.body?.getReader();
+      if (!reader) {
+        setError("Stream non disponible");
+        setState("error");
+        return;
+      }
 
-      setMessages((prev) => [
-        ...prev,
-        {
-          role: "assistant",
-          content: data.text || "Désolé, je n'ai pas pu répondre.",
-          audioUrl: data.audioUrl,
-          confirmationCard: data.confirmationCard,
-        },
-      ]);
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let currentEvent = "message";
+      let assistantText = "";
+      let assistantIndex = -1;
 
-      // Play TTS audio if available
-      if (data.audioUrl) {
-        setState("speaking");
-        const audio = new Audio(data.audioUrl);
-        audioRef.current = audio;
-        audio.onended = () => {
-          setState("idle");
-          autoRestartListening();
-        };
-        audio.onerror = () => {
-          setState("idle");
-          autoRestartListening();
-        };
-        audio.play().catch(() => {
-          setState("idle");
-          autoRestartListening();
+      // Ajouter un message assistant vide qu'on va remplir progressivement
+      setMessages((prev) => [...prev, { role: "assistant", content: "" }]);
+      assistantIndex = -1; // Sera mis à jour ci-dessous
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() || "";
+
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (!trimmed || trimmed.startsWith(":")) continue;
+          if (trimmed.startsWith("event: ")) {
+            currentEvent = trimmed.substring(7).trim();
+            continue;
+          }
+          if (trimmed.startsWith("data: ")) {
+            const dataStr = trimmed.substring(6);
+            try {
+              const data = JSON.parse(dataStr);
+              switch (currentEvent) {
+                case "text":
+                  assistantText += data.chunk || "";
+                  setState("speaking");
+                  // Mettre à jour le dernier message assistant progressivement
+                  setMessages((prev) => {
+                    const updated = [...prev];
+                    const lastIdx = updated.length - 1;
+                    if (updated[lastIdx]?.role === "assistant") {
+                      updated[lastIdx] = { ...updated[lastIdx], content: assistantText };
+                    }
+                    return updated;
+                  });
+                  break;
+                case "audio":
+                  // Jouer le chunk audio immédiatement
+                  if (data.audioUrl) {
+                    const audio = new Audio(data.audioUrl);
+                    audio.play().catch(() => {});
+                  }
+                  break;
+                case "done":
+                  if (data.conversationId) setConversationId(data.conversationId);
+                  if (data.confirmationCard) {
+                    setState("idle");
+                  } else {
+                    setState("idle");
+                    autoRestartListening();
+                  }
+                  break;
+                case "error":
+                  setError(data.error || "Erreur");
+                  setState("error");
+                  break;
+              }
+            } catch (e) {
+              // JSON invalide — ignorer
+            }
+          }
+        }
+      }
+
+      // Si le texte est vide (streaming a échoué silencieusement), fallback batch
+      if (!assistantText.trim()) {
+        console.log("[AI Assistant] Stream empty, falling back to batch...");
+        const formData2 = new FormData();
+        formData2.append("text", text);
+        if (conversationId) formData2.append("conversation_id", conversationId);
+        const res2 = await fetch("/api/ai/chat", {
+          method: "POST",
+          headers: { Authorization: `Bearer ${session.access_token}` },
+          body: formData2,
         });
-      } else {
-        setState("idle");
-        autoRestartListening();
+        const data2 = await res2.json();
+        if (data2.conversationId) setConversationId(data2.conversationId);
+        setMessages((prev) => {
+          const updated = [...prev];
+          updated[updated.length - 1] = {
+            role: "assistant",
+            content: data2.text || "Désolé, je n'ai pas pu répondre.",
+          };
+          return updated;
+        });
+        if (data2.audioUrl) {
+          const audio = new Audio(data2.audioUrl);
+          audio.onended = () => { setState("idle"); autoRestartListening(); };
+          audio.play().catch(() => { setState("idle"); autoRestartListening(); });
+        } else {
+          setState("idle");
+          autoRestartListening();
+        }
       }
     } catch (err: any) {
       console.error("[AI Assistant] Error:", err);
