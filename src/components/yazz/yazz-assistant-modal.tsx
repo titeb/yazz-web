@@ -418,11 +418,37 @@ export function YazzAssistantModal({ onClose }: { onClose: () => void }) {
     }
   };
 
+  // Barge-in : interrompt la lecture audio en cours + vide la queue
+  // + relance l'écoute. Utilisé quand l'utilisateur clique le mic pendant
+  // que l'IA parle — il peut couper la parole à l'IA (conversation live).
+  const bargeIn = useCallback(() => {
+    console.log("[AI Assistant] 🛑 BARGE-IN — stopping audio + clearing queue");
+    // 1. Stoppe la lecture audio en cours
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.src = "";
+    }
+    // 2. Vide la queue des chunks audio en attente
+    audioQueueRef.current = [];
+    // 3. Le consumer en cours va se terminer (le Promise va résoudre sur le
+    //    pause() car audio.onerror/onended va fire — ou le timeout 30s).
+    //    On force isPlayingRef = false pour qu'un nouveau consumer démarre
+    //    proprement si l'utilisateur parle à nouveau.
+    isPlayingRef.current = false;
+    console.log("[AI Assistant] ✅ Barge-in complete — ready for new input");
+  }, []);
+
   // Toggle listening
   const toggleListening = () => {
     if (!recognitionRef.current) {
       setShowTextInput(true);
       return;
+    }
+    // Si l'IA est en train de parler, le click sur le mic = BARGE-IN
+    // (interrompt la lecture et relance l'écoute)
+    if (state === "speaking" || isPlayingRef.current) {
+      console.log("[AI Assistant] Mic clicked during speaking → barge-in");
+      bargeIn();
     }
     if (isListening) {
       recognitionRef.current.stop();
