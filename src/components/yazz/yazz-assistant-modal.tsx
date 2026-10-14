@@ -6,6 +6,11 @@ import { Mic, Keyboard, X, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { YazzAssistantOrb } from "./yazz-assistant-orb";
 import { createClientSafe } from "@/lib/supabase/client";
+import { useAiWebSocket } from "@/hooks/use-ai-websocket";
+
+// Feature flag : si true, utilise WebSocket (Plan B1) ; sinon garde SSE.
+// Rollback instantané : set NEXT_PUBLIC_AI_USE_WS=false → le modal retombe sur SSE.
+const USE_WS = process.env.NEXT_PUBLIC_AI_USE_WS === "true";
 
 type OrbState = "idle" | "listening" | "thinking" | "speaking" | "error";
 
@@ -262,6 +267,81 @@ export function YazzAssistantModal({ onClose }: { onClose: () => void }) {
     }, 800);
   }, []);
 
+  // ───────── Phase B2 — WebSocket mode (feature flag) ─────────
+  // Si NEXT_PUBLIC_AI_USE_WS=true, on utilise le hook useAiWebSocket
+  // qui envoie les messages via WS et reçoit les chunks via callbacks.
+  // Sinon, le hook reste idle (enabled=false) et sendMessage utilise SSE.
+  // Réf pour accumulateur de texte assistant (évite re-render trop fréquent)
+  const wsAssistantTextRef = useRef<string>("");
+  // Réf pour la fonction bargeIn du hook (appelée par bargeIn() du modal)
+  const wsBargeInRef = useRef<(() => void) | null>(null);
+  // Réf pour la fonction send du hook
+  const wsSendRef = useRef<((text: string, conversationId?: string) => boolean) | null>(null);
+
+  const wsHook = useAiWebSocket({
+    enabled: USE_WS,
+    onTextChunk: (chunk: string) => {
+      // Accumule et met à jour le dernier message assistant
+      wsAssistantTextRef.current += chunk;
+      setState("speaking");
+      const currentText = wsAssistantTextRef.current;
+      setMessages((prev) => {
+        const updated = [...prev];
+        const lastIdx = updated.length - 1;
+        if (updated[lastIdx]?.role === "assistant") {
+          updated[lastIdx] = { ...updated[lastIdx], content: currentText };
+        }
+        return updated;
+      });
+    },
+    onAudioChunk: (audioUrl: string, text: string, index: number) => {
+      console.log(`[AI/WS] Audio chunk #${index} received, text="${text.substring(0, 40)}"`);
+      enqueueAudio(audioUrl, text);
+    },
+    onDone: (result) => {
+      if (result.conversationId) setConversationId(result.conversationId);
+      if (result.confirmationCard) {
+        setState("idle");
+        setMessages((prev) => {
+          const updated = [...prev];
+          const lastIdx = updated.length - 1;
+          if (updated[lastIdx]?.role === "assistant") {
+            updated[lastIdx] = { ...updated[lastIdx], confirmationCard: result.confirmationCard };
+          }
+          return updated;
+        });
+      } else {
+        setState("idle");
+        autoRestartListening();
+      }
+      // Reset l'accumulateur pour le prochain tour
+      wsAssistantTextRef.current = "";
+    },
+    onError: (error: string) => {
+      console.error("[AI/WS] Error:", error);
+      setError(error);
+      setState("error");
+      wsAssistantTextRef.current = "";
+    },
+    onBargeInAck: () => {
+      console.log("[AI/WS] Server acknowledged barge-in");
+    },
+    onConnectionStateChange: (state) => {
+      console.log(`[AI/WS] Connection state: ${state}`);
+    },
+  });
+
+  // Maintient les refs à jour pour que bargeIn() du modal puisse appeler ws.bargeIn()
+  useEffect(() => {
+    if (USE_WS) {
+      wsBargeInRef.current = wsHook.bargeIn;
+      wsSendRef.current = wsHook.send;
+    } else {
+      wsBargeInRef.current = null;
+      wsSendRef.current = null;
+    }
+  }, [USE_WS, wsHook.bargeIn, wsHook.send]);
+
   // Send message to backend (STREAMING via SSE)
   const sendMessage = async (text: string) => {
     if (!text.trim()) return;
@@ -270,6 +350,23 @@ export function YazzAssistantModal({ onClose }: { onClose: () => void }) {
     setError(null);
     setMessages((prev) => [...prev, { role: "user", content: text }]);
 
+    // ─── Branch Phase B2 — WebSocket path (si flag activé + connecté) ───
+    // Si USE_WS=true et que le WS est connecté, on envoie via WS.
+    // Sinon, on retombe sur le code SSE existant (safety net).
+    if (USE_WS && wsHook.isConnected && wsSendRef.current) {
+      console.log("[AI Assistant] Using WebSocket path");
+      // Reset l'accumulateur de texte pour ce nouveau tour
+      wsAssistantTextRef.current = "";
+      // Ajoute un message assistant vide qu'on va remplir progressivement
+      setMessages((prev) => [...prev, { role: "assistant", content: "" }]);
+      // Envoie le message au backend via WS
+      const sent = wsSendRef.current(text, conversationId || undefined);
+      if (sent) return; // Le hook va appeler onTextChunk/onAudioChunk/onDone
+      // Si l'envoi échoue (WS déconnecté entretemps), on tombe sur SSE
+      console.warn("[AI Assistant] WS send failed — falling back to SSE");
+    }
+
+    // ─── SSE path (code original, inchangé) ───
     try {
       const supabase = createClientSafe();
       const { data: { session } } = await supabase!.auth.getSession();
@@ -421,6 +518,8 @@ export function YazzAssistantModal({ onClose }: { onClose: () => void }) {
   // Barge-in : interrompt la lecture audio en cours + vide la queue
   // + relance l'écoute. Utilisé quand l'utilisateur clique le mic pendant
   // que l'IA parle — il peut couper la parole à l'IA (conversation live).
+  // En mode WS, on envoie aussi un signal barge_in au serveur pour qu'il
+  // arrête de générer/streamer les chunks TTS (économise du coût API + CPU).
   const bargeIn = useCallback(() => {
     console.log("[AI Assistant] 🛑 BARGE-IN — stopping audio + clearing queue");
     // 1. Stoppe la lecture audio en cours
@@ -435,6 +534,8 @@ export function YazzAssistantModal({ onClose }: { onClose: () => void }) {
     //    On force isPlayingRef = false pour qu'un nouveau consumer démarre
     //    proprement si l'utilisateur parle à nouveau.
     isPlayingRef.current = false;
+    // 4. En mode WS : envoie signal serveur pour arrêter la génération TTS
+    wsBargeInRef.current?.();
     console.log("[AI Assistant] ✅ Barge-in complete — ready for new input");
   }, []);
 
