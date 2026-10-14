@@ -281,11 +281,6 @@ export function YazzVehicleDetail({ vehicle, onClose }: YazzVehicleDetailProps) 
                 {addressDisplay}
               </p>
             )}
-            {vehicle.lat && vehicle.lng && !addressLoading && (
-              <p className="font-inter mt-0.5 text-[10px] text-yazz-text-caption">
-                {vehicle.lat.toFixed(4)}, {vehicle.lng.toFixed(4)}
-              </p>
-            )}
           </div>
         </div>
 

@@ -352,39 +352,11 @@ export function YazzVehicleGridCard({ device }: { device: UserDevice }) {
                 Position
               </p>
             </div>
-            <p className="font-outfit mt-0.5 text-[12px] font-bold text-yazz-text-dark">
-              {device.latitude !== null && device.longitude !== null
-                ? `${device.latitude.toFixed(3)}, ${device.longitude.toFixed(3)}`
-                : "—"}
+            <p className="font-inter mt-0.5 text-[11px] font-medium text-yazz-text-dark line-clamp-2 leading-snug">
+              {addressDisplay}
             </p>
           </div>
         </div>
-
-        {/* ─── Adresse reverse-geocodée ───────────────────────────────── */}
-        {device.latitude !== null && device.longitude !== null && (
-          <div className="mx-4 mb-3 flex items-start gap-1.5 rounded-yazz-md yazz-gradient-subtle px-2.5 py-2">
-            <MapPin className="mt-0.5 h-3 w-3 shrink-0 text-yazz-primary" />
-            <div className="min-w-0 flex-1">
-              {addressLoading ? (
-                <div className="flex items-center gap-1.5">
-                  <Loader2 className="h-3 w-3 animate-spin text-yazz-primary" />
-                  <p className="font-inter text-[10px] text-yazz-text-muted">
-                    Localisation en cours…
-                  </p>
-                </div>
-              ) : (
-                <p
-                  className={cn(
-                    "font-inter text-[11px] leading-snug",
-                    isOffline ? "text-yazz-text-muted" : "text-yazz-text-dark"
-                  )}
-                >
-                  {addressDisplay}
-                </p>
-              )}
-            </div>
-          </div>
-        )}
 
         {/* ─── Badges (état du véhicule) ──────────────────────────────── */}
         {(device.parkingMode ||
