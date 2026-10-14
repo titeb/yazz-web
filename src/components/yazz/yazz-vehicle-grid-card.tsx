@@ -148,19 +148,20 @@ export function YazzVehicleGridCard({ device }: { device: UserDevice }) {
     device.longitude
   );
 
+  // FIX Feature 1 : limiter à 2 parties max (street + commune) pour éviter de
+  // déborder la card. Avant : pouvait afficher jusqu'à 5 parties (rue + quartier +
+  // commune + ville + province). Maintenant : max 2 (ex: "Lemba, Kinshasa").
   const addressParts: string[] = [];
   if (address?.street) addressParts.push(address.street);
-  if (address?.quarter) addressParts.push(address.quarter);
   if (address?.commune) addressParts.push(address.commune);
-  // Ville après commune (ex: "Lemba, Kinshasa" ou "Matadi, Kongo Central")
-  if (address?.city && address.city !== address.commune) addressParts.push(address.city);
-  // Province si différente de la ville (ex: "Matadi, Kongo Central")
-  if (address?.region && address.region !== address.city && address.region !== address.commune) {
-    addressParts.push(address.region);
+  // Si pas de commune, fallback sur quarter puis city
+  if (addressParts.length < 2) {
+    if (address?.quarter && !addressParts.includes(address.quarter)) addressParts.push(address.quarter);
+    if (address?.city && !addressParts.includes(address.city) && addressParts.length < 2) addressParts.push(address.city);
   }
   const addressDisplay =
     addressParts.length > 0
-      ? addressParts.join(", ")
+      ? addressParts.slice(0, 2).join(", ")
       : address?.fullAddress || (isOffline ? "Dernière position connue" : "Localisation en cours…");
 
   const vehicleName =
@@ -280,7 +281,7 @@ export function YazzVehicleGridCard({ device }: { device: UserDevice }) {
                 accOn && !isOffline ? "text-yazz-success" : "text-yazz-text-muted"
               )}
             >
-              {accOn ? "Contact mis" : "Contact coupé"}
+              {accOn ? "Alim. ✓" : "Alim. ✗"}
             </span>
           </div>
           <div className="flex items-center gap-1.5">

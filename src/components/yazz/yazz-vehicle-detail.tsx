@@ -107,16 +107,15 @@ export function YazzVehicleDetail({ vehicle, onClose }: YazzVehicleDetailProps) 
     vehicle.lng ?? null
   );
 
+  // FIX Feature 1 : limiter à 2 parties max (street + commune)
   const addressParts: string[] = [];
   if (address?.street) addressParts.push(address.street);
-  if (address?.quarter) addressParts.push(address.quarter);
   if (address?.commune) addressParts.push(address.commune);
-  if (address?.city && address.city !== address.commune) addressParts.push(address.city);
-  // Province si différente de la ville (ex: "Matadi, Kongo Central")
-  if (address?.region && address.region !== address.city && address.region !== address.commune) {
-    addressParts.push(address.region);
+  if (addressParts.length < 2) {
+    if (address?.quarter && !addressParts.includes(address.quarter)) addressParts.push(address.quarter);
+    if (address?.city && !addressParts.includes(address.city) && addressParts.length < 2) addressParts.push(address.city);
   }
-  const addressDisplay = addressParts.length > 0 ? addressParts.join(", ") : address?.fullAddress || "Localisation en cours…";
+  const addressDisplay = addressParts.length > 0 ? addressParts.slice(0, 2).join(", ") : address?.fullAddress || "Localisation en cours…";
 
   const handleShare = () => {
     // Rediriger vers la page partages avec le véhicule pré-sélectionné
@@ -153,7 +152,7 @@ export function YazzVehicleDetail({ vehicle, onClose }: YazzVehicleDetailProps) 
                 className={cn("h-3.5 w-3.5", accOn && !isOffline ? "text-yazz-success" : "text-yazz-text-caption")}
               />
               <span className={cn("font-inter text-[11px]", accOn && !isOffline ? "text-yazz-success" : "text-yazz-text-muted")}>
-                {accOn ? "Contact mis" : "Contact coupé"}
+                {accOn ? "Alim. ✓" : "Alim. ✗"}
               </span>
               <Battery className={cn("h-3.5 w-3.5 ml-1", !isOffline && vehicle.battery !== null ? battColor : "text-yazz-text-caption")} />
               <span className={cn("font-inter text-[11px]", !isOffline ? "text-yazz-text-muted" : "text-yazz-text-caption")}>

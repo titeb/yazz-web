@@ -9,6 +9,7 @@ type YazzEngineCutModalProps = {
   deviceName: string;
   currentCutState: boolean | null;
   speed: number | null;
+  relayInstalled?: boolean | null; // FIX Feature 3 — si false, afficher "Relais non installé"
   onClose: () => void;
   onSuccess?: (newState: boolean) => void;
 };
@@ -20,6 +21,7 @@ export function YazzEngineCutModal({
   deviceName,
   currentCutState,
   speed,
+  relayInstalled,
   onClose,
   onSuccess,
 }: YazzEngineCutModalProps) {
@@ -33,6 +35,13 @@ export function YazzEngineCutModal({
   const speedTooHigh = (speed ?? 0) > 20;
 
   const handleConfirm = async () => {
+    // FIX Feature 3 : check proactif du relais avant d'appeler l'API
+    if (relayInstalled === false) {
+      setErrorMessage("Le relais de coupure moteur n'est pas installé sur ce capteur. Contactez votre installateur pour l'ajouter.");
+      setStep("error");
+      return;
+    }
+
     if (speedTooHigh) {
       setErrorMessage(
         `Véhicule en mouvement (${speed} km/h). Le coupe-moteur est désactivé au-dessus de 20 km/h pour des raisons de sécurité.`

@@ -118,6 +118,7 @@ export type Database = {
           is_active: boolean | null;
           is_shared: boolean | null;
           shared_with: string | null;
+          relay_installed: boolean | null; // FIX Feature 3 — relais de coupure moteur
           created_at: string;
           updated_at: string;
         };
