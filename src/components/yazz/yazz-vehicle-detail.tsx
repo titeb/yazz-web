@@ -107,15 +107,15 @@ export function YazzVehicleDetail({ vehicle, onClose }: YazzVehicleDetailProps) 
     vehicle.lng ?? null
   );
 
-  // FIX Feature 1 : limiter à 2 parties max (street + commune)
+  // FIX : afficher jusqu'à 3 parties (street + commune + city)
   const addressParts: string[] = [];
   if (address?.street) addressParts.push(address.street);
   if (address?.commune) addressParts.push(address.commune);
+  if (address?.city && address.city !== address.commune) addressParts.push(address.city);
   if (addressParts.length < 2) {
     if (address?.quarter && !addressParts.includes(address.quarter)) addressParts.push(address.quarter);
-    if (address?.city && !addressParts.includes(address.city) && addressParts.length < 2) addressParts.push(address.city);
   }
-  const addressDisplay = addressParts.length > 0 ? addressParts.slice(0, 2).join(", ") : address?.fullAddress || "Localisation en cours…";
+  const addressDisplay = addressParts.length > 0 ? addressParts.slice(0, 3).join(", ") : address?.fullAddress || "Localisation en cours…";
 
   const handleShare = () => {
     // Rediriger vers la page partages avec le véhicule pré-sélectionné

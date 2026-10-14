@@ -353,7 +353,7 @@ export function YazzVehicleGridCard({ device }: { device: UserDevice }) {
               </p>
             </div>
             <p className="font-inter mt-0.5 text-[11px] font-medium text-yazz-text-dark line-clamp-2 leading-snug">
-              {addressDisplay}
+              {addressParts.slice(0, 3).join(", ")}
             </p>
           </div>
         </div>

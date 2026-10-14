@@ -59,21 +59,39 @@ export async function GET(request: NextRequest) {
     // road/pedestrian/path → street
     const street =
       addr.road || addr.pedestrian || addr.path || null;
-    // neighbourhood/hamlet/suburb → quarter
+
+    // À Kinshasa, Nominatim met le quartier dans 'city' (ex: "Golf", "Joli Parc")
+    // et 'state' contient "Kinshasa". Il faut donc :
+    // 1. Si city ≠ state → city est un quartier, pas la ville
+    // 2. quarter = neighbourhood || hamlet || suburb || city (si city ≠ state)
+    // 3. city = state (la vraie ville = Kinshasa)
+    // 4. commune = municipality || city_district || town
+    const rawCity = addr.city || null;
+    const rawState = addr.state || null;
+    const isCityActuallyQuarter = rawCity && rawState && rawCity !== rawState;
+
+    // quarter
     const quarter =
-      addr.neighbourhood || addr.hamlet || addr.suburb || null;
-    // municipality/city_district/town → commune (à Kinshasa = commune ex: Lemba, Gombe)
+      addr.neighbourhood ||
+      addr.hamlet ||
+      addr.suburb ||
+      (isCityActuallyQuarter ? rawCity : null) ||
+      null;
+
+    // commune (à Kinshasa = municipality ex: Gombe, Ngaliema, Kalamu)
     const commune =
       addr.municipality || addr.city_district || addr.town || null;
-    // state/city → city (à Kinshasa = "Kinshasa")
-    const city = addr.state || addr.city || null;
-    // county/state → region (province)
+
+    // city = state (la vraie ville/province ex: "Kinshasa")
+    const city = rawState || (!isCityActuallyQuarter ? rawCity : null) || null;
+
+    // region (province hors Kinshasa)
     const region = addr.county || addr.region || null;
 
     // Construire fullAddress (nettoyé : pas de pays)
     const parts: string[] = [];
     if (street) parts.push(street);
-    if (quarter && quarter !== street) parts.push(quarter);
+    if (quarter && quarter !== street && !parts.includes(quarter)) parts.push(quarter);
     if (commune && !parts.includes(commune)) parts.push(commune);
     if (city && city !== commune && !parts.includes(city)) parts.push(city);
 
