@@ -220,13 +220,50 @@ export function useUserVehicles() {
         .channel(channelNameRef.current)
         .on(
           "postgres_changes",
-          { event: "*", schema: "public", table: "last_known_positions" },
-          () => fetchVehicles()
+          { event: "UPDATE", schema: "public", table: "last_known_positions" },
+          (payload) => {
+            // FIX : update INSTANTANÉ depuis le payload Realtime.
+            // Pas de refetch → zéro latence réseau.
+            // Le payload contient la ligne complète mise à jour (payload.new).
+            const newPos = payload.new as any;
+            if (!newPos?.device_id) return;
+
+            setVehicles(prev => prev.map(v => {
+              if (v.deviceId !== newPos.device_id) return v;
+
+              const lat = newPos.latitude ?? v.lat;
+              const lng = newPos.longitude ?? v.lng;
+              const x = ((lng - 15.2) / 0.2) * 100;
+              const y = ((-4.2 - lat) / 0.2) * 100;
+
+              // Recompute status inline (même logique que computeStatus)
+              const lastUpdateMs = new Date(newPos.last_update).getTime();
+              const tenMinAgo = Date.now() - 10 * 60 * 1000;
+              let status: VehicleWithPosition["status"] = "idle";
+              if (lastUpdateMs < tenMinAgo) status = "offline";
+              else if (v.engineCutState) status = "alert";
+              else if (newPos.battery_percent !== null && newPos.battery_percent < 20) status = "alert";
+              else if ((newPos.speed ?? 0) > 0) status = "moving";
+
+              return {
+                ...v,
+                lat,
+                lng,
+                position: { x, y },
+                speed: newPos.speed ?? v.speed,
+                battery: newPos.battery_percent ?? v.battery,
+                lastUpdate: newPos.last_update ?? v.lastUpdate,
+                heading: newPos.heading ?? v.heading,
+                accOn: newPos.acc_status ?? v.accOn,
+                status,
+              };
+            }));
+          }
         )
         .on(
           "postgres_changes",
           { event: "*", schema: "public", table: "user_devices" },
-          () => fetchVehicles()
+          () => fetchVehicles() // user_devices change rarement (rename, photo) → refetch OK
         )
         .subscribe();
     };
