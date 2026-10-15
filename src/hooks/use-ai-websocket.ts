@@ -63,7 +63,9 @@ export function useAiWebSocket(options: UseAiWebSocketOptions = {}): UseAiWebSoc
   const lastPongRef = useRef<number>(Date.now());
   const heartbeatTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const jwtRef = useRef<string | null>(null);
+  // Refs pour éviter les reconnexions quand on ferme volontairement
   const enabledRef = useRef(enabled);
+  const intentionalCloseRef = useRef(false);  // ← FIX: empêche la boucle de reconnexion
 
   // Callbacks dans une ref pour pouvoir les maj sans re-créer le hook
   const callbacksRef = useRef<AiWsCallbacks>(callbacks);
@@ -117,6 +119,7 @@ export function useAiWebSocket(options: UseAiWebSocketOptions = {}): UseAiWebSoc
 
     // Ferme l'ancienne connexion si elle existe
     if (wsRef.current) {
+      intentionalCloseRef.current = true;  // ← FIX: empêche le onclose de reconnecter
       try { wsRef.current.close(); } catch {}
       wsRef.current = null;
     }
@@ -139,6 +142,7 @@ export function useAiWebSocket(options: UseAiWebSocketOptions = {}): UseAiWebSoc
         if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return;
         if (Date.now() - lastPongRef.current > HEARTBEAT_TIMEOUT_MS) {
           console.warn("[useAiWebSocket] No pong received in 60s — terminating");
+          intentionalCloseRef.current = true;
           try { wsRef.current.close(); } catch {}
         }
       }, HEARTBEAT_INTERVAL_MS);
@@ -165,6 +169,14 @@ export function useAiWebSocket(options: UseAiWebSocketOptions = {}): UseAiWebSoc
         heartbeatTimerRef.current = null;
       }
       wsRef.current = null;
+
+      // ⚠ FIX: si la fermeture est intentionnelle (on a appelé close() nous-mêmes),
+      // ne PAS reconnecter → empêche la boucle infinie (code 4002 "Replaced by new connection")
+      if (intentionalCloseRef.current) {
+        intentionalCloseRef.current = false;
+        console.log("[useAiWebSocket] Intentional close — not reconnecting");
+        return;
+      }
 
       // Reconnexion auto si le flag est encore activé
       if (enabledRef.current && reconnectAttemptsRef.current < RECONNECT_MAX_ATTEMPTS) {
@@ -271,6 +283,7 @@ export function useAiWebSocket(options: UseAiWebSocketOptions = {}): UseAiWebSoc
         heartbeatTimerRef.current = null;
       }
       if (wsRef.current) {
+        intentionalCloseRef.current = true;
         try { wsRef.current.close(1000, "Component unmount"); } catch {}
         wsRef.current = null;
       }
