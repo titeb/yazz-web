@@ -1,14 +1,18 @@
 "use client";
 
 import { useState } from "react";
+import dynamic from "next/dynamic";
 import { AnimatePresence } from "framer-motion";
 import { YazzAssistantModal } from "./yazz-assistant-modal";
-// Phase C3 — import lazy du modal LiveKit (variante WebRTC)
-import { YazzAssistantLiveKitModal } from "./yazz-assistant-livekit-modal";
 
-// Feature flag : si true, utilise le modal LiveKit (WebRTC premium).
-// Si false (default), utilise le modal SSE/WS classique.
-// Rollback instantané : set NEXT_PUBLIC_AI_USE_LIVEKIT=false → revient au modal classique.
+// ⚠ FIX: utilise next/dynamic avec ssr: false pour le modal LiveKit
+// car livekit-client nécessite window/document/RTCPeerConnection (browser-only)
+// Sans ssr: false, next build crash pendant le SSR.
+const YazzAssistantLiveKitModal = dynamic(
+  () => import("./yazz-assistant-livekit-modal").then(m => m.YazzAssistantLiveKitModal),
+  { ssr: false }
+);
+
 const USE_LIVEKIT = process.env.NEXT_PUBLIC_AI_USE_LIVEKIT === "true";
 
 export function YazzAssistantFab({ enabled }: { enabled: boolean }) {
