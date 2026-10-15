@@ -3,6 +3,13 @@
 import { useState } from "react";
 import { AnimatePresence } from "framer-motion";
 import { YazzAssistantModal } from "./yazz-assistant-modal";
+// Phase C3 — import lazy du modal LiveKit (variante WebRTC)
+import { YazzAssistantLiveKitModal } from "./yazz-assistant-livekit-modal";
+
+// Feature flag : si true, utilise le modal LiveKit (WebRTC premium).
+// Si false (default), utilise le modal SSE/WS classique.
+// Rollback instantané : set NEXT_PUBLIC_AI_USE_LIVEKIT=false → revient au modal classique.
+const USE_LIVEKIT = process.env.NEXT_PUBLIC_AI_USE_LIVEKIT === "true";
 
 export function YazzAssistantFab({ enabled }: { enabled: boolean }) {
   const [open, setOpen] = useState(false);
@@ -32,7 +39,11 @@ export function YazzAssistantFab({ enabled }: { enabled: boolean }) {
       </button>
 
       <AnimatePresence>
-        {open && <YazzAssistantModal onClose={() => setOpen(false)} />}
+        {open && (
+          USE_LIVEKIT
+            ? <YazzAssistantLiveKitModal onClose={() => setOpen(false)} />
+            : <YazzAssistantModal onClose={() => setOpen(false)} />
+        )}
       </AnimatePresence>
 
       <style jsx>{`
