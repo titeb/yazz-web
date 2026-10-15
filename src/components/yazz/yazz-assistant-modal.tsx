@@ -51,10 +51,11 @@ export function YazzAssistantModal({ onClose }: { onClose: () => void }) {
   // l'audio (contourne la politique d'autoplay de Chrome/Safari).
   const audioUnlockedRef = useRef(false);
 
-  // 🔔 Beep sound — joue un bip court pour signaler "à toi de parler"
+  // 🔔 Beep sound — joue un bip doux et fluide pour signaler "à toi de parler"
   // Utilise Web Audio API (pas de fichier externe needed).
   // 2 tons : high (880Hz) pour "début écoute", low (440Hz) pour "fin IA parle".
-  const playBeep = useCallback((freq: number = 880, duration: number = 150) => {
+  // Son doux avec fade in/out progressif (pas agressif).
+  const playBeep = useCallback((freq: number = 880, duration: number = 400) => {
     try {
       const AudioCtx = (window as any).AudioContext || (window as any).webkitAudioContext;
       if (!AudioCtx) return;
@@ -65,14 +66,15 @@ export function YazzAssistantModal({ onClose }: { onClose: () => void }) {
       gain.connect(ctx.destination);
       osc.frequency.value = freq;
       osc.type = "sine";
-      // Envelope : attack 5ms, sustain, release 50ms (pas de clic/plop)
+      // Envelope doux : fade in 80ms, sustain, fade out 120ms (son fluide, pas de clic)
       const now = ctx.currentTime;
+      const dur = duration / 1000;
       gain.gain.setValueAtTime(0, now);
-      gain.gain.linearRampToValueAtTime(0.15, now + 0.005);
-      gain.gain.setValueAtTime(0.15, now + duration / 1000 - 0.05);
-      gain.gain.linearRampToValueAtTime(0, now + duration / 1000);
+      gain.gain.linearRampToValueAtTime(0.12, now + 0.08);  // fade in doux
+      gain.gain.setValueAtTime(0.12, now + dur - 0.12);      // sustain
+      gain.gain.linearRampToValueAtTime(0, now + dur);       // fade out doux
       osc.start(now);
-      osc.stop(now + duration / 1000);
+      osc.stop(now + dur);
       // Cleanup le context après le beep
       setTimeout(() => { try { ctx.close(); } catch {} }, duration + 100);
     } catch (e) {
@@ -118,8 +120,8 @@ export function YazzAssistantModal({ onClose }: { onClose: () => void }) {
       console.log("[AI Assistant] Speech recognition started");
       setIsListening(true);
       setState("listening");
-      // 🔔 Bip aigu (880Hz) = "à toi de parler"
-      playBeep(880, 120);
+      // 🔔 Bip aigu (880Hz, 400ms) = "à toi de parler" — son doux et fluide
+      playBeep(880, 400);
     };
 
     recognition.onresult = (event: any) => {
@@ -285,8 +287,8 @@ export function YazzAssistantModal({ onClose }: { onClose: () => void }) {
         }
         isPlayingRef.current = false;
         console.log("[AI Assistant] ✅ Audio queue empty — consumer stopped — restarting listening");
-        // 🔔 Bip grave (440Hz) = "l'IA a fini, à toi"
-        playBeep(440, 100);
+        // 🔔 Bip grave (440Hz, 350ms) = "l'IA a fini, à toi" — son doux et fluide
+        playBeep(440, 350);
         // ⚠ FIX: restart listening ONLY when ALL audio has finished playing.
         // Adding 500ms delay to let the last audio sample fully decay (avoid echo).
         setTimeout(() => {
