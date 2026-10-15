@@ -23,7 +23,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Room, RoomEvent, Track, ConnectionState, setLogLevel } from "livekit-client";
+import { Room, RoomEvent, Track, ConnectionState } from "livekit-client";
 import { createClientSafe } from "@/lib/supabase/client";
 
 export type LkConnectionState = "disconnected" | "connecting" | "connected" | "reconnecting" | "error";
@@ -75,8 +75,7 @@ export function useLiveKitRoom(options: UseLiveKitRoomOptions = {}): UseLiveKitR
    * Demande un token LiveKit au backend + connecte à la room.
    */
   const connect = useCallback(async (): Promise<boolean> => {
-    // ⚠ DIAGNOSTIC: active les logs LiveKit en mode debug
-    try { setLogLevel('debug'); } catch {}
+    // ⚠ DIAGNOSTIC: logging pour debug disconnect
     console.log("[useLiveKitRoom] connect() called — enabled=", enabled);
     if (!enabled) {
       setErrorState("LiveKit disabled (NEXT_PUBLIC_AI_USE_LIVEKIT != true)");
