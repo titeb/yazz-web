@@ -233,6 +233,9 @@ export function YazzAssistantModal({ onClose }: { onClose: () => void }) {
 
   // Enqueue un chunk audio — sera joué en séquence par le consumer.
   // Le consumer tourne tant que isPlayingRef=true et queue non-vide.
+  // ⚠ FIX ECHO LOOP (2026-10-15) : autoRestartListening() est appelé ICI
+  // (quand la queue est VIDE) et NON PLUS dans onDone. Sinon le mic redémarre
+  // pendant que les chunks audio jouent encore → l'IA entend sa propre voix → boucle.
   const enqueueAudio = useCallback((url: string, text: string) => {
     audioQueueRef.current.push({ url, text });
     const nextIndex = audioQueueRef.current.length - 1;
@@ -250,7 +253,19 @@ export function YazzAssistantModal({ onClose }: { onClose: () => void }) {
           chunkIndex++;
         }
         isPlayingRef.current = false;
-        console.log("[AI Assistant] ✅ Audio queue empty — consumer stopped");
+        console.log("[AI Assistant] ✅ Audio queue empty — consumer stopped — restarting listening");
+        // ⚠ FIX: restart listening ONLY when ALL audio has finished playing.
+        // Adding 500ms delay to let the last audio sample fully decay (avoid echo).
+        setTimeout(() => {
+          try {
+            if (recognitionRef.current && !isSendingRef.current) {
+              recognitionRef.current.start();
+              console.log("[AI Assistant] ✅ Listening restarted (post-audio drain)");
+            }
+          } catch (e) {
+            // Already started or not available
+          }
+        }, 500);
       })();
     }
   }, [playAudioChunk]);
@@ -312,7 +327,9 @@ export function YazzAssistantModal({ onClose }: { onClose: () => void }) {
         });
       } else {
         setState("idle");
-        autoRestartListening();
+        // ⚠ FIX ECHO LOOP: ne PAS appeler autoRestartListening() ici.
+        // Le restart se fait dans enqueueAudio() quand la queue audio est VIDE.
+        // Sinon le mic redémarre pendant que l'audio joue encore → echo loop.
       }
       // Reset l'accumulateur pour le prochain tour
       wsAssistantTextRef.current = "";
@@ -463,7 +480,8 @@ export function YazzAssistantModal({ onClose }: { onClose: () => void }) {
                     setState("idle");
                   } else {
                     setState("idle");
-                    autoRestartListening();
+                    // ⚠ FIX ECHO LOOP: ne PAS appeler autoRestartListening() ici.
+                    // Le restart se fait dans enqueueAudio() quand la queue audio est VIDE.
                   }
                   break;
                 case "error":
@@ -500,9 +518,9 @@ export function YazzAssistantModal({ onClose }: { onClose: () => void }) {
           return updated;
         });
         if (data2.audioUrl) {
-          const audio = new Audio(data2.audioUrl);
-          audio.onended = () => { setState("idle"); autoRestartListening(); };
-          audio.play().catch(() => { setState("idle"); autoRestartListening(); });
+          // ⚠ FIX ECHO LOOP: enqueue le batch audio comme les chunks streaming
+          // (le restart listening se fera quand la queue sera vide, pas ici)
+          enqueueAudio(data2.audioUrl, data2.text || "Réponse");
         } else {
           setState("idle");
           autoRestartListening();
