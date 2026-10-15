@@ -51,6 +51,35 @@ export function YazzAssistantModal({ onClose }: { onClose: () => void }) {
   // l'audio (contourne la politique d'autoplay de Chrome/Safari).
   const audioUnlockedRef = useRef(false);
 
+  // 🔔 Beep sound — joue un bip court pour signaler "à toi de parler"
+  // Utilise Web Audio API (pas de fichier externe needed).
+  // 2 tons : high (880Hz) pour "début écoute", low (440Hz) pour "fin IA parle".
+  const playBeep = useCallback((freq: number = 880, duration: number = 150) => {
+    try {
+      const AudioCtx = (window as any).AudioContext || (window as any).webkitAudioContext;
+      if (!AudioCtx) return;
+      const ctx = new AudioCtx();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.frequency.value = freq;
+      osc.type = "sine";
+      // Envelope : attack 5ms, sustain, release 50ms (pas de clic/plop)
+      const now = ctx.currentTime;
+      gain.gain.setValueAtTime(0, now);
+      gain.gain.linearRampToValueAtTime(0.15, now + 0.005);
+      gain.gain.setValueAtTime(0.15, now + duration / 1000 - 0.05);
+      gain.gain.linearRampToValueAtTime(0, now + duration / 1000);
+      osc.start(now);
+      osc.stop(now + duration / 1000);
+      // Cleanup le context après le beep
+      setTimeout(() => { try { ctx.close(); } catch {} }, duration + 100);
+    } catch (e) {
+      // Web Audio pas dispo — ignore
+    }
+  }, []);
+
   // Initialise un SEUL élément Audio partagé pour TOUT le playback TTS.
   // Quand on set audio.src + audio.play(), le navigateur coupe automatiquement
   // toute lecture en cours → empêche intrinsèquement le chevauchement même
@@ -89,6 +118,8 @@ export function YazzAssistantModal({ onClose }: { onClose: () => void }) {
       console.log("[AI Assistant] Speech recognition started");
       setIsListening(true);
       setState("listening");
+      // 🔔 Bip aigu (880Hz) = "à toi de parler"
+      playBeep(880, 120);
     };
 
     recognition.onresult = (event: any) => {
@@ -254,6 +285,8 @@ export function YazzAssistantModal({ onClose }: { onClose: () => void }) {
         }
         isPlayingRef.current = false;
         console.log("[AI Assistant] ✅ Audio queue empty — consumer stopped — restarting listening");
+        // 🔔 Bip grave (440Hz) = "l'IA a fini, à toi"
+        playBeep(440, 100);
         // ⚠ FIX: restart listening ONLY when ALL audio has finished playing.
         // Adding 500ms delay to let the last audio sample fully decay (avoid echo).
         setTimeout(() => {
