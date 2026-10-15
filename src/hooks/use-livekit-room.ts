@@ -223,6 +223,8 @@ export function useLiveKitRoom(options: UseLiveKitRoomOptions = {}): UseLiveKitR
     console.log("[useLiveKitRoom] disconnect() called");
     console.trace("[useLiveKitRoom] disconnect() stack trace");
     if (!roomRef.current) return;
+    try {
+      await roomRef.current.disconnect();
       console.log("[useLiveKitRoom] Disconnected");
     } catch (err) {
       console.warn("[useLiveKitRoom] Disconnect error:", err);
