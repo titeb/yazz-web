@@ -102,18 +102,17 @@ export function useLiveKitRoom(options: UseLiveKitRoomOptions = {}): UseLiveKitR
         return false;
       }
 
-      // 2. Demande un token LiveKit au backend
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_YAZZ_BACKEND_URL || "https://api.zipbox.online"}/api/ai/livekit/token`,
-        {
-          method: "POST",
-          headers: {
-            "Authorization": `Bearer ${session.access_token}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ ttl_seconds: 3600 }),
-        }
-      );
+      // 2. Demande un token LiveKit au backend via le proxy Next.js (same-origin)
+      //    (évite les problèmes CORS — le navigateur appelle /api/ai/livekit/token
+      //    sur son propre domaine, qui relaie vers api.zipbox.online server-side)
+      const res = await fetch("/api/ai/livekit/token", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${session.access_token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ ttl_seconds: 3600 }),
+      });
       if (!res.ok) {
         const errText = await res.text().catch(() => "");
         throw new Error(`Token fetch HTTP ${res.status}: ${errText.slice(0, 200)}`);
