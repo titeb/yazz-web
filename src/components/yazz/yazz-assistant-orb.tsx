@@ -5,10 +5,10 @@ import { motion } from "framer-motion";
 type OrbState = "idle" | "listening" | "thinking" | "speaking" | "error";
 
 const COLORS: Record<OrbState, { primary: string; secondary: string; accent: string; glow: string }> = {
-  idle: { primary: "#3c5663", secondary: "#1b6d97", accent: "#1b6d97", glow: "#1b6d97" },
-  listening: { primary: "#0ea5e9", secondary: "#0284c7", accent: "#38bdf8", glow: "#0ea5e9" },
+  idle: { primary: "#2b44ee", secondary: "#1d34d4", accent: "#2b44ee", glow: "#2b44ee" },
+  listening: { primary: "#2b44ee", secondary: "#1d34d4", accent: "#4d63f0", glow: "#2b44ee" },
   thinking: { primary: "#f59e0b", secondary: "#d97706", accent: "#fbbf24", glow: "#f59e0b" },
-  speaking: { primary: "#8b5cf6", secondary: "#7c3aed", accent: "#a78bfa", glow: "#8b5cf6" },
+  speaking: { primary: "#2b44ee", secondary: "#1d34d4", accent: "#4d63f0", glow: "#2b44ee" },
   error: { primary: "#ef4444", secondary: "#dc2626", accent: "#f87171", glow: "#ef4444" },
 };
 
