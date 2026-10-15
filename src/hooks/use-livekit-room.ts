@@ -23,7 +23,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Room, RoomEvent, Track, ConnectionState } from "livekit-client";
+import { Room, RoomEvent, Track, ConnectionState, setLogLevel } from "livekit-client";
 import { createClientSafe } from "@/lib/supabase/client";
 
 export type LkConnectionState = "disconnected" | "connecting" | "connected" | "reconnecting" | "error";
@@ -75,6 +75,9 @@ export function useLiveKitRoom(options: UseLiveKitRoomOptions = {}): UseLiveKitR
    * Demande un token LiveKit au backend + connecte à la room.
    */
   const connect = useCallback(async (): Promise<boolean> => {
+    // ⚠ DIAGNOSTIC: active les logs LiveKit en mode debug
+    try { setLogLevel('debug'); } catch {}
+    console.log("[useLiveKitRoom] connect() called — enabled=", enabled);
     if (!enabled) {
       setErrorState("LiveKit disabled (NEXT_PUBLIC_AI_USE_LIVEKIT != true)");
       return false;
@@ -139,32 +142,34 @@ export function useLiveKitRoom(options: UseLiveKitRoomOptions = {}): UseLiveKitR
 
       // Événements de connexion
       room.on(RoomEvent.Connected, () => {
-        console.log(`[useLiveKitRoom] ✅ Connected to room ${room.name}`);
+        console.log(`[useLiveKitRoom] ✅ RoomEvent.Connected — room=${room.name}`);
         setState("connected");
       });
 
-      room.on(RoomEvent.Disconnected, () => {
-        console.log("[useLiveKitRoom] Disconnected");
+      room.on(RoomEvent.Disconnected, (reason) => {
+        console.log("[useLiveKitRoom] RoomEvent.Disconnected — reason=", reason);
+        console.trace("[useLiveKitRoom] disconnect stack trace");
         setState("disconnected");
       });
 
       room.on(RoomEvent.Reconnecting, () => {
-        console.log("[useLiveKitRoom] Reconnecting...");
+        console.log("[useLiveKitRoom] RoomEvent.Reconnecting");
+        console.trace("[useLiveKitRoom] reconnect stack trace");
         setState("reconnecting");
       });
 
       room.on(RoomEvent.Reconnected, () => {
-        console.log("[useLiveKitRoom] Reconnected");
+        console.log("[useLiveKitRoom] RoomEvent.Reconnected");
         setState("connected");
       });
 
-      room.on(RoomEvent.ConnectionQualityChanged, () => {
-        // Log only — not critical for UX
+      room.on(RoomEvent.ConnectionQualityChanged, (quality, participant) => {
+        console.log(`[useLiveKitRoom] RoomEvent.ConnectionQualityChanged — quality=${quality}, participant=${participant?.identity || 'local'}`);
       });
 
       // Souscrit aux tracks audio publiés par l'agent
       room.on(RoomEvent.TrackSubscribed, (track, publication, participant) => {
-        console.log(`[useLiveKitRoom] Track subscribed from ${participant.identity}: kind=${track.kind}`);
+        console.log(`[useLiveKitRoom] RoomEvent.TrackSubscribed — from=${participant.identity}, kind=${track.kind}, name=${publication.trackName}`);
         if (track.kind === Track.Kind.Audio) {
           // L'agent a publié un audio track → on le joue
           const audioEl = track.attach() as HTMLAudioElement;
@@ -173,22 +178,25 @@ export function useLiveKitRoom(options: UseLiveKitRoomOptions = {}): UseLiveKitR
         }
       });
 
-      room.on(RoomEvent.TrackUnsubscribed, (track) => {
+      room.on(RoomEvent.TrackUnsubscribed, (track, publication, participant) => {
+        console.log(`[useLiveKitRoom] RoomEvent.TrackUnsubscribed — from=${participant?.identity || '?'}`);
         track.detach().forEach(el => el.remove());
       });
 
       // Détection de la voix de l'utilisateur (barge-in natif LiveKit)
       room.on(RoomEvent.LocalParticipantSpeakingChanged, (speaking) => {
-        console.log(`[useLiveKitRoom] Local participant speaking: ${speaking}`);
+        console.log(`[useLiveKitRoom] RoomEvent.LocalParticipantSpeakingChanged — speaking=${speaking}`);
         // L'agent backend reçoit cet event via LiveKit et arrête son TTS en cours
       });
 
       // Détection de l'agent qui parle
       room.on(RoomEvent.ParticipantSpeakingChanged, (participantSpeaking) => {
+        console.log(`[useLiveKitRoom] RoomEvent.ParticipantSpeakingChanged — speaking=${!!participantSpeaking}`);
         callbacksRef.current.onAgentSpeaking?.(!!participantSpeaking);
       });
 
       // Connect
+      console.log(`[useLiveKitRoom] room.connect(url=${url.replace(/token=[^&]+/, "token=***")}, token=***)`);
       await room.connect(url, token);
 
       // 4. Publie le micro de l'utilisateur
@@ -213,9 +221,9 @@ export function useLiveKitRoom(options: UseLiveKitRoomOptions = {}): UseLiveKitR
    * Déconnecte de la room proprement.
    */
   const disconnect = useCallback(async () => {
+    console.log("[useLiveKitRoom] disconnect() called");
+    console.trace("[useLiveKitRoom] disconnect() stack trace");
     if (!roomRef.current) return;
-    try {
-      await roomRef.current.disconnect();
       console.log("[useLiveKitRoom] Disconnected");
     } catch (err) {
       console.warn("[useLiveKitRoom] Disconnect error:", err);
@@ -244,6 +252,8 @@ export function useLiveKitRoom(options: UseLiveKitRoomOptions = {}): UseLiveKitR
   // Cleanup au unmount
   useEffect(() => {
     return () => {
+      console.log("[useLiveKitRoom] useEffect cleanup (unmount) — roomRef.current=", !!roomRef.current);
+      console.trace("[useLiveKitRoom] useEffect cleanup stack trace");
       if (roomRef.current) {
         try { roomRef.current.disconnect(); } catch {}
         roomRef.current = null;

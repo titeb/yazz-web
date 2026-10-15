@@ -75,15 +75,21 @@ export function YazzAssistantLiveKitModal({ onClose }: YazzAssistantLiveKitModal
 
   // Auto-connect au montage du modal
   useEffect(() => {
+    console.log("[LiveKitModal] useEffect mount — calling connect()");
     connect();
     return () => {
+      console.log("[LiveKitModal] useEffect cleanup (unmount) — calling disconnect()");
+      console.trace("[LiveKitModal] cleanup stack trace");
       disconnect();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleClose = async () => {
+    console.log("[LiveKitModal] handleClose called — calling disconnect()");
+    console.trace("[LiveKitModal] handleClose stack trace");
     await disconnect();
+    console.log("[LiveKitModal] handleClose — calling onClose()");
     onClose();
   };
 

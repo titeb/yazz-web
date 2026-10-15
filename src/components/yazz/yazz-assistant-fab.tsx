@@ -13,6 +13,7 @@ const USE_LIVEKIT = process.env.NEXT_PUBLIC_AI_USE_LIVEKIT === "true";
 
 export function YazzAssistantFab({ enabled }: { enabled: boolean }) {
   const [open, setOpen] = useState(false);
+  console.log("[Fab] enabled =", enabled, "open =", open, "USE_LIVEKIT =", USE_LIVEKIT);
 
   if (!enabled) return null;
 
