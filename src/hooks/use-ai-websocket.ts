@@ -170,11 +170,18 @@ export function useAiWebSocket(options: UseAiWebSocketOptions = {}): UseAiWebSoc
       }
       wsRef.current = null;
 
-      // ⚠ FIX: si la fermeture est intentionnelle (on a appelé close() nous-mêmes),
-      // ne PAS reconnecter → empêche la boucle infinie (code 4002 "Replaced by new connection")
+      // ⚠ FIX 1: si la fermeture est intentionnelle (on a appelé close() nous-mêmes)
       if (intentionalCloseRef.current) {
         intentionalCloseRef.current = false;
         console.log("[useAiWebSocket] Intentional close — not reconnecting");
+        return;
+      }
+
+      // ⚠ FIX 2: code 4002 = "Replaced by new connection" — le backend a fermé
+      // cette connexion car une nouvelle est arrivée. NE PAS reconnecter → empêche la boucle.
+      if (ev.code === 4002) {
+        console.log("[useAiWebSocket] Connection replaced (4002) — not reconnecting");
+        setState("disconnected");
         return;
       }
 
