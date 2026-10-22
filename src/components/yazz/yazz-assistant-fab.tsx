@@ -1,11 +1,23 @@
 "use client";
 
 import { useState } from "react";
+import dynamic from "next/dynamic";
 import { AnimatePresence } from "framer-motion";
 import { YazzAssistantModal } from "./yazz-assistant-modal";
 
+// ⚠ FIX: utilise next/dynamic avec ssr: false pour le modal LiveKit
+// car livekit-client nécessite window/document/RTCPeerConnection (browser-only)
+// Sans ssr: false, next build crash pendant le SSR.
+const YazzAssistantLiveKitModal = dynamic(
+  () => import("./yazz-assistant-livekit-modal").then(m => m.YazzAssistantLiveKitModal),
+  { ssr: false }
+);
+
+const USE_LIVEKIT = process.env.NEXT_PUBLIC_AI_USE_LIVEKIT === "true";
+
 export function YazzAssistantFab({ enabled }: { enabled: boolean }) {
   const [open, setOpen] = useState(false);
+  console.log("[Fab] enabled =", enabled, "open =", open, "USE_LIVEKIT =", USE_LIVEKIT);
 
   if (!enabled) return null;
 
@@ -32,7 +44,11 @@ export function YazzAssistantFab({ enabled }: { enabled: boolean }) {
       </button>
 
       <AnimatePresence>
-        {open && <YazzAssistantModal onClose={() => setOpen(false)} />}
+        {open && (
+          USE_LIVEKIT
+            ? <YazzAssistantLiveKitModal onClose={() => setOpen(false)} />
+            : <YazzAssistantModal onClose={() => setOpen(false)} />
+        )}
       </AnimatePresence>
 
       <style jsx>{`

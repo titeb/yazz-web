@@ -6,6 +6,11 @@ import { Mic, Keyboard, X, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { YazzAssistantOrb } from "./yazz-assistant-orb";
 import { createClientSafe } from "@/lib/supabase/client";
+import { useAiWebSocket } from "@/hooks/use-ai-websocket";
+
+// Feature flag : si true, utilise WebSocket (Plan B1) ; sinon garde SSE.
+// Rollback instantané : set NEXT_PUBLIC_AI_USE_WS=false → le modal retombe sur SSE.
+const USE_WS = process.env.NEXT_PUBLIC_AI_USE_WS === "true";
 
 type OrbState = "idle" | "listening" | "thinking" | "speaking" | "error";
 
@@ -46,6 +51,37 @@ export function YazzAssistantModal({ onClose }: { onClose: () => void }) {
   // l'audio (contourne la politique d'autoplay de Chrome/Safari).
   const audioUnlockedRef = useRef(false);
 
+  // 🔔 Beep sound — joue un bip doux et fluide pour signaler "à toi de parler"
+  // Utilise Web Audio API (pas de fichier externe needed).
+  // 2 tons : high (880Hz) pour "début écoute", low (440Hz) pour "fin IA parle".
+  // Son doux avec fade in/out progressif (pas agressif).
+  const playBeep = useCallback((freq: number = 880, duration: number = 400) => {
+    try {
+      const AudioCtx = (window as any).AudioContext || (window as any).webkitAudioContext;
+      if (!AudioCtx) return;
+      const ctx = new AudioCtx();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.frequency.value = freq;
+      osc.type = "sine";
+      // Envelope doux : fade in 80ms, sustain, fade out 120ms (son fluide, pas de clic)
+      const now = ctx.currentTime;
+      const dur = duration / 1000;
+      gain.gain.setValueAtTime(0, now);
+      gain.gain.linearRampToValueAtTime(0.12, now + 0.08);  // fade in doux
+      gain.gain.setValueAtTime(0.12, now + dur - 0.12);      // sustain
+      gain.gain.linearRampToValueAtTime(0, now + dur);       // fade out doux
+      osc.start(now);
+      osc.stop(now + dur);
+      // Cleanup le context après le beep
+      setTimeout(() => { try { ctx.close(); } catch {} }, duration + 100);
+    } catch (e) {
+      // Web Audio pas dispo — ignore
+    }
+  }, []);
+
   // Initialise un SEUL élément Audio partagé pour TOUT le playback TTS.
   // Quand on set audio.src + audio.play(), le navigateur coupe automatiquement
   // toute lecture en cours → empêche intrinsèquement le chevauchement même
@@ -84,6 +120,8 @@ export function YazzAssistantModal({ onClose }: { onClose: () => void }) {
       console.log("[AI Assistant] Speech recognition started");
       setIsListening(true);
       setState("listening");
+      // 🔔 Bip aigu (880Hz, 400ms) = "à toi de parler" — son doux et fluide
+      playBeep(880, 400);
     };
 
     recognition.onresult = (event: any) => {
@@ -228,6 +266,9 @@ export function YazzAssistantModal({ onClose }: { onClose: () => void }) {
 
   // Enqueue un chunk audio — sera joué en séquence par le consumer.
   // Le consumer tourne tant que isPlayingRef=true et queue non-vide.
+  // ⚠ FIX ECHO LOOP (2026-10-15) : autoRestartListening() est appelé ICI
+  // (quand la queue est VIDE) et NON PLUS dans onDone. Sinon le mic redémarre
+  // pendant que les chunks audio jouent encore → l'IA entend sa propre voix → boucle.
   const enqueueAudio = useCallback((url: string, text: string) => {
     audioQueueRef.current.push({ url, text });
     const nextIndex = audioQueueRef.current.length - 1;
@@ -245,7 +286,21 @@ export function YazzAssistantModal({ onClose }: { onClose: () => void }) {
           chunkIndex++;
         }
         isPlayingRef.current = false;
-        console.log("[AI Assistant] ✅ Audio queue empty — consumer stopped");
+        console.log("[AI Assistant] ✅ Audio queue empty — consumer stopped — restarting listening");
+        // 🔔 Bip grave (440Hz, 350ms) = "l'IA a fini, à toi" — son doux et fluide
+        playBeep(440, 350);
+        // ⚠ FIX: restart listening ONLY when ALL audio has finished playing.
+        // Adding 500ms delay to let the last audio sample fully decay (avoid echo).
+        setTimeout(() => {
+          try {
+            if (recognitionRef.current && !isSendingRef.current) {
+              recognitionRef.current.start();
+              console.log("[AI Assistant] ✅ Listening restarted (post-audio drain)");
+            }
+          } catch (e) {
+            // Already started or not available
+          }
+        }, 500);
       })();
     }
   }, [playAudioChunk]);
@@ -262,6 +317,83 @@ export function YazzAssistantModal({ onClose }: { onClose: () => void }) {
     }, 800);
   }, []);
 
+  // ───────── Phase B2 — WebSocket mode (feature flag) ─────────
+  // Si NEXT_PUBLIC_AI_USE_WS=true, on utilise le hook useAiWebSocket
+  // qui envoie les messages via WS et reçoit les chunks via callbacks.
+  // Sinon, le hook reste idle (enabled=false) et sendMessage utilise SSE.
+  // Réf pour accumulateur de texte assistant (évite re-render trop fréquent)
+  const wsAssistantTextRef = useRef<string>("");
+  // Réf pour la fonction bargeIn du hook (appelée par bargeIn() du modal)
+  const wsBargeInRef = useRef<(() => void) | null>(null);
+  // Réf pour la fonction send du hook
+  const wsSendRef = useRef<((text: string, conversationId?: string) => boolean) | null>(null);
+
+  const wsHook = useAiWebSocket({
+    enabled: USE_WS,
+    onTextChunk: (chunk: string) => {
+      // Accumule et met à jour le dernier message assistant
+      wsAssistantTextRef.current += chunk;
+      setState("speaking");
+      const currentText = wsAssistantTextRef.current;
+      setMessages((prev) => {
+        const updated = [...prev];
+        const lastIdx = updated.length - 1;
+        if (updated[lastIdx]?.role === "assistant") {
+          updated[lastIdx] = { ...updated[lastIdx], content: currentText };
+        }
+        return updated;
+      });
+    },
+    onAudioChunk: (audioUrl: string, text: string, index: number) => {
+      console.log(`[AI/WS] Audio chunk #${index} received, text="${text.substring(0, 40)}"`);
+      enqueueAudio(audioUrl, text);
+    },
+    onDone: (result) => {
+      if (result.conversationId) setConversationId(result.conversationId);
+      if (result.confirmationCard) {
+        setState("idle");
+        setMessages((prev) => {
+          const updated = [...prev];
+          const lastIdx = updated.length - 1;
+          if (updated[lastIdx]?.role === "assistant") {
+            updated[lastIdx] = { ...updated[lastIdx], confirmationCard: result.confirmationCard };
+          }
+          return updated;
+        });
+      } else {
+        setState("idle");
+        // ⚠ FIX ECHO LOOP: ne PAS appeler autoRestartListening() ici.
+        // Le restart se fait dans enqueueAudio() quand la queue audio est VIDE.
+        // Sinon le mic redémarre pendant que l'audio joue encore → echo loop.
+      }
+      // Reset l'accumulateur pour le prochain tour
+      wsAssistantTextRef.current = "";
+    },
+    onError: (error: string) => {
+      console.error("[AI/WS] Error:", error);
+      setError(error);
+      setState("error");
+      wsAssistantTextRef.current = "";
+    },
+    onBargeInAck: () => {
+      console.log("[AI/WS] Server acknowledged barge-in");
+    },
+    onConnectionStateChange: (state) => {
+      console.log(`[AI/WS] Connection state: ${state}`);
+    },
+  });
+
+  // Maintient les refs à jour pour que bargeIn() du modal puisse appeler ws.bargeIn()
+  useEffect(() => {
+    if (USE_WS) {
+      wsBargeInRef.current = wsHook.bargeIn;
+      wsSendRef.current = wsHook.send;
+    } else {
+      wsBargeInRef.current = null;
+      wsSendRef.current = null;
+    }
+  }, [USE_WS, wsHook.bargeIn, wsHook.send]);
+
   // Send message to backend (STREAMING via SSE)
   const sendMessage = async (text: string) => {
     if (!text.trim()) return;
@@ -270,6 +402,23 @@ export function YazzAssistantModal({ onClose }: { onClose: () => void }) {
     setError(null);
     setMessages((prev) => [...prev, { role: "user", content: text }]);
 
+    // ─── Branch Phase B2 — WebSocket path (si flag activé + connecté) ───
+    // Si USE_WS=true et que le WS est connecté, on envoie via WS.
+    // Sinon, on retombe sur le code SSE existant (safety net).
+    if (USE_WS && wsHook.isConnected && wsSendRef.current) {
+      console.log("[AI Assistant] Using WebSocket path");
+      // Reset l'accumulateur de texte pour ce nouveau tour
+      wsAssistantTextRef.current = "";
+      // Ajoute un message assistant vide qu'on va remplir progressivement
+      setMessages((prev) => [...prev, { role: "assistant", content: "" }]);
+      // Envoie le message au backend via WS
+      const sent = wsSendRef.current(text, conversationId || undefined);
+      if (sent) return; // Le hook va appeler onTextChunk/onAudioChunk/onDone
+      // Si l'envoi échoue (WS déconnecté entretemps), on tombe sur SSE
+      console.warn("[AI Assistant] WS send failed — falling back to SSE");
+    }
+
+    // ─── SSE path (code original, inchangé) ───
     try {
       const supabase = createClientSafe();
       const { data: { session } } = await supabase!.auth.getSession();
@@ -366,7 +515,8 @@ export function YazzAssistantModal({ onClose }: { onClose: () => void }) {
                     setState("idle");
                   } else {
                     setState("idle");
-                    autoRestartListening();
+                    // ⚠ FIX ECHO LOOP: ne PAS appeler autoRestartListening() ici.
+                    // Le restart se fait dans enqueueAudio() quand la queue audio est VIDE.
                   }
                   break;
                 case "error":
@@ -403,9 +553,9 @@ export function YazzAssistantModal({ onClose }: { onClose: () => void }) {
           return updated;
         });
         if (data2.audioUrl) {
-          const audio = new Audio(data2.audioUrl);
-          audio.onended = () => { setState("idle"); autoRestartListening(); };
-          audio.play().catch(() => { setState("idle"); autoRestartListening(); });
+          // ⚠ FIX ECHO LOOP: enqueue le batch audio comme les chunks streaming
+          // (le restart listening se fera quand la queue sera vide, pas ici)
+          enqueueAudio(data2.audioUrl, data2.text || "Réponse");
         } else {
           setState("idle");
           autoRestartListening();
@@ -421,6 +571,8 @@ export function YazzAssistantModal({ onClose }: { onClose: () => void }) {
   // Barge-in : interrompt la lecture audio en cours + vide la queue
   // + relance l'écoute. Utilisé quand l'utilisateur clique le mic pendant
   // que l'IA parle — il peut couper la parole à l'IA (conversation live).
+  // En mode WS, on envoie aussi un signal barge_in au serveur pour qu'il
+  // arrête de générer/streamer les chunks TTS (économise du coût API + CPU).
   const bargeIn = useCallback(() => {
     console.log("[AI Assistant] 🛑 BARGE-IN — stopping audio + clearing queue");
     // 1. Stoppe la lecture audio en cours
@@ -435,6 +587,8 @@ export function YazzAssistantModal({ onClose }: { onClose: () => void }) {
     //    On force isPlayingRef = false pour qu'un nouveau consumer démarre
     //    proprement si l'utilisateur parle à nouveau.
     isPlayingRef.current = false;
+    // 4. En mode WS : envoie signal serveur pour arrêter la génération TTS
+    wsBargeInRef.current?.();
     console.log("[AI Assistant] ✅ Barge-in complete — ready for new input");
   }, []);
 

@@ -4,58 +4,64 @@ import { motion } from "framer-motion";
 
 type OrbState = "idle" | "listening" | "thinking" | "speaking" | "error";
 
-const COLORS: Record<OrbState, { primary: string; secondary: string; accent: string }> = {
-  idle: { primary: "#3c5663", secondary: "#1b6d97", accent: "#1b6d97" },
-  listening: { primary: "#1b6d97", secondary: "#4b809b", accent: "#1b6d97" },
-  thinking: { primary: "#c16648", secondary: "#a38445", accent: "#c16648" },
-  speaking: { primary: "#4b809b", secondary: "#1b6d97", accent: "#4b809b" },
-  error: { primary: "#a64b43", secondary: "#7a3835", accent: "#a64b43" },
+const COLORS: Record<OrbState, { primary: string; secondary: string; accent: string; glow: string }> = {
+  idle: { primary: "#2b44ee", secondary: "#1d34d4", accent: "#2b44ee", glow: "#2b44ee" },
+  listening: { primary: "#2b44ee", secondary: "#1d34d4", accent: "#4d63f0", glow: "#2b44ee" },
+  thinking: { primary: "#f59e0b", secondary: "#d97706", accent: "#fbbf24", glow: "#f59e0b" },
+  speaking: { primary: "#2b44ee", secondary: "#1d34d4", accent: "#4d63f0", glow: "#2b44ee" },
+  error: { primary: "#ef4444", secondary: "#dc2626", accent: "#f87171", glow: "#ef4444" },
 };
 
-export function YazzAssistantOrb({ state, size = 220 }: { state: OrbState; size?: number }) {
+export function YazzAssistantOrb({ state, size = 240 }: { state: OrbState; size?: number }) {
   const colors = COLORS[state];
-  const isAnimated = state === "listening" || state === "thinking" || state === "speaking" || state === "idle";
 
   return (
     <div className="relative flex items-center justify-center" style={{ width: size, height: size }}>
-      {/* Halo */}
+      {/* ═══ Halo lumineux (toujours visible, plus intense en listening) ═══ */}
       <motion.div
         className="absolute rounded-full"
         style={{
-          width: size,
-          height: size,
-          background: `radial-gradient(circle, ${colors.accent}40 0%, transparent 70%)`,
+          width: size * 1.1,
+          height: size * 1.1,
+          background: `radial-gradient(circle, ${colors.glow}30 0%, ${colors.glow}10 40%, transparent 70%)`,
         }}
         animate={
           state === "listening"
-            ? { scale: [1, 1.15, 1], opacity: [0.5, 0.8, 0.5] }
+            ? { scale: [1, 1.25, 1], opacity: [0.4, 0.9, 0.4] }
             : state === "thinking"
-            ? { rotate: 360 }
+            ? { rotate: 360, opacity: 0.5 }
             : state === "speaking"
-            ? { scale: [1, 1.08, 1], opacity: [0.4, 0.7, 0.4] }
-            : { scale: [1, 1.04, 1], opacity: [0.4, 0.5, 0.4] }
+            ? { scale: [1, 1.15, 1], opacity: [0.3, 0.7, 0.3] }
+            : { scale: [1, 1.06, 1], opacity: [0.3, 0.45, 0.3] }
         }
         transition={
           state === "thinking"
-            ? { duration: 3, repeat: Infinity, ease: "linear" }
-            : { duration: state === "speaking" ? 0.8 : 2, repeat: Infinity, ease: "easeInOut" }
+            ? { duration: 4, repeat: Infinity, ease: "linear" }
+            : state === "listening"
+            ? { duration: 2.5, repeat: Infinity, ease: "easeInOut" }
+            : { duration: state === "speaking" ? 0.6 : 3.5, repeat: Infinity, ease: "easeInOut" }
         }
       />
 
-      {/* Vagues concentriques pendant l'écoute */}
+      {/* ═══ Vagues concentriques pendant l'écoute (5 vagues, plus larges) ═══ */}
       {state === "listening" && (
         <>
-          {[0, 1, 2].map((i) => (
+          {[0, 1, 2, 3, 4].map((i) => (
             <motion.div
               key={i}
-              className="absolute rounded-full border-2"
-              style={{ borderColor: colors.accent }}
+              className="absolute rounded-full"
+              style={{
+                border: `2px solid ${colors.accent}`,
+                width: size * 0.5,
+                height: size * 0.5,
+              }}
               animate={{
-                scale: [0.6, 1.2],
-                opacity: [0.6, 0],
+                scale: [0.5, 1.5],
+                opacity: [0.7, 0],
+                borderWidth: [3, 0.5],
               }}
               transition={{
-                duration: 1.5,
+                duration: 2.2,
                 repeat: Infinity,
                 delay: i * 0.4,
                 ease: "easeOut",
@@ -65,13 +71,55 @@ export function YazzAssistantOrb({ state, size = 220 }: { state: OrbState; size?
         </>
       )}
 
-      {/* Particules orbitales pour thinking (8 points qui tournent) */}
+      {/* ═══ Particules flottantes pendant l'écoute (8 points qui orbitent doucement) ═══ */}
+      {state === "listening" && (
+        <motion.div
+          className="absolute"
+          style={{ width: size, height: size }}
+          animate={{ rotate: 360 }}
+          transition={{ duration: 12, repeat: Infinity, ease: "linear" }}
+        >
+          {Array.from({ length: 8 }).map((_, i) => {
+            const angle = (i * 360) / 8;
+            const radius = size * 0.42;
+            return (
+              <motion.div
+                key={i}
+                className="absolute rounded-full"
+                style={{
+                  width: 8,
+                  height: 8,
+                  background: `radial-gradient(circle, #fff, ${colors.accent})`,
+                  boxShadow: `0 0 8px ${colors.accent}`,
+                  left: "50%",
+                  top: "50%",
+                  marginLeft: -4,
+                  marginTop: -4,
+                  transform: `rotate(${angle}deg) translateX(${radius}px)`,
+                }}
+                animate={{
+                  scale: [1, 1.5, 1],
+                  opacity: [0.5, 1, 0.5],
+                }}
+                transition={{
+                  duration: 1.5,
+                  repeat: Infinity,
+                  delay: i * 0.15,
+                  ease: "easeInOut",
+                }}
+              />
+            );
+          })}
+        </motion.div>
+      )}
+
+      {/* ═══ Particules orbitales pour thinking (8 points qui tournent plus vite) ═══ */}
       {state === "thinking" && (
         <motion.div
           className="absolute"
           style={{ width: size, height: size }}
           animate={{ rotate: 360 }}
-          transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
+          transition={{ duration: 2.5, repeat: Infinity, ease: "linear" }}
         >
           {Array.from({ length: 8 }).map((_, i) => {
             const angle = (i * 360) / 8;
@@ -81,15 +129,16 @@ export function YazzAssistantOrb({ state, size = 220 }: { state: OrbState; size?
                 key={i}
                 className="absolute rounded-full"
                 style={{
-                  width: 6,
-                  height: 6,
-                  backgroundColor: colors.accent,
-                  opacity: 0.7,
+                  width: 7,
+                  height: 7,
+                  background: `radial-gradient(circle, #fff, ${colors.accent})`,
+                  boxShadow: `0 0 6px ${colors.accent}`,
+                  opacity: 0.8,
                   left: "50%",
                   top: "50%",
                   transform: `rotate(${angle}deg) translateX(${radius}px)`,
-                  marginLeft: -3,
-                  marginTop: -3,
+                  marginLeft: -3.5,
+                  marginTop: -3.5,
                 }}
               />
             );
@@ -97,37 +146,71 @@ export function YazzAssistantOrb({ state, size = 220 }: { state: OrbState; size?
         </motion.div>
       )}
 
-      {/* Cercle central */}
+      {/* ═══ Equalizer bars pendant speaking ═══ */}
+      {state === "speaking" && (
+        <div className="absolute flex items-center justify-center gap-1" style={{ height: size * 0.3 }}>
+          {[0, 1, 2, 3, 4].map((i) => (
+            <motion.div
+              key={i}
+              className="rounded-full"
+              style={{
+                width: 4,
+                background: `linear-gradient(to top, ${colors.secondary}, ${colors.accent})`,
+                boxShadow: `0 0 6px ${colors.accent}80`,
+              }}
+              animate={{
+                height: [
+                  `${size * 0.08}px`,
+                  `${size * 0.15 + Math.random() * size * 0.1}px`,
+                  `${size * 0.08}px`,
+                ],
+              }}
+              transition={{
+                duration: 0.3 + Math.random() * 0.2,
+                repeat: Infinity,
+                delay: i * 0.06,
+                ease: "easeInOut",
+              }}
+            />
+          ))}
+        </div>
+      )}
+
+      {/* ═══ Cercle central (la sphère) ═══ */}
       <motion.div
         className="relative rounded-full"
         style={{
-          width: size * 0.55,
-          height: size * 0.55,
-          background: `radial-gradient(circle at 50% 30%, ${colors.secondary}, ${colors.primary})`,
-          boxShadow: `0 0 30px ${colors.accent}60`,
+          width: size * 0.5,
+          height: size * 0.5,
+          background: `radial-gradient(circle at 35% 30%, ${colors.accent}, ${colors.secondary} 50%, ${colors.primary})`,
+          boxShadow: `0 0 ${state === "listening" ? 40 : 25}px ${colors.glow}${state === "listening" ? "80" : "50"}, inset 0 0 20px ${colors.glow}40`,
         }}
         animate={
           state === "speaking"
-            ? { scale: [1, 1.06, 0.97, 1.04, 1] }
+            ? { scale: [1, 1.08, 0.95, 1.06, 1] }
+            : state === "listening"
+            ? { scale: [1, 1.06, 1] }
             : state === "idle"
             ? { scale: [1, 1.03, 1] }
             : { scale: 1 }
         }
         transition={{
-          duration: state === "speaking" ? 0.6 : 3,
+          duration: state === "speaking" ? 0.5 : state === "listening" ? 1.8 : 3.5,
           repeat: Infinity,
           ease: "easeInOut",
         }}
       >
-        {/* Point lumineux intérieur */}
+        {/* reflet lumineux intérieur (effet 3D) */}
         <div
-          className="absolute rounded-full bg-white/80"
+          className="absolute rounded-full"
           style={{
-            width: "15%",
-            height: "15%",
-            top: "25%",
+            width: "30%",
+            height: "30%",
+            top: "15%",
             left: "50%",
             transform: "translateX(-50%)",
+            background: "radial-gradient(circle, rgba(255,255,255,0.6), transparent 70%)",
+            filter: "blur(3px)",
           }}
         />
       </motion.div>
