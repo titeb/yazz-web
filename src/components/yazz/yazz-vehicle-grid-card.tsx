@@ -281,7 +281,7 @@ export function YazzVehicleGridCard({ device }: { device: UserDevice }) {
                 accOn && !isOffline ? "text-yazz-success" : "text-yazz-text-muted"
               )}
             >
-              {accOn ? "Alim. ✓" : "Alim. ✗"}
+              {accOn ? "Contact ✓" : "Contact ✗"}
             </span>
           </div>
           <div className="flex items-center gap-1.5">

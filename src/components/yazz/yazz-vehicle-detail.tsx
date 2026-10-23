@@ -218,7 +218,7 @@ export function YazzVehicleDetail({ vehicle, onClose }: YazzVehicleDetailProps) 
                 className={cn("h-3.5 w-3.5", accOn && !isOffline ? "text-yazz-success" : "text-yazz-text-caption")}
               />
               <span className={cn("font-inter text-[11px]", accOn && !isOffline ? "text-yazz-success" : "text-yazz-text-muted")}>
-                {accOn ? "Alim. ✓" : "Alim. ✗"}
+                {accOn ? "Contact ✓" : "Contact ✗"}
               </span>
               <Battery className={cn("h-3.5 w-3.5 ml-1", !isOffline && vehicle.battery !== null ? battColor : "text-yazz-text-caption")} />
               <span className={cn("font-inter text-[11px]", !isOffline ? "text-yazz-text-muted" : "text-yazz-text-caption")}>
