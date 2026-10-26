@@ -138,6 +138,14 @@ export function YazzVehicleGridCard({ device }: { device: UserDevice }) {
   }, [device.parkingMode]);
 
   const isCut = device.engineCutState === true;
+  // FIX Feature 4 + 2 : dérivation Contact/Alim depuis les nouveaux champs.
+  // contactInputState = vrai fil ACC (iStartek in-sta bit 1). Fallback accOn si null.
+  // externalPowerStatus = alimentation externe (bit 3). Fallback accOn si null.
+  // Si isCut (moteur coupé à distance), on force contact=OFF.
+  const contactInputState = device.contactInputState ?? null;
+  const contactOn = isCut ? false : (contactInputState !== null ? contactInputState : (device.accOn ?? false));
+  const contactIsCertain = !isCut && contactInputState !== null;
+  const alimOn = device.externalPowerStatus !== null ? (device.externalPowerStatus ?? false) : (device.accOn ?? false);
   const accOn = !isCut; // Si le moteur est coupé, le contact est considéré coupé
   const status = useMemo(() => deriveStatus(device), [device]);
   const isOffline = status.label === "Hors-ligne";
@@ -268,20 +276,32 @@ export function YazzVehicleGridCard({ device }: { device: UserDevice }) {
 
         {/* ─── Ligne contact + batterie ───────────────────────────────── */}
         <div className="flex items-center gap-3 px-4 pb-3">
+          {/* FIX Feature 4 : badge Contact (vrai fil ACC physique) */}
           <div className="flex items-center gap-1.5">
             <Zap
               className={cn(
                 "h-3.5 w-3.5",
-                accOn && !isOffline ? "text-yazz-success" : "text-yazz-text-caption"
+                contactOn && !isOffline ? "text-yazz-success" : "text-yazz-text-caption"
               )}
             />
             <span
               className={cn(
                 "font-inter text-[11px]",
-                accOn && !isOffline ? "text-yazz-success" : "text-yazz-text-muted"
+                contactOn && !isOffline ? "text-yazz-success" : "text-yazz-text-muted"
               )}
             >
-              {accOn ? "Contact ✓" : "Contact ✗"}
+              {`Contact ${contactOn ? "✓" : "✗"}${!contactIsCertain ? " ?" : ""}`}
+            </span>
+          </div>
+          {/* FIX Feature 2 : badge Alim. (alimentation externe bit 3) */}
+          <div className="flex items-center gap-1.5">
+            <span
+              className={cn(
+                "font-inter text-[11px]",
+                alimOn && !isOffline ? "text-yazz-text-muted" : "text-yazz-text-caption"
+              )}
+            >
+              {`Alim. ${alimOn ? "✓" : "✗"}`}
             </span>
           </div>
           <div className="flex items-center gap-1.5">

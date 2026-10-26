@@ -25,6 +25,12 @@ export type VehicleWithPosition = {
   todayDistanceKm: number;
   urlImage: string | null;
   accOn: boolean;
+  // FIX Feature 4 : vrai fil ACC physique (iStartek in-sta bit 1).
+  // NULL si non-iStartek ou iStartek sans fil orange branché.
+  contactInputState: boolean | null;
+  // FIX Feature 2 : alimentation externe (iStartek system-sta bit 3).
+  externalPowerStatus: boolean | null;
+  externalVoltage: number | null;
   engineCutState: boolean;
 };
 
@@ -188,6 +194,12 @@ export function useUserVehicles() {
           todayDistanceKm: 0,
           urlImage: ud.url_image ?? ud.vehicle_photo ?? null,
           accOn: pos?.acc_status ?? false,
+          // FIX Feature 4 : vrai fil ACC physique (iStartek in-sta bit 1).
+          // NULL si non-iStartek ou iStartek sans fil orange branché.
+          contactInputState: pos?.contact_input_state ?? null,
+          // FIX Feature 2 : alimentation externe (iStartek system-sta bit 3).
+          externalPowerStatus: pos?.external_power_status ?? null,
+          externalVoltage: pos?.external_voltage ?? null,
           engineCutState: ud.engine_cut_state ?? false,
         };
       });
@@ -255,6 +267,10 @@ export function useUserVehicles() {
                 lastUpdate: newPos.last_update ?? v.lastUpdate,
                 heading: newPos.heading ?? v.heading,
                 accOn: newPos.acc_status ?? v.accOn,
+                // FIX Feature 4 + 2 : update Realtime des champs contact + alim
+                contactInputState: newPos.contact_input_state ?? v.contactInputState,
+                externalPowerStatus: newPos.external_power_status ?? v.externalPowerStatus,
+                externalVoltage: newPos.external_voltage ?? v.externalVoltage,
                 status,
               };
             }));

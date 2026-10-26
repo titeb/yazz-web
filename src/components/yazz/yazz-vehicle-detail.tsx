@@ -62,6 +62,14 @@ export function YazzVehicleDetail({ vehicle, onClose }: YazzVehicleDetailProps) 
   const engineCutState = vehicle.engineCutState ?? false;
   const isCut = engineCutState === true;
   const accOn = vehicle.accOn ?? true;
+  // FIX Feature 4 : contactInputState = vrai fil ACC physique (iStartek in-sta bit 1).
+  // Si null (non-iStartek ou fil non branché), fallback sur accOn (bit 9 ou bit 3).
+  const contactInputState = vehicle.contactInputState ?? null;
+  const contactOn = contactInputState !== null ? contactInputState : accOn;
+  const contactIsCertain = contactInputState !== null;
+  // FIX Feature 2 : alimOn = alimentation externe (bit 3) avec fallback accOn.
+  const externalPowerStatus = vehicle.externalPowerStatus ?? null;
+  const alimOn = externalPowerStatus !== null ? externalPowerStatus : accOn;
   const isOffline = vehicle.status === "offline";
   const isIdle = vehicle.status === "idle";
   const vehiclePhoto = vehicle.urlImage || null;
@@ -214,11 +222,16 @@ export function YazzVehicleDetail({ vehicle, onClose }: YazzVehicleDetailProps) 
               {vehicle.name}
             </p>
             <div className="mt-1 flex items-center gap-2">
+              {/* FIX Feature 4 : badge Contact (vrai fil ACC physique) */}
               <Zap
-                className={cn("h-3.5 w-3.5", accOn && !isOffline ? "text-yazz-success" : "text-yazz-text-caption")}
+                className={cn("h-3.5 w-3.5", contactOn && !isOffline ? "text-yazz-success" : "text-yazz-text-caption")}
               />
-              <span className={cn("font-inter text-[11px]", accOn && !isOffline ? "text-yazz-success" : "text-yazz-text-muted")}>
-                {accOn ? "Contact ✓" : "Contact ✗"}
+              <span className={cn("font-inter text-[11px]", contactOn && !isOffline ? "text-yazz-success" : "text-yazz-text-muted")}>
+                {`Contact ${contactOn ? "✓" : "✗"}${!contactIsCertain ? " ?" : ""}`}
+              </span>
+              {/* FIX Feature 2 : badge Alim. (alimentation externe bit 3) */}
+              <span className={cn("font-inter text-[11px] ml-1", alimOn && !isOffline ? "text-yazz-text-muted" : "text-yazz-text-caption")}>
+                {`Alim. ${alimOn ? "✓" : "✗"}`}
               </span>
               <Battery className={cn("h-3.5 w-3.5 ml-1", !isOffline && vehicle.battery !== null ? battColor : "text-yazz-text-caption")} />
               <span className={cn("font-inter text-[11px]", !isOffline ? "text-yazz-text-muted" : "text-yazz-text-caption")}>

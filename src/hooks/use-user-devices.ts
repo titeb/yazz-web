@@ -30,6 +30,14 @@ export type UserDevice = {
   isConnected: boolean | null;
   latitude: number | null;
   longitude: number | null;
+  // FIX Feature 4 + 2 : exposition des 3 champs Contact/Alim pour l'UI.
+  // accOn = acc_status legacy (bit 9 virtual ignition OU bit 3 alim externe fallback)
+  // contactInputState = vrai fil ACC physique (iStartek in-sta bit 1). NULL si non-iStartek.
+  // externalPowerStatus = alimentation externe (bit 3 system-sta).
+  accOn: boolean | null;
+  contactInputState: boolean | null;
+  externalPowerStatus: boolean | null;
+  externalVoltage: number | null;
 };
 
 export type UseUserDevicesResult = {
@@ -144,6 +152,11 @@ export function useUserDevices(): UseUserDevicesResult {
           isConnected: pos?.is_connected ?? null,
           latitude: pos?.latitude ?? null,
           longitude: pos?.longitude ?? null,
+          // FIX Feature 4 + 2 : exposition Contact/Alim pour l'UI
+          accOn: pos?.acc_status ?? null,
+          contactInputState: pos?.contact_input_state ?? null,
+          externalPowerStatus: pos?.external_power_status ?? null,
+          externalVoltage: pos?.external_voltage ?? null,
         };
       });
 
@@ -192,6 +205,11 @@ export function useUserDevices(): UseUserDevicesResult {
       isConnected: existingPos?.isConnected ?? null,
       latitude: existingPos?.latitude ?? null,
       longitude: existingPos?.longitude ?? null,
+      // FIX Feature 4 + 2 : préserver aussi Contact/Alim depuis l'état existant
+      accOn: existingPos?.accOn ?? null,
+      contactInputState: existingPos?.contactInputState ?? null,
+      externalPowerStatus: existingPos?.externalPowerStatus ?? null,
+      externalVoltage: existingPos?.externalVoltage ?? null,
     });
 
     const init = async () => {
@@ -264,6 +282,11 @@ export function useUserDevices(): UseUserDevicesResult {
                 isConnected: newRow.is_connected !== undefined ? newRow.is_connected : updated[idx].isConnected,
                 latitude: newRow.latitude !== undefined ? newRow.latitude : updated[idx].latitude,
                 longitude: newRow.longitude !== undefined ? newRow.longitude : updated[idx].longitude,
+                // FIX Feature 4 + 2 : update Realtime des champs Contact/Alim
+                accOn: newRow.acc_status !== undefined ? newRow.acc_status : updated[idx].accOn,
+                contactInputState: newRow.contact_input_state !== undefined ? newRow.contact_input_state : updated[idx].contactInputState,
+                externalPowerStatus: newRow.external_power_status !== undefined ? newRow.external_power_status : updated[idx].externalPowerStatus,
+                externalVoltage: newRow.external_voltage !== undefined ? newRow.external_voltage : updated[idx].externalVoltage,
               };
               return updated;
             });
