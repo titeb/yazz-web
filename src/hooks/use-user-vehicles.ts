@@ -89,7 +89,31 @@ export function useUserVehicles() {
         .eq("user_id", user.id);
 
       if (udErr) throw udErr;
-      if (!userDevices || userDevices.length === 0) {
+
+      // FIX : charger aussi les capteurs PARTAGÉS avec moi (shared_devices).
+      // Même logique que useUserDevices — le dashboard utilise ce hook.
+      const { data: myShares } = await supabase
+        .from("shared_devices")
+        .select("device_id, owner_id, permission, is_expired")
+        .eq("shared_with_id", user.id)
+        .eq("is_expired", false);
+
+      const sharedIds = (myShares || []).map((s: any) => s.device_id);
+      let sharedUserDevices: any[] = [];
+      if (sharedIds.length > 0) {
+        const { data: sharedUD } = await supabase
+          .from("user_devices")
+          .select("*")
+          .in("id", sharedIds);
+        sharedUserDevices = sharedUD || [];
+      }
+
+      // Combiner owned + shared (sans doublons)
+      const ownedIds = new Set((userDevices || []).map((ud: any) => ud.id));
+      const sharedOnly = sharedUserDevices.filter((ud: any) => !ownedIds.has(ud.id));
+      const allUserDevices = [...(userDevices || []), ...sharedOnly];
+
+      if (allUserDevices.length === 0) {
         setVehicles([]);
         setLoading(false);
         return;
@@ -104,7 +128,7 @@ export function useUserVehicles() {
       // }
 
       // Détecter le nom de la colonne device_id (peut être 'device_id', 'imei', etc.)
-      const firstDeviceRow = userDevices[0] as any;
+      const firstDeviceRow = allUserDevices[0] as any;
       const deviceIdField = "device_id" in firstDeviceRow
         ? "device_id"
         : "imei" in firstDeviceRow
@@ -120,7 +144,7 @@ export function useUserVehicles() {
         return;
       }
 
-      const deviceIds = userDevices.map((ud: any) => ud[deviceIdField]).filter(Boolean);
+      const deviceIds = allUserDevices.map((ud: any) => ud[deviceIdField]).filter(Boolean);
 
       // Récupère les devices correspondants (catalogue devices — 2e requête)
       const { data: devicesData, error: devErr } = await supabase
@@ -156,7 +180,7 @@ export function useUserVehicles() {
       const positionsMap = new Map<string, any>();
       positions?.forEach((p: any) => positionsMap.set(p.device_id, p));
 
-      const vehiclesData: VehicleWithPosition[] = userDevices.map((ud: any) => {
+      const vehiclesData: VehicleWithPosition[] = allUserDevices.map((ud: any) => {
         const deviceId = ud[deviceIdField];
         const pos = positionsMap.get(deviceId);
         const device = devicesMap.get(deviceId) ?? null;
