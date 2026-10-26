@@ -298,7 +298,7 @@ export function YazzVehicleGridCard({ device }: { device: UserDevice }) {
             <span
               className={cn(
                 "font-inter text-[11px]",
-                alimOn && !isOffline ? "text-yazz-text-muted" : "text-yazz-text-caption"
+                alimOn && !isOffline ? "text-yazz-success" : "text-yazz-text-caption"
               )}
             >
               {`Alim. ${alimOn ? "✓" : "✗"}`}

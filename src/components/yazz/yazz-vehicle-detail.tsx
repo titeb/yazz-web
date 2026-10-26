@@ -230,7 +230,7 @@ export function YazzVehicleDetail({ vehicle, onClose }: YazzVehicleDetailProps) 
                 {`Contact ${contactOn ? "✓" : "✗"}${!contactIsCertain ? " ?" : ""}`}
               </span>
               {/* FIX Feature 2 : badge Alim. (alimentation externe bit 3) */}
-              <span className={cn("font-inter text-[11px] ml-1", alimOn && !isOffline ? "text-yazz-text-muted" : "text-yazz-text-caption")}>
+              <span className={cn("font-inter text-[11px] ml-1", alimOn && !isOffline ? "text-yazz-success" : "text-yazz-text-caption")}>
                 {`Alim. ${alimOn ? "✓" : "✗"}`}
               </span>
               <Battery className={cn("h-3.5 w-3.5 ml-1", !isOffline && vehicle.battery !== null ? battColor : "text-yazz-text-caption")} />
