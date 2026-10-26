@@ -31,6 +31,12 @@ function toMockVehicle(v: VehicleWithPosition) {
     todayDistanceKm: v.todayDistanceKm,
     urlImage: v.urlImage,
     accOn: v.accOn,
+    // FIX Feature 4 + 2 : propager contactInputState + externalPowerStatus
+    // SANS ces champs, YazzVehicleDetail reçoit contactInputState=undefined
+    // et affiche "Contact ✓ ?" ou "Contact ✗ ?" (incertain) au lieu de la valeur réelle.
+    contactInputState: v.contactInputState,
+    externalPowerStatus: v.externalPowerStatus,
+    externalVoltage: v.externalVoltage,
     engineCutState: v.engineCutState,
     alerts: [],
   };
