@@ -28,6 +28,8 @@ export type Vehicle = {
   // FIX Feature 4 : vrai fil ACC physique (iStartek in-sta bit 1).
   // NULL si non-iStartek ou iStartek sans fil orange branché.
   contactInputState?: boolean | null;
+  // FIX Heuristique : true si contact_input_state a déjà été true dans les 7 derniers jours.
+  contactInputEverTrue?: boolean;
   // FIX Feature 2 : alimentation externe (iStartek system-sta bit 3).
   externalPowerStatus?: boolean | null;
   externalVoltage?: number | null;

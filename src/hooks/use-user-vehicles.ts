@@ -28,6 +28,9 @@ export type VehicleWithPosition = {
   // FIX Feature 4 : vrai fil ACC physique (iStartek in-sta bit 1).
   // NULL si non-iStartek ou iStartek sans fil orange branché.
   contactInputState: boolean | null;
+  // FIX Heuristique : true si contact_input_state a déjà été true dans les 7 derniers jours.
+  // Utilisé par l'UI pour décider si "Contact ✗" est certain (fil branché) ou incertain (fil non branché).
+  contactInputEverTrue: boolean;
   // FIX Feature 2 : alimentation externe (iStartek system-sta bit 3).
   externalPowerStatus: boolean | null;
   externalVoltage: number | null;
@@ -180,6 +183,24 @@ export function useUserVehicles() {
       const positionsMap = new Map<string, any>();
       positions?.forEach((p: any) => positionsMap.set(p.device_id, p));
 
+      // FIX Heuristique : vérifier si contact_input_state a déjà été true dans les 7 derniers jours.
+      // Si oui → le fil ACC est branché, on peut faire confiance à la valeur actuelle.
+      // Si non (toujours false sur 7j) ET capteur iStartek → le fil n'est probablement pas branché
+      // → on affichera "Contact ✗ ?" (avec ?) pour signaler l'incertitude.
+      // Requête légère : SELECT device_id seulement (pas de données GPS), LIMIT 100.
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+      const { data: contactEverTrueRows } = await supabase
+        .from("gps_points")
+        .select("device_id")
+        .eq("contact_input_state", true)
+        .gte("timestamp", sevenDaysAgo.toISOString())
+        .in("device_id", deviceIds)
+        .limit(100);
+      const contactEverTrueSet = new Set<string>(
+        (contactEverTrueRows || []).map((r: any) => r.device_id)
+      );
+
       const vehiclesData: VehicleWithPosition[] = allUserDevices.map((ud: any) => {
         const deviceId = ud[deviceIdField];
         const pos = positionsMap.get(deviceId);
@@ -221,6 +242,9 @@ export function useUserVehicles() {
           // FIX Feature 4 : vrai fil ACC physique (iStartek in-sta bit 1).
           // NULL si non-iStartek ou iStartek sans fil orange branché.
           contactInputState: pos?.contact_input_state ?? null,
+          // FIX Heuristique : true si contact_input_state a déjà été true dans les 7 derniers jours.
+          // Si false ET contactInputState=false → fil probablement non branché → afficher "?"
+          contactInputEverTrue: contactEverTrueSet.has(deviceId),
           // FIX Feature 2 : alimentation externe (iStartek system-sta bit 3).
           externalPowerStatus: pos?.external_power_status ?? null,
           externalVoltage: pos?.external_voltage ?? null,

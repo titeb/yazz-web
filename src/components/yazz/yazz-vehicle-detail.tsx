@@ -66,7 +66,11 @@ export function YazzVehicleDetail({ vehicle, onClose }: YazzVehicleDetailProps) 
   // Si null (non-iStartek ou fil non branché), fallback sur accOn (bit 9 ou bit 3).
   const contactInputState = vehicle.contactInputState ?? null;
   const contactOn = contactInputState !== null ? contactInputState : accOn;
-  const contactIsCertain = contactInputState !== null;
+  // FIX Heuristique : si contact_input_state a déjà été true dans les 7 derniers jours,
+  // le fil est branché → la valeur est certaine. Sinon, le fil est probablement
+  // non branché → on affiche "?" même si contactInputState est non-null (false).
+  const contactInputEverTrue = vehicle.contactInputEverTrue ?? false;
+  const contactIsCertain = contactInputState !== null && contactInputEverTrue;
   // FIX Feature 2 : alimOn = alimentation externe (bit 3) avec fallback accOn.
   const externalPowerStatus = vehicle.externalPowerStatus ?? null;
   const alimOn = externalPowerStatus !== null ? externalPowerStatus : accOn;

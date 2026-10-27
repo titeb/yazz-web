@@ -35,6 +35,7 @@ function toMockVehicle(v: VehicleWithPosition) {
     // SANS ces champs, YazzVehicleDetail reçoit contactInputState=undefined
     // et affiche "Contact ✓ ?" ou "Contact ✗ ?" (incertain) au lieu de la valeur réelle.
     contactInputState: v.contactInputState,
+    contactInputEverTrue: v.contactInputEverTrue,
     externalPowerStatus: v.externalPowerStatus,
     externalVoltage: v.externalVoltage,
     engineCutState: v.engineCutState,
