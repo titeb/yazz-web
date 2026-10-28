@@ -5,6 +5,7 @@ import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { cn } from "@/lib/utils";
 import type { Vehicle, VehicleStatus } from "@/lib/yazz/mock-data";
+import { snapToRoad, type LngLat } from "@/lib/yazz/snap-to-road";
 
 type YazzMapboxProps = {
   vehicles: Vehicle[];
@@ -39,6 +40,13 @@ export function YazzMapbox({ vehicles, selectedId, onSelect }: YazzMapboxProps) 
   const markersRef = useRef<Map<string, mapboxgl.Marker>>(new Map());
   const [mapReady, setMapReady] = useState(false);
   const [filter, setFilter] = useState<VehicleStatus | "all">("all");
+
+  // FIX 2026-10-28 — Snap-to-Road : cache des positions snappées par device.
+  // Les positions GPS brutes sont physiquement précises mais la géométrie des
+  // routes Mapbox peut être décalée à Kinshasa → le marqueur apparaît "hors route".
+  // On snap la position GPS à la route la plus proche pour avoir un marqueur
+  // visuellement "sur la route" comme Uber/Google Maps.
+  const [snappedPositions, setSnappedPositions] = useState<Map<string, LngLat>>(new Map());
 
   // Fit bounds sur tous les markers visibles
   const fitAllMarkers = useCallback(() => {
@@ -136,19 +144,58 @@ export function YazzMapbox({ vehicles, selectedId, onSelect }: YazzMapboxProps) 
   }, [mapReady, vehicles, fitAllMarkers, selectedId]);
 
   // Convert vehicle position to [lng, lat]
+  // FIX 2026-10-28 — utilise la position snappée si disponible, sinon GPS brut.
   const toLngLat = (v: Vehicle): [number, number] => {
-    // Use real lat/lng if available (from Supabase)
+    // 1. Snap-to-Road : si on a une position snappée pour ce device, l'utiliser
+    const snapped = snappedPositions.get(v.id);
+    if (snapped) return snapped;
+    // 2. Use real lat/lng if available (from Supabase)
     const lat = (v as any).lat;
     const lng = (v as any).lng;
     if (typeof lat === "number" && typeof lng === "number" && (lat !== -4.325 || lng !== 15.313)) {
       return [lng, lat];
     }
-    // Fallback: project x/y around Kinshasa
+    // 3. Fallback: project x/y around Kinshasa
     return [
       KINSHASA_CENTER[0] + (v.position.x - 50) * 0.01,
       KINSHASA_CENTER[1] + (v.position.y - 50) * -0.01,
     ];
   };
+
+  // FIX 2026-10-28 — Snap-to-Road : déclenche le snap pour chaque vehicle
+  // quand la liste change. Le service interne cache les résultats (5m threshold
+  // + 5 min TTL) → évite les appels API répétitifs pour les véhicules à l'arrêt.
+  useEffect(() => {
+    if (!mapReady) return;
+    const vehiclesWithCoords = vehicles
+      .map(v => ({
+        id: v.id,
+        lng: (v as any).lng as number | undefined,
+        lat: (v as any).lat as number | undefined,
+      }))
+      .filter(v => typeof v.lng === "number" && typeof v.lat === "number"
+        && (v.lat !== -4.325 || v.lng !== 15.313)) as Array<{id: string; lng: number; lat: number}>;
+
+    if (vehiclesWithCoords.length === 0) return;
+
+    let cancelled = false;
+    Promise.all(
+      vehiclesWithCoords.map(async v => {
+        const snapped = await snapToRoad(v.id, [v.lng, v.lat]);
+        return { id: v.id, snapped };
+      })
+    ).then(results => {
+      if (cancelled) return;
+      setSnappedPositions(prev => {
+        const next = new Map(prev);
+        for (const r of results) {
+          if (r.snapped) next.set(r.id, r.snapped);
+        }
+        return next;
+      });
+    });
+    return () => { cancelled = true; };
+  }, [vehicles, mapReady]);
 
   // Update markers
   useEffect(() => {
@@ -305,7 +352,9 @@ export function YazzMapbox({ vehicles, selectedId, onSelect }: YazzMapboxProps) 
         markersRef.current.set(v.id, marker);
       }
     });
-  }, [vehicles, filter, selectedId, mapReady, onSelect]);
+    // FIX 2026-10-28 : dépend aussi de snappedPositions pour re-render les markers
+    // quand le snap-to-road termine (asynchrone).
+  }, [vehicles, filter, selectedId, mapReady, onSelect, snappedPositions]);
 
   // Throttle pour le follow Realtime (Flutter: 1500ms)
   const lastFollowRef = useRef<number>(0);
