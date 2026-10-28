@@ -157,7 +157,11 @@ export function YazzVehicleDetail({ vehicle, onClose }: YazzVehicleDetailProps) 
                   - Contact : basé sur la tension (hystérésis 13.0/13.5V) = vrai état du moteur
                   - Alim. : basé sur acc_status (alimentation externe connectée = bit 3)
                   Séparation : un véhicule peut être garé (Contact ✗) tout en
-                  ayant l'alimentation connectée (Alim. ✓) — c'est normal. */}
+                  ayant l'alimentation connectée (Alim. ✓) — c'est normal.
+                  Couleurs :
+                  - Contact ✓ (true) → vert (moteur en marche)
+                  - Contact ✗ (false) → GRIS (moteur arrêté = état normal, pas une alerte)
+                  - Contact ? (null) → orange (tension inconnue) */}
               <div className="flex items-center gap-1">
                 <Zap
                   className={cn(
@@ -165,7 +169,7 @@ export function YazzVehicleDetail({ vehicle, onClose }: YazzVehicleDetailProps) 
                     contactState === true && !isOffline
                       ? "text-yazz-success"
                       : contactState === false
-                      ? "text-yazz-error"
+                      ? "text-yazz-text-caption"
                       : "text-yazz-warning"
                   )}
                 />
@@ -174,7 +178,7 @@ export function YazzVehicleDetail({ vehicle, onClose }: YazzVehicleDetailProps) 
                   contactState === true && !isOffline
                     ? "text-yazz-success"
                     : contactState === false
-                    ? "text-yazz-error"
+                    ? "text-yazz-text-muted"
                     : "text-yazz-warning"
                 )}>
                   {contactState === null ? "Contact ?" : contactState ? "Contact ✓" : "Contact ✗"}

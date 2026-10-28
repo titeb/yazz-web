@@ -274,7 +274,11 @@ export function YazzVehicleGridCard({ device }: { device: UserDevice }) {
         <div className="flex items-center gap-3 px-4 pb-3">
           {/* FIX 2026-10-28 : 2 badges séparés Contact + Alim.
               - Contact : basé sur la tension (hystérésis 13.0/13.5V) = vrai état du moteur
-              - Alim. : basé sur acc_status (alimentation externe connectée = bit 3) */}
+              - Alim. : basé sur acc_status (alimentation externe connectée = bit 3)
+              Couleurs :
+              - Contact ✓ (true) → vert (moteur en marche)
+              - Contact ✗ (false) → GRIS (moteur arrêté = état normal, pas une alerte)
+              - Contact ? (null) → orange (tension inconnue) */}
           <div className="flex items-center gap-1.5">
             <Zap
               className={cn(
@@ -282,7 +286,7 @@ export function YazzVehicleGridCard({ device }: { device: UserDevice }) {
                 contactState === true && !isOffline
                   ? "text-yazz-success"
                   : contactState === false
-                  ? "text-yazz-error"
+                  ? "text-yazz-text-caption"
                   : "text-yazz-warning"
               )}
             />
@@ -292,7 +296,7 @@ export function YazzVehicleGridCard({ device }: { device: UserDevice }) {
                 contactState === true && !isOffline
                   ? "text-yazz-success"
                   : contactState === false
-                  ? "text-yazz-error"
+                  ? "text-yazz-text-muted"
                   : "text-yazz-warning"
               )}
             >
