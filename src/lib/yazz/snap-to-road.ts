@@ -23,7 +23,12 @@
  */
 
 const SNAP_THRESHOLD_M = 5; // Ne pas re-snapper si à moins de 5m du dernier snap
-const SNAP_RADIUS_M = 30;   // Distance max pour chercher une route
+const SNAP_RADIUS_M = 15;   // Distance max pour chercher une route (réduit de 30→15m)
+// FIX 2026-10-28 : si le snap est à plus de 12m du GPS brut, le véhicule est
+// probablement dans une parcelle / cour privée → on garde le GPS brut.
+// Sinon le marker reste "collé" à la route même quand le véhicule est garé
+// dans une propriété privée juste à côté de la route.
+const SNAP_MAX_DISTANCE_M = 12;
 const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 
 export type LngLat = [number, number]; // [longitude, latitude]
@@ -118,6 +123,20 @@ export async function snapToRoad(
     const coordsArr = geom?.coordinates;
     if (!Array.isArray(coordsArr) || coordsArr.length === 0) return null;
     const snapped: LngLat = [coordsArr[coordsArr.length - 1][0], coordsArr[coordsArr.length - 1][1]];
+
+    // FIX 2026-10-28 : si le snap est trop loin du GPS brut (>SNAP_MAX_DISTANCE_M),
+    // le véhicule est probablement dans une parcelle / cour privée → on ne
+    // l'utilise PAS (sinon le marker reste "collé" à la route même quand le
+    // véhicule est garé dans une propriété).
+    const snapDistance = haversineMeters(rawPos[1], rawPos[0], snapped[1], snapped[0]);
+    if (snapDistance > SNAP_MAX_DISTANCE_M) {
+      // Cache le résultat null (pas de snap) pour éviter de re-call l'API
+      // pour la même position. On stocke raw = snapped ici pour signifier
+      // "pas de snap" — mais on ne retourne pas la snapped position.
+      // En fait on ne met rien en cache ici pour permettre un re-snap
+      // si la position change.
+      return null;
+    }
 
     // Mettre en cache
     snapCache.set(deviceId, {
