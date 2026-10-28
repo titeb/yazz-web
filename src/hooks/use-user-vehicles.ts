@@ -25,15 +25,12 @@ export type VehicleWithPosition = {
   todayDistanceKm: number;
   urlImage: string | null;
   accOn: boolean;
-  // FIX Feature 4 : vrai fil ACC physique (iStartek in-sta bit 1).
-  // NULL si non-iStartek ou iStartek sans fil orange branché.
-  contactInputState: boolean | null;
-  // FIX Heuristique : true si contact_input_state a déjà été true dans les 7 derniers jours.
-  // Utilisé par l'UI pour décider si "Contact ✗" est certain (fil branché) ou incertain (fil non branché).
-  contactInputEverTrue: boolean;
-  // FIX Feature 2 : alimentation externe (iStartek system-sta bit 3).
-  externalPowerStatus: boolean | null;
-  externalVoltage: number | null;
+  // FIX 2026-10-28 : Contact basé sur la tension batterie (hystérésis 13.0/13.5V)
+  // provient de last_known_positions.contact_input_state (calculé côté backend).
+  // null = tension inconnue → l'UI affiche "Contact ?"
+  // true = moteur en marche (V > 13.5V)
+  // false = moteur arrêté (V < 13.0V)
+  contactState: boolean | null;
   engineCutState: boolean;
 };
 
@@ -92,31 +89,7 @@ export function useUserVehicles() {
         .eq("user_id", user.id);
 
       if (udErr) throw udErr;
-
-      // FIX : charger aussi les capteurs PARTAGÉS avec moi (shared_devices).
-      // Même logique que useUserDevices — le dashboard utilise ce hook.
-      const { data: myShares } = await supabase
-        .from("shared_devices")
-        .select("device_id, owner_id, permission, is_expired")
-        .eq("shared_with_id", user.id)
-        .eq("is_expired", false);
-
-      const sharedIds = (myShares || []).map((s: any) => s.device_id);
-      let sharedUserDevices: any[] = [];
-      if (sharedIds.length > 0) {
-        const { data: sharedUD } = await supabase
-          .from("user_devices")
-          .select("*")
-          .in("id", sharedIds);
-        sharedUserDevices = sharedUD || [];
-      }
-
-      // Combiner owned + shared (sans doublons)
-      const ownedIds = new Set((userDevices || []).map((ud: any) => ud.id));
-      const sharedOnly = sharedUserDevices.filter((ud: any) => !ownedIds.has(ud.id));
-      const allUserDevices = [...(userDevices || []), ...sharedOnly];
-
-      if (allUserDevices.length === 0) {
+      if (!userDevices || userDevices.length === 0) {
         setVehicles([]);
         setLoading(false);
         return;
@@ -131,7 +104,7 @@ export function useUserVehicles() {
       // }
 
       // Détecter le nom de la colonne device_id (peut être 'device_id', 'imei', etc.)
-      const firstDeviceRow = allUserDevices[0] as any;
+      const firstDeviceRow = userDevices[0] as any;
       const deviceIdField = "device_id" in firstDeviceRow
         ? "device_id"
         : "imei" in firstDeviceRow
@@ -147,7 +120,7 @@ export function useUserVehicles() {
         return;
       }
 
-      const deviceIds = allUserDevices.map((ud: any) => ud[deviceIdField]).filter(Boolean);
+      const deviceIds = userDevices.map((ud: any) => ud[deviceIdField]).filter(Boolean);
 
       // Récupère les devices correspondants (catalogue devices — 2e requête)
       const { data: devicesData, error: devErr } = await supabase
@@ -183,25 +156,7 @@ export function useUserVehicles() {
       const positionsMap = new Map<string, any>();
       positions?.forEach((p: any) => positionsMap.set(p.device_id, p));
 
-      // FIX Heuristique : vérifier si contact_input_state a déjà été true dans les 7 derniers jours.
-      // Si oui → le fil ACC est branché, on peut faire confiance à la valeur actuelle.
-      // Si non (toujours false sur 7j) ET capteur iStartek → le fil n'est probablement pas branché
-      // → on affichera "Contact ✗ ?" (avec ?) pour signaler l'incertitude.
-      // Requête légère : SELECT device_id seulement (pas de données GPS), LIMIT 100.
-      const sevenDaysAgo = new Date();
-      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-      const { data: contactEverTrueRows } = await supabase
-        .from("gps_points")
-        .select("device_id")
-        .eq("contact_input_state", true)
-        .gte("timestamp", sevenDaysAgo.toISOString())
-        .in("device_id", deviceIds)
-        .limit(100);
-      const contactEverTrueSet = new Set<string>(
-        (contactEverTrueRows || []).map((r: any) => r.device_id)
-      );
-
-      const vehiclesData: VehicleWithPosition[] = allUserDevices.map((ud: any) => {
+      const vehiclesData: VehicleWithPosition[] = userDevices.map((ud: any) => {
         const deviceId = ud[deviceIdField];
         const pos = positionsMap.get(deviceId);
         const device = devicesMap.get(deviceId) ?? null;
@@ -239,15 +194,9 @@ export function useUserVehicles() {
           todayDistanceKm: 0,
           urlImage: ud.url_image ?? ud.vehicle_photo ?? null,
           accOn: pos?.acc_status ?? false,
-          // FIX Feature 4 : vrai fil ACC physique (iStartek in-sta bit 1).
-          // NULL si non-iStartek ou iStartek sans fil orange branché.
-          contactInputState: pos?.contact_input_state ?? null,
-          // FIX Heuristique : true si contact_input_state a déjà été true dans les 7 derniers jours.
-          // Si false ET contactInputState=false → fil probablement non branché → afficher "?"
-          contactInputEverTrue: contactEverTrueSet.has(deviceId),
-          // FIX Feature 2 : alimentation externe (iStartek system-sta bit 3).
-          externalPowerStatus: pos?.external_power_status ?? null,
-          externalVoltage: pos?.external_voltage ?? null,
+          // FIX 2026-10-28 : Contact basé sur tension (hystérésis 13.0/13.5V).
+          // pos.contact_input_state est calculé côté backend à partir de external_voltage.
+          contactState: pos?.contact_input_state ?? null,
           engineCutState: ud.engine_cut_state ?? false,
         };
       });
@@ -315,10 +264,8 @@ export function useUserVehicles() {
                 lastUpdate: newPos.last_update ?? v.lastUpdate,
                 heading: newPos.heading ?? v.heading,
                 accOn: newPos.acc_status ?? v.accOn,
-                // FIX Feature 4 + 2 : update Realtime des champs contact + alim
-                contactInputState: newPos.contact_input_state ?? v.contactInputState,
-                externalPowerStatus: newPos.external_power_status ?? v.externalPowerStatus,
-                externalVoltage: newPos.external_voltage ?? v.externalVoltage,
+                // FIX 2026-10-28 : Realtime update de contact_input_state
+                contactState: newPos.contact_input_state ?? v.contactState,
                 status,
               };
             }));

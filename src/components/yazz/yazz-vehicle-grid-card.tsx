@@ -138,15 +138,11 @@ export function YazzVehicleGridCard({ device }: { device: UserDevice }) {
   }, [device.parkingMode]);
 
   const isCut = device.engineCutState === true;
-  // FIX Feature 4 + 2 : dérivation Contact/Alim depuis les nouveaux champs.
-  // contactInputState = vrai fil ACC (iStartek in-sta bit 1). Fallback accOn si null.
-  // externalPowerStatus = alimentation externe (bit 3). Fallback accOn si null.
-  // Si isCut (moteur coupé à distance), on force contact=OFF.
-  const contactInputState = device.contactInputState ?? null;
-  const contactOn = isCut ? false : (contactInputState !== null ? contactInputState : (device.accOn ?? false));
-  const contactIsCertain = !isCut && contactInputState !== null;
-  const alimOn = device.externalPowerStatus !== null ? (device.externalPowerStatus ?? false) : (device.accOn ?? false);
-  const accOn = !isCut; // Si le moteur est coupé, le contact est considéré coupé
+  // FIX 2026-10-28 : accOn vient directement de acc_status (pas basé sur isCut).
+  // contactState vient de contact_input_state (calculé côté backend à partir de
+  // la tension batterie avec hystérésis 13.0/13.5V — plus stable que le fil ACC).
+  const accOn = device.accOn ?? !isCut;
+  const contactState = device.contactState ?? null;
   const status = useMemo(() => deriveStatus(device), [device]);
   const isOffline = status.label === "Hors-ligne";
 
@@ -274,34 +270,49 @@ export function YazzVehicleGridCard({ device }: { device: UserDevice }) {
           </span>
         </div>
 
-        {/* ─── Ligne contact + batterie ───────────────────────────────── */}
+        {/* ─── Ligne Contact + Alim. + batterie ─────────────────────────── */}
         <div className="flex items-center gap-3 px-4 pb-3">
-          {/* FIX Feature 4 : badge Contact (vrai fil ACC physique) */}
+          {/* FIX 2026-10-28 : 2 badges séparés Contact + Alim.
+              - Contact : basé sur la tension (hystérésis 13.0/13.5V) = vrai état du moteur
+              - Alim. : basé sur acc_status (alimentation externe connectée = bit 3) */}
           <div className="flex items-center gap-1.5">
             <Zap
               className={cn(
                 "h-3.5 w-3.5",
-                contactOn && !isOffline ? "text-yazz-success" : "text-yazz-text-caption"
+                contactState === true && !isOffline
+                  ? "text-yazz-success"
+                  : contactState === false
+                  ? "text-yazz-error"
+                  : "text-yazz-warning"
               )}
             />
             <span
               className={cn(
                 "font-inter text-[11px]",
-                contactOn && !isOffline ? "text-yazz-success" : "text-yazz-text-muted"
+                contactState === true && !isOffline
+                  ? "text-yazz-success"
+                  : contactState === false
+                  ? "text-yazz-error"
+                  : "text-yazz-warning"
               )}
             >
-              {`Contact ${contactOn ? "✓" : "✗"}${!contactIsCertain ? " ?" : ""}`}
+              {contactState === null ? "Contact ?" : contactState ? "Contact ✓" : "Contact ✗"}
             </span>
           </div>
-          {/* FIX Feature 2 : badge Alim. (alimentation externe bit 3) */}
           <div className="flex items-center gap-1.5">
+            <Power
+              className={cn(
+                "h-3.5 w-3.5",
+                accOn && !isOffline ? "text-yazz-success" : "text-yazz-text-caption"
+              )}
+            />
             <span
               className={cn(
                 "font-inter text-[11px]",
-                alimOn && !isOffline ? "text-yazz-success" : "text-yazz-text-caption"
+                accOn && !isOffline ? "text-yazz-success" : "text-yazz-text-muted"
               )}
             >
-              {`Alim. ${alimOn ? "✓" : "✗"}`}
+              {accOn ? "Alim. ✓" : "Alim. ✗"}
             </span>
           </div>
           <div className="flex items-center gap-1.5">

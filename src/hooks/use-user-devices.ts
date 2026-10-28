@@ -30,14 +30,9 @@ export type UserDevice = {
   isConnected: boolean | null;
   latitude: number | null;
   longitude: number | null;
-  // FIX Feature 4 + 2 : exposition des 3 champs Contact/Alim pour l'UI.
-  // accOn = acc_status legacy (bit 9 virtual ignition OU bit 3 alim externe fallback)
-  // contactInputState = vrai fil ACC physique (iStartek in-sta bit 1). NULL si non-iStartek.
-  // externalPowerStatus = alimentation externe (bit 3 system-sta).
+  // FIX 2026-10-28 : accOn (alim. externe) + contactState (moteur on/off basé sur tension)
   accOn: boolean | null;
-  contactInputState: boolean | null;
-  externalPowerStatus: boolean | null;
-  externalVoltage: number | null;
+  contactState: boolean | null;
 };
 
 export type UseUserDevicesResult = {
@@ -103,53 +98,14 @@ export function useUserDevices(): UseUserDevicesResult {
         .order("linked_at", { ascending: false });
 
       if (udErr) throw udErr;
-
-      // FIX Feature : charger aussi les capteurs PARTAGÉS avec moi (shared_devices).
-      // Avant, le hook ne chargeait QUE les user_devices où user_id = moi.
-      // Un user qui a reçu un partage ne voyait pas le capteur dans son dashboard.
-      // Maintenant on fetch shared_devices où shared_with_id = moi ET is_expired=false,
-      // puis on va chercher les user_devices correspondants pour avoir nom/photo/etc.
-      const { data: myShares, error: sharesErr } = await supabase
-        .from("shared_devices")
-        .select("device_id, owner_id, permission, is_expired, expires_at")
-        .eq("shared_with_id", user.id)
-        .eq("is_expired", false);
-
-      if (sharesErr) {
-        console.warn("[useUserDevices] shared_devices erreur (non bloquant):", sharesErr.message);
-      }
-
-      // Construire la map des shares par device_id (pour lookup rapide plus tard)
-      const sharesMap = new Map<string, any>();
-      (myShares || []).forEach((s: any) => sharesMap.set(s.device_id, s));
-
-      // Récupérer les user_devices des capteurs partagés (pour avoir nom/photo/etc.)
-      const sharedDeviceIds = (myShares || []).map((s: any) => s.device_id);
-      let sharedUserDevices: any[] = [];
-      if (sharedDeviceIds.length > 0) {
-        const { data: sharedUD, error: sharedUDErr } = await supabase
-          .from("user_devices")
-          .select("*")
-          .in("id", sharedDeviceIds);
-        if (sharedUDErr) {
-          console.warn("[useUserDevices] shared user_devices erreur (non bloquant):", sharedUDErr.message);
-        }
-        sharedUserDevices = sharedUD || [];
-      }
-
-      // Combiner : owned devices + shared devices (sans doublons)
-      const ownedIds = new Set((userDevices || []).map((ud: any) => ud.id));
-      const sharedOnly = sharedUserDevices.filter((ud: any) => !ownedIds.has(ud.id));
-      const allUserDevices = [...(userDevices || []), ...sharedOnly];
-
-      if (allUserDevices.length === 0) {
+      if (!userDevices || userDevices.length === 0) {
         setDevices([]);
         setError(null);
         if (!silent) setLoading(false);
         return;
       }
 
-      const deviceIds = allUserDevices.map((ud: any) => ud.id);
+      const deviceIds = userDevices.map((ud: any) => ud.id);
 
       const { data: positions, error: posErr } = await supabase
         .from("last_known_positions")
@@ -163,13 +119,8 @@ export function useUserDevices(): UseUserDevicesResult {
       const positionsMap = new Map<string, any>();
       positions?.forEach((p: any) => positionsMap.set(p.device_id, p));
 
-      const devicesData: UserDevice[] = allUserDevices.map((ud: any) => {
+      const devicesData: UserDevice[] = userDevices.map((ud: any) => {
         const pos = positionsMap.get(ud.id);
-        // Si ce device est dans sharesMap → c'est un device partagé avec moi
-        // (pas un que je possède). On marque isShared=true et on remplit
-        // sharedByOwnerId/sharedPermission depuis shared_devices.
-        const share = sharesMap.get(ud.id);
-        const isSharedToMe = !!share;
         return {
           id: ud.id,
           userId: ud.user_id,
@@ -179,10 +130,9 @@ export function useUserDevices(): UseUserDevicesResult {
           isActive: ud.is_active ?? null,
           linkedAt: ud.linked_at ?? null,
           speedLimit: ud.speed_limit ?? null,
-          // Pour les capteurs partagés : on override isShared=true + owner
-          isShared: isSharedToMe ? true : (ud.is_shared ?? null),
-          sharedByOwnerId: isSharedToMe ? share.owner_id : (ud.shared_by_owner_id ?? null),
-          sharedPermission: isSharedToMe ? share.permission : (ud.shared_permission ?? null),
+          isShared: ud.is_shared ?? null,
+          sharedByOwnerId: ud.shared_by_owner_id ?? null,
+          sharedPermission: ud.shared_permission ?? null,
           maxStopDurationMinutes: ud.max_stop_duration_minutes ?? null,
           parkingMode: ud.parking_mode ?? null,
           vehicleColor: ud.vehicle_color ?? null,
@@ -197,11 +147,9 @@ export function useUserDevices(): UseUserDevicesResult {
           isConnected: pos?.is_connected ?? null,
           latitude: pos?.latitude ?? null,
           longitude: pos?.longitude ?? null,
-          // FIX Feature 4 + 2 : exposition Contact/Alim pour l'UI
+          // FIX 2026-10-28 : alim externe + contact basé sur tension
           accOn: pos?.acc_status ?? null,
-          contactInputState: pos?.contact_input_state ?? null,
-          externalPowerStatus: pos?.external_power_status ?? null,
-          externalVoltage: pos?.external_voltage ?? null,
+          contactState: pos?.contact_input_state ?? null,
         };
       });
 
@@ -250,11 +198,9 @@ export function useUserDevices(): UseUserDevicesResult {
       isConnected: existingPos?.isConnected ?? null,
       latitude: existingPos?.latitude ?? null,
       longitude: existingPos?.longitude ?? null,
-      // FIX Feature 4 + 2 : préserver aussi Contact/Alim depuis l'état existant
+      // FIX 2026-10-28 : alim + contact conservés depuis l'état existant
       accOn: existingPos?.accOn ?? null,
-      contactInputState: existingPos?.contactInputState ?? null,
-      externalPowerStatus: existingPos?.externalPowerStatus ?? null,
-      externalVoltage: existingPos?.externalVoltage ?? null,
+      contactState: existingPos?.contactState ?? null,
     });
 
     const init = async () => {
@@ -327,11 +273,9 @@ export function useUserDevices(): UseUserDevicesResult {
                 isConnected: newRow.is_connected !== undefined ? newRow.is_connected : updated[idx].isConnected,
                 latitude: newRow.latitude !== undefined ? newRow.latitude : updated[idx].latitude,
                 longitude: newRow.longitude !== undefined ? newRow.longitude : updated[idx].longitude,
-                // FIX Feature 4 + 2 : update Realtime des champs Contact/Alim
+                // FIX 2026-10-28 : realtime update de accOn + contactState
                 accOn: newRow.acc_status !== undefined ? newRow.acc_status : updated[idx].accOn,
-                contactInputState: newRow.contact_input_state !== undefined ? newRow.contact_input_state : updated[idx].contactInputState,
-                externalPowerStatus: newRow.external_power_status !== undefined ? newRow.external_power_status : updated[idx].externalPowerStatus,
-                externalVoltage: newRow.external_voltage !== undefined ? newRow.external_voltage : updated[idx].externalVoltage,
+                contactState: newRow.contact_input_state !== undefined ? newRow.contact_input_state : updated[idx].contactState,
               };
               return updated;
             });

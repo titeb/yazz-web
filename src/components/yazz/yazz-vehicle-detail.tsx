@@ -56,26 +56,16 @@ export function YazzVehicleDetail({ vehicle, onClose }: YazzVehicleDetailProps) 
   const [showEngineCut, setShowEngineCut] = useState(false);
   const [showOptions, setShowOptions] = useState(false);
   const [parkingActive, setParkingActive] = useState(false);
-  const [stoppedSince, setStoppedSince] = useState<string | null>(null);
-  const [now, setNow] = useState(Date.now());
   const { toasts: toastList, showToast, dismissToast } = useYazzToast();
   const engineCutState = vehicle.engineCutState ?? false;
   const isCut = engineCutState === true;
   const accOn = vehicle.accOn ?? true;
-  // FIX Feature 4 : contactInputState = vrai fil ACC physique (iStartek in-sta bit 1).
-  // Si null (non-iStartek ou fil non branché), fallback sur accOn (bit 9 ou bit 3).
-  const contactInputState = vehicle.contactInputState ?? null;
-  const contactOn = contactInputState !== null ? contactInputState : accOn;
-  // FIX Heuristique : si contact_input_state a déjà été true dans les 7 derniers jours,
-  // le fil est branché → la valeur est certaine. Sinon, le fil est probablement
-  // non branché → on affiche "?" même si contactInputState est non-null (false).
-  const contactInputEverTrue = vehicle.contactInputEverTrue ?? false;
-  const contactIsCertain = contactInputState !== null && contactInputEverTrue;
-  // FIX Feature 2 : alimOn = alimentation externe (bit 3) avec fallback accOn.
-  const externalPowerStatus = vehicle.externalPowerStatus ?? null;
-  const alimOn = externalPowerStatus !== null ? externalPowerStatus : accOn;
+  // FIX 2026-10-28 : Contact basé sur la tension (hystérésis 13.0/13.5V).
+  // null = tension inconnue → "Contact ?" (badge orange)
+  // true = moteur en marche (V > 13.5V) → "Contact ✓" (badge vert)
+  // false = moteur arrêté (V < 13.0V) → "Contact ✗" (badge rouge/gris)
+  const contactState = vehicle.contactState ?? null;
   const isOffline = vehicle.status === "offline";
-  const isIdle = vehicle.status === "idle";
   const vehiclePhoto = vehicle.urlImage || null;
 
   const supabase = createClientSafe();
@@ -86,69 +76,6 @@ export function YazzVehicleDetail({ vehicle, onClose }: YazzVehicleDetailProps) 
     supabase.from("user_devices").select("parking_mode").eq("id", vehicle.id).maybeSingle()
       .then(({ data }) => setParkingActive(data?.parking_mode ?? false));
   }, [supabase, vehicle.id]);
-
-  // FIX 2026-10-21 : Fetch stoppedSince (dernier mouvement réel speed > 5)
-  // quand le véhicule est "À l'arrêt". Affiche "il y a Xh Ymin" sous le badge.
-  // Utilise l'index partiel idx_gps_points_device_timestamp_moving (0.14ms).
-  useEffect(() => {
-    if (!supabase || !vehicle.id || !isIdle) {
-      setStoppedSince(null);
-      return;
-    }
-    let cancelled = false;
-    const fetchStoppedSince = async () => {
-      try {
-        const { data, error } = await supabase
-          .from("gps_points")
-          .select("timestamp")
-          .eq("device_id", vehicle.id)
-          .gt("speed", 5)
-          .order("timestamp", { ascending: false })
-          .limit(1);
-        if (!cancelled && !error && data && data.length > 0) {
-          setStoppedSince(data[0].timestamp);
-        } else {
-          setStoppedSince(null);
-        }
-      } catch {
-        if (!cancelled) setStoppedSince(null);
-      }
-    };
-    fetchStoppedSince();
-    // Re-fetch toutes les 5 minutes (cache naturel côté Supabase)
-    const interval = setInterval(fetchStoppedSince, 5 * 60 * 1000);
-    return () => { cancelled = true; clearInterval(interval); };
-  }, [supabase, vehicle.id, isIdle]);
-
-  // Tick toutes les 60s pour mettre à jour le "il y a X" affiché
-  useEffect(() => {
-    if (!isIdle || !stoppedSince) return;
-    const interval = setInterval(() => setNow(Date.now()), 60_000);
-    return () => clearInterval(interval);
-  }, [isIdle, stoppedSince]);
-
-  // Formatteur "il y a X" — identique au Flutter StopDurationFormatter
-  const stopDurationLabel = (() => {
-    if (!stoppedSince) return null;
-    const diffMs = now - new Date(stoppedSince).getTime();
-    if (diffMs < 0) return "à l'instant";
-    const sec = Math.floor(diffMs / 1000);
-    const min = Math.floor(sec / 60);
-    const hrs = Math.floor(min / 60);
-    const days = Math.floor(hrs / 24);
-    if (sec < 60) return "à l'instant";
-    if (min < 60) return `il y a ${min} min`;
-    if (hrs < 24) {
-      const remMin = min - hrs * 60;
-      return remMin === 0 ? `il y a ${hrs}h` : `il y a ${hrs}h ${remMin}min`;
-    }
-    if (days < 7) return days === 1 ? "il y a 1 jour" : `il y a ${days} jours`;
-    const weeks = Math.floor(days / 7);
-    if (days < 14) return "il y a 1 sem";
-    if (days < 30) return `il y a ${weeks} sem`;
-    const months = Math.floor(days / 30);
-    return months < 2 ? "il y a 1 mois" : `il y a ${months} mois`;
-  })();
 
   const showToastMsg = (type: "success" | "error", title: string, message?: string) => {
     showToast(type, title, message);
@@ -225,35 +152,55 @@ export function YazzVehicleDetail({ vehicle, onClose }: YazzVehicleDetailProps) 
             <p className="font-outfit truncate text-[15px] font-bold tracking-[-0.02em] text-yazz-text-dark">
               {vehicle.name}
             </p>
-            <div className="mt-1 flex items-center gap-2">
-              {/* FIX Feature 4 : badge Contact (vrai fil ACC physique) */}
-              <Zap
-                className={cn("h-3.5 w-3.5", contactOn && !isOffline ? "text-yazz-success" : "text-yazz-text-caption")}
-              />
-              <span className={cn("font-inter text-[11px]", contactOn && !isOffline ? "text-yazz-success" : "text-yazz-text-muted")}>
-                {`Contact ${contactOn ? "✓" : "✗"}${!contactIsCertain ? " ?" : ""}`}
-              </span>
-              {/* FIX Feature 2 : badge Alim. (alimentation externe bit 3) */}
-              <span className={cn("font-inter text-[11px] ml-1", alimOn && !isOffline ? "text-yazz-success" : "text-yazz-text-caption")}>
-                {`Alim. ${alimOn ? "✓" : "✗"}`}
-              </span>
-              <Battery className={cn("h-3.5 w-3.5 ml-1", !isOffline && vehicle.battery !== null ? battColor : "text-yazz-text-caption")} />
-              <span className={cn("font-inter text-[11px]", !isOffline ? "text-yazz-text-muted" : "text-yazz-text-caption")}>
-                {vehicle.battery !== null ? `${vehicle.battery}%` : "—"}
-              </span>
+            <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
+              {/* FIX 2026-10-28 : 2 badges séparés Contact + Alim.
+                  - Contact : basé sur la tension (hystérésis 13.0/13.5V) = vrai état du moteur
+                  - Alim. : basé sur acc_status (alimentation externe connectée = bit 3)
+                  Séparation : un véhicule peut être garé (Contact ✗) tout en
+                  ayant l'alimentation connectée (Alim. ✓) — c'est normal. */}
+              <div className="flex items-center gap-1">
+                <Zap
+                  className={cn(
+                    "h-3.5 w-3.5",
+                    contactState === true && !isOffline
+                      ? "text-yazz-success"
+                      : contactState === false
+                      ? "text-yazz-error"
+                      : "text-yazz-warning"
+                  )}
+                />
+                <span className={cn(
+                  "font-inter text-[11px]",
+                  contactState === true && !isOffline
+                    ? "text-yazz-success"
+                    : contactState === false
+                    ? "text-yazz-error"
+                    : "text-yazz-warning"
+                )}>
+                  {contactState === null ? "Contact ?" : contactState ? "Contact ✓" : "Contact ✗"}
+                </span>
+              </div>
+              <div className="flex items-center gap-1">
+                <Power
+                  className={cn("h-3.5 w-3.5", accOn && !isOffline ? "text-yazz-success" : "text-yazz-text-caption")}
+                />
+                <span className={cn("font-inter text-[11px]", accOn && !isOffline ? "text-yazz-success" : "text-yazz-text-muted")}>
+                  {accOn ? "Alim. ✓" : "Alim. ✗"}
+                </span>
+              </div>
+              <div className="flex items-center gap-1">
+                <Battery className={cn("h-3.5 w-3.5", !isOffline && vehicle.battery !== null ? battColor : "text-yazz-text-caption")} />
+                <span className={cn("font-inter text-[11px]", !isOffline ? "text-yazz-text-muted" : "text-yazz-text-caption")}>
+                  {vehicle.battery !== null ? `${vehicle.battery}%` : "—"}
+                </span>
+              </div>
             </div>
             {/* Badge statut — sous la ligne contact, pas à droite */}
-            <div className="mt-2 flex items-center gap-1.5">
+            <div className="mt-2">
               <span className={cn("inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[10px] font-semibold", badge.bg, badge.color)}>
                 <span className={cn("h-1.5 w-1.5 rounded-full", badge.color.replace("text-", "bg-"))} />
                 {badge.label}
               </span>
-              {/* FIX 2026-10-21 : "il y a X" à côté du badge "À l'arrêt" */}
-              {isIdle && stopDurationLabel && (
-                <span className="font-inter text-[10px] text-yazz-text-caption">
-                  {stopDurationLabel}
-                </span>
-              )}
             </div>
           </div>
         </div>
