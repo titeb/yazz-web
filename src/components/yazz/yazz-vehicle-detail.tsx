@@ -185,9 +185,6 @@ export function YazzVehicleDetail({ vehicle, onClose }: YazzVehicleDetailProps) 
                 </span>
               </div>
               <div className="flex items-center gap-1">
-                <Power
-                  className={cn("h-3.5 w-3.5", accOn && !isOffline ? "text-yazz-success" : "text-yazz-text-caption")}
-                />
                 <span className={cn("font-inter text-[11px]", accOn && !isOffline ? "text-yazz-success" : "text-yazz-text-muted")}>
                   {accOn ? "Alim. ✓" : "Alim. ✗"}
                 </span>
