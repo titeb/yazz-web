@@ -150,15 +150,40 @@ export function YazzVehicleDetail({ vehicle, onClose }: YazzVehicleDetailProps) 
   };
 
   // Toggle parking mode — Flutter _toggleParkingMode
+  // FIX 2026-10-30 : passer par le backend (/api/parking/activate|deactivate)
+  // plutôt que de faire un update direct sur user_devices. Sinon parking_sessions
+  // n'est pas créée/désactivée → zombie sessions → notifications parasites.
   const handleToggleParking = async () => {
     if (!supabase) return;
     try {
       const newValue = !parkingActive;
-      const { error } = await supabase
-        .from("user_devices")
-        .update({ parking_mode: newValue, updated_at: new Date().toISOString() })
-        .eq("id", vehicle.id);
-      if (error) throw error;
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Session expirée");
+      const accessToken = session.access_token;
+
+      const endpoint = newValue ? "/api/parking/activate" : "/api/parking/deactivate";
+      const body: Record<string, unknown> = { deviceId: vehicle.id };
+      if (newValue) {
+        // Pour activate, fournir la position GPS actuelle + sensitivity
+        body.sensitivity = "high";
+        body.parkingLat = (vehicle as any).lat ?? null;
+        body.parkingLng = (vehicle as any).lng ?? null;
+      }
+
+      const res = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify(body),
+      });
+
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data?.error || data?.message || `Erreur ${res.status}`);
+      }
+
       setParkingActive(newValue);
       showToastMsg("success", newValue ? "Mode parking activé" : "Mode parking désactivé");
     } catch (err: any) {
