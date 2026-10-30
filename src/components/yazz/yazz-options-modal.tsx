@@ -50,6 +50,35 @@ export function OptionsModal({
       .then(({ data }) => setDeviceActive(data?.is_active ?? true));
   }, [supabase, vehicleId]);
 
+  // FIX 2026-10-30 (Phase 2) : Subscription Realtime sur user_devices pour
+  // sync instantanée de is_active. Si l'utilisateur désactive/active le
+  // capteur depuis Flutter (ou un autre onglet yazz-web), ce modal se met à
+  // jour instantanément sans avoir besoin d'être refermé/rouvert.
+  // Stratégie safe : AJOUT seul, pas de suppression du fetch initial (qui
+  // sert de fallback si Realtime échoue).
+  useEffect(() => {
+    if (!supabase || !vehicleId) return;
+    const channel = supabase
+      .channel(`options-modal-${vehicleId}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "user_devices", filter: `id=eq.${vehicleId}` },
+        () => {
+          // Refetch silencieux — met à jour is_active depuis la DB
+          supabase
+            .from("user_devices")
+            .select("is_active")
+            .eq("id", vehicleId)
+            .maybeSingle()
+            .then(({ data }) => setDeviceActive(data?.is_active ?? true));
+        }
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [supabase, vehicleId]);
+
   const showResult = (type: "success" | "error", message: string) => {
     setActionResult({ type, message });
     setTimeout(() => setActionResult(null), 3000);
