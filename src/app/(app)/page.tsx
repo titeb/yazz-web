@@ -33,6 +33,8 @@ function toMockVehicle(v: VehicleWithPosition) {
     accOn: v.accOn,
     // FIX 2026-10-28 : propager le contactState basé sur tension
     contactState: v.contactState,
+    // FIX 2026-10-30 : propager parkingMode pour sync Realtime instantanée
+    parkingMode: v.parkingMode,
     engineCutState: v.engineCutState,
     alerts: [],
   };

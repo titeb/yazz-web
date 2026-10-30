@@ -55,9 +55,18 @@ export function YazzVehicleDetail({ vehicle, onClose }: YazzVehicleDetailProps) 
   const router = useRouter();
   const [showEngineCut, setShowEngineCut] = useState(false);
   const [showOptions, setShowOptions] = useState(false);
-  const [parkingActive, setParkingActive] = useState(false);
-  // FIX 2026-10-21 (restauré 2026-10-28) : Stop Duration — affiche "il y a X"
-  // à côté du badge "À l'arrêt". Perdu pendant le rewrite voltage-based Contact.
+  // FIX 2026-10-30 : parkingMode vient maintenant du hook use-user-vehicles
+  // (Realtime-synced via la subscription sur user_devices). Quand l'utilisateur
+  // active/désactive le parking depuis n'importe quelle interface (yazz-web ou
+  // Flutter), le backend met à jour user_devices.parking_mode → Realtime fire
+  // → le hook refetch → vehicle.parkingMode est mis à jour → useEffect
+  // synchronise parkingActive.
+  // Avant : yazz-vehicle-detail faisait un fetch séparé sur user_devices au
+  // montage → pas de sync Realtime → état potentiellement désynchronisé.
+  const [parkingActive, setParkingActive] = useState<boolean>(vehicle.parkingMode ?? false);
+  useEffect(() => {
+    setParkingActive(vehicle.parkingMode ?? false);
+  }, [vehicle.parkingMode]);
   const [stoppedSince, setStoppedSince] = useState<string | null>(null);
   const [now, setNow] = useState(Date.now());
   const { toasts: toastList, showToast, dismissToast } = useYazzToast();
@@ -75,12 +84,9 @@ export function YazzVehicleDetail({ vehicle, onClose }: YazzVehicleDetailProps) 
 
   const supabase = createClientSafe();
 
-  // Charger l'état parking_mode au montage
-  useEffect(() => {
-    if (!supabase || !vehicle.id) return;
-    supabase.from("user_devices").select("parking_mode").eq("id", vehicle.id).maybeSingle()
-      .then(({ data }) => setParkingActive(data?.parking_mode ?? false));
-  }, [supabase, vehicle.id]);
+  // FIX 2026-10-30 :plus de fetch séparé pour parking_mode — on utilise
+  // vehicle.parkingMode qui vient du hook use-user-vehicles (Realtime-synced).
+  // Voir useState + useEffect plus haut (ligne 67-70).
 
   // FIX 2026-10-21 (restauré 2026-10-28) : Fetch stoppedSince (dernier mouvement réel speed > 5)
   // quand le véhicule est "À l'arrêt". Affiche "il y a Xh Ymin" sous le badge.

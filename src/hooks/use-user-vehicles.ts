@@ -31,6 +31,10 @@ export type VehicleWithPosition = {
   // true = moteur en marche (V > 13.5V)
   // false = moteur arrêté (V < 13.0V)
   contactState: boolean | null;
+  // FIX 2026-10-30 : parkingMode — synchronisé via Realtime sur user_devices
+  // pour que l'activation/désactivation depuis n'importe quelle interface
+  // (yazz-web, Flutter) soit instantanément visible partout.
+  parkingMode: boolean | null;
   engineCutState: boolean;
 };
 
@@ -223,6 +227,8 @@ export function useUserVehicles() {
           // FIX 2026-10-28 : Contact basé sur tension (hystérésis 13.0/13.5V).
           // pos.contact_input_state est calculé côté backend à partir de external_voltage.
           contactState: pos?.contact_input_state ?? null,
+          // FIX 2026-10-30 : parkingMode depuis user_devices (Realtime-synced)
+          parkingMode: ud.parking_mode ?? false,
           engineCutState: ud.engine_cut_state ?? false,
         };
       });

@@ -28,6 +28,9 @@ export type Vehicle = {
   // FIX 2026-10-28 : Contact basé sur tension (hystérésis 13.0/13.5V)
   // null = inconnu → "Contact ?" / true = "Contact ✓" / false = "Contact ✗"
   contactState?: boolean | null;
+  // FIX 2026-10-30 : parkingMode — synchronisé via Realtime sur user_devices
+  // pour sync instantanée yazz-web ↔ Flutter.
+  parkingMode?: boolean | null;
   engineCutState?: boolean;
 };
 
