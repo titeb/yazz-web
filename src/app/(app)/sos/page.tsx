@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { createClientSafe } from "@/lib/supabase/client";
 import {
@@ -29,6 +29,63 @@ export default function SOSPage() {
   const [error, setError] = useState<string | null>(null);
   const [confirmCode, setConfirmCode] = useState("");
   const [userInput, setUserInput] = useState("");
+  // FIX 2026-10-30 (Phase 3c) : Ref pour suivre la dernière valeur de state
+  // dans le callback Realtime (évite le bug de closure — sans ref, le callback
+  // capturerait toujours la valeur initiale "idle").
+  const stateRef = useRef<SOSState>(state);
+  useEffect(() => { stateRef.current = state; }, [state]);
+
+  // FIX 2026-10-30 (Phase 3c) : Au montage, vérifier si un SOS actif existe
+  // déjà pour cet utilisateur (par exemple déclenché depuis Flutter). Si oui,
+  // passer directement à l'état "active" pour montrer que le SOS est en cours.
+  // + Subscription Realtime sur sos_alerts pour détecter si le SOS est résolu
+  // depuis une autre interface (Flutter ou autre onglet yazz-web).
+  // Stratégie safe : AJOUT seul, ne modifie pas la logique existante.
+  useEffect(() => {
+    if (!supabase) return;
+    let cancelled = false;
+
+    const checkActiveSos = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user || cancelled) return;
+        const { data: activeSos } = await supabase
+          .from("sos_alerts")
+          .select("id, status")
+          .eq("declared_by", user.id)
+          .eq("status", "active")
+          .maybeSingle();
+        if (!cancelled && activeSos) {
+          setState("active");
+        }
+      } catch (e) {
+        // Silencieux — ne pas crasher la page si la query échoue
+      }
+    };
+    checkActiveSos();
+
+    // Realtime : si un SOS actif est résolu depuis Flutter → revenir à "idle"
+    const channel = supabase
+      .channel(`sos-page-realtime`)
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "sos_alerts" },
+        (payload: any) => {
+          const newRow = payload.new;
+          // Si le SOS passe de "active" à autre chose (false_alarm, resolved, etc.)
+          // et que la page était en état "active", revenir à "idle"
+          if (newRow?.status !== "active" && stateRef.current === "active") {
+            setState("idle");
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      cancelled = true;
+      supabase.removeChannel(channel);
+    };
+  }, [supabase]);
 
   // Countdown timer — après le compte à rebours, on passe à l'étape de confirmation
   // (code à recopier) au lieu de déclencher le SOS directement

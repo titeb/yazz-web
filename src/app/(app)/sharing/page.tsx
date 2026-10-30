@@ -179,6 +179,31 @@ export default function SharingPage() {
     fetchShares();
   }, [fetchShares]);
 
+  // FIX 2026-10-30 (Phase 3a) : Subscription Realtime sur shared_devices et
+  // share_invitations pour sync instantanée. Si un partage est créé/accepté/
+  // supprimé depuis Flutter (ou un autre onglet yazz-web), cette page se met
+  // à jour instantanément sans avoir besoin d'être rechargée.
+  // Stratégie safe : AJOUT seul, pas de suppression du fetch initial.
+  useEffect(() => {
+    if (!supabase || !isReady) return;
+    const channel = supabase
+      .channel(`sharing-page-realtime`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "shared_devices" },
+        () => fetchShares()
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "share_invitations" },
+        () => fetchShares()
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [supabase, isReady, fetchShares]);
+
   const createShare = async (input: {
     deviceId: string;
     receiverPhone: string;

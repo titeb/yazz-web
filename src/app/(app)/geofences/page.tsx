@@ -98,6 +98,26 @@ export default function GeofencesPage() {
     fetchGeofences();
   }, [fetchGeofences]);
 
+  // FIX 2026-10-30 (Phase 3b) : Subscription Realtime sur geofences pour
+  // sync instantanée. Si une géofence est créée/supprimée/modifiée depuis
+  // Flutter (ou un autre onglet yazz-web), cette page se met à jour
+  // instantanément sans avoir besoin d'être rechargée.
+  // Stratégie safe : AJOUT seul, pas de suppression du fetch initial.
+  useEffect(() => {
+    if (!supabase || !isReady) return;
+    const channel = supabase
+      .channel(`geofences-page-realtime`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "geofences" },
+        () => fetchGeofences()
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [supabase, isReady, fetchGeofences]);
+
   const addGeofence = async (input: {
     name: string;
     type: "circle" | "polygon";
