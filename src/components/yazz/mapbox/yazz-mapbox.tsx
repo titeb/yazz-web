@@ -298,13 +298,13 @@ export function YazzMapbox({ vehicles, selectedId, onSelect }: YazzMapboxProps) 
       if (marker) {
         marker.setLngLat(lngLat).setPopup(popup);
         marker.getElement().replaceWith(el);
-        marker = new mapboxgl.Marker(el, { anchor: "bottom" })
+        marker = new mapboxgl.Marker(el)
           .setLngLat(lngLat)
           .setPopup(popup)
           .addTo(map.current);
         markersRef.current.set(v.id, marker);
       } else {
-        marker = new mapboxgl.Marker(el, { anchor: "bottom" })
+        marker = new mapboxgl.Marker(el)
           .setLngLat(lngLat)
           .setPopup(popup)
           .addTo(map.current);
