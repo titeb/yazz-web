@@ -360,38 +360,17 @@ export default function HistoryPage() {
                               </p>
                             </div>
 
-                            <p className="font-inter mt-0.5 text-[11px] text-yazz-text-muted">
-                              {event.timeLabel}
+                            <p className="font-inter mt-0.5 text-[12px] font-medium text-yazz-text-body">
+                              {event.timeLabel.replace(":", "h")}
                               {event.durationMin !== undefined && (
-                                <> · {formatDuration(event.durationMin)}</>
+                                <span className="ml-2 text-yazz-text-muted">· {formatDuration(event.durationMin)}</span>
                               )}
                             </p>
 
                             {event.address && (
-                              <p className="font-inter mt-1 truncate text-[10px] text-yazz-text-caption">
+                              <p className="font-inter mt-1 truncate text-[11px] text-yazz-text-muted">
                                 📍 {event.address}
                               </p>
-                            )}
-
-                            {/* Badges pour les trajets (departure/resume) */}
-                            {isClickable && event.trip && (
-                              <div className="mt-2 flex flex-wrap gap-1.5">
-                                {event.trip.summary?.max_speed !== undefined && (
-                                  <span className="font-inter rounded-full bg-yazz-accent px-2 py-0.5 text-[9px] font-semibold text-yazz-text-body">
-                                    Max {event.trip.summary.max_speed} km/h
-                                  </span>
-                                )}
-                                {event.trip.summary?.avg_speed !== undefined && (
-                                  <span className="font-inter rounded-full bg-yazz-accent px-2 py-0.5 text-[9px] font-semibold text-yazz-text-body">
-                                    Moy {event.trip.summary.avg_speed} km/h
-                                  </span>
-                                )}
-                                {event.trip.polyline && (
-                                  <span className="font-inter rounded-full bg-yazz-info/10 px-2 py-0.5 text-[9px] font-semibold text-yazz-info">
-                                    {event.trip.polyline.length} points
-                                  </span>
-                                )}
-                              </div>
                             )}
                           </div>
                         </>
