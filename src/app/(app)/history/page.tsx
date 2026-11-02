@@ -49,7 +49,7 @@ function timeAgo(iso: string): string {
 }
 
 function formatDate(d: Date): string {
-  return d.toLocaleDateString("fr-FR", { weekday: "short", day: "2-digit", month: "short" });
+  return d.toLocaleDateString("fr-FR", { weekday: "short", day: "2-digit", month: "short", timeZone: "Africa/Kinshasa" });
 }
 
 function isSameDay(d1: Date, d2: Date): boolean {
@@ -82,7 +82,7 @@ function buildTimelineEvents(trips: Trip[], addresses?: Map<string, { start?: st
     events.push({
       type: i === 0 ? 'departure' : 'resume',
       time: trip.startedAt,
-      timeLabel: new Date(trip.startedAt).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }),
+      timeLabel: new Date(trip.startedAt).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit", timeZone: "Africa/Kinshasa" }),
       address: trip.startAddress ?? addresses?.get(trip.id)?.start ?? undefined,
       cumulativeKm,
       tripIndex: i,
@@ -99,7 +99,7 @@ function buildTimelineEvents(trips: Trip[], addresses?: Map<string, { start?: st
         events.push({
           type: 'stop',
           time: trip.endedAt,
-          timeLabel: new Date(trip.endedAt).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }),
+          timeLabel: new Date(trip.endedAt).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit", timeZone: "Africa/Kinshasa" }),
           address: trip.endAddress ?? addresses?.get(trip.id)?.end ?? undefined,
           durationMin: gapMin,
           cumulativeKm,
@@ -114,7 +114,7 @@ function buildTimelineEvents(trips: Trip[], addresses?: Map<string, { start?: st
         events.push({
           type: 'parking',
           time: trip.endedAt,
-          timeLabel: new Date(trip.endedAt).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }),
+          timeLabel: new Date(trip.endedAt).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit", timeZone: "Africa/Kinshasa" }),
           address: trip.endAddress ?? addresses?.get(trip.id)?.end ?? undefined,
           durationMin: parkedMin,
           cumulativeKm,
@@ -635,7 +635,7 @@ function TripDetailModal({ trip, onClose }: { trip: Trip; onClose: () => void })
                   <div className="flex items-center gap-2">
                     <div className="h-1.5 w-1.5 rounded-full bg-yazz-warning" />
                     <span className="font-inter text-[11px] text-yazz-text-body">
-                      {new Date(stop.startedAt || stop.started_at).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}
+                      {new Date(stop.startedAt || stop.started_at).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit", timeZone: "Africa/Kinshasa" })}
                     </span>
                   </div>
                   <span className="font-inter text-[11px] font-semibold text-yazz-text-muted">
