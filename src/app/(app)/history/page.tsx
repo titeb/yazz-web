@@ -58,6 +58,74 @@ function isSameDay(d1: Date, d2: Date): boolean {
     d1.getDate() === d2.getDate();
 }
 
+// FIX 2026-11-02 : timeline basée sur des ÉVÉNEMENTS (pas des trajets).
+// Comme la référence : Départ → Arrêt détecté → Reprise → ... → Stationnement actuel.
+type TimelineEvent = {
+  type: 'departure' | 'stop' | 'resume' | 'parking';
+  time: string;
+  timeLabel: string;
+  address?: string;
+  durationMin?: number;
+  cumulativeKm: number;
+  tripIndex?: number;
+  trip?: Trip;
+};
+
+function buildTimelineEvents(trips: Trip[]): TimelineEvent[] {
+  const events: TimelineEvent[] = [];
+  let cumulativeKm = 0;
+
+  for (let i = 0; i < trips.length; i++) {
+    const trip = trips[i];
+
+    // Départ (premier trajet) ou Reprise (trajets suivants)
+    events.push({
+      type: i === 0 ? 'departure' : 'resume',
+      time: trip.startedAt,
+      timeLabel: new Date(trip.startedAt).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }),
+      address: trip.startAddress ?? undefined,
+      cumulativeKm,
+      tripIndex: i,
+      trip,
+    });
+
+    cumulativeKm += trip.distanceKm ?? 0;
+
+    // Arrêt entre ce trajet et le suivant (si gap > 25 min)
+    if (trip.endedAt && i < trips.length - 1) {
+      const nextTrip = trips[i + 1];
+      const gapMin = (new Date(nextTrip.startedAt).getTime() - new Date(trip.endedAt).getTime()) / 60000;
+      if (gapMin > 25) {
+        events.push({
+          type: 'stop',
+          time: trip.endedAt,
+          timeLabel: new Date(trip.endedAt).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }),
+          address: trip.endAddress ?? undefined,
+          durationMin: gapMin,
+          cumulativeKm,
+        });
+      }
+    }
+
+    // Stationnement actuel (dernier trajet terminé + véhicule toujours arrêté)
+    if (i === trips.length - 1 && trip.endedAt) {
+      const parkedMin = (Date.now() - new Date(trip.endedAt).getTime()) / 60000;
+      if (parkedMin > 25) {
+        events.push({
+          type: 'parking',
+          time: trip.endedAt,
+          timeLabel: new Date(trip.endedAt).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }),
+          address: trip.endAddress ?? undefined,
+          durationMin: parkedMin,
+          cumulativeKm,
+        });
+      }
+    }
+  }
+
+  return events;
+}
+
 export default function HistoryPage() {
   const isReady = isSupabaseConfigured();
   const { vehicles } = useUserVehicles();
@@ -250,85 +318,110 @@ export default function HistoryPage() {
               </div>
             )}
 
-            {/* Timeline des trajets */}
-            {trips.length > 0 && (
-              <div className="relative">
-                {/* Ligne verticale de la timeline */}
-                <div className="absolute left-[19px] top-3 bottom-3 w-0.5 bg-yazz-border-light" />
+            {/* Timeline des événements (Départ, Arrêt, Reprise, Stationnement) */}
+            {trips.length > 0 && (() => {
+              const events = buildTimelineEvents(trips);
+              const eventConfig = {
+                departure: { icon: Play, label: 'Départ', color: 'text-yazz-success', border: 'border-yazz-success', bg: 'bg-yazz-success/10' },
+                stop: { icon: MapPin, label: 'Arrêt détecté', color: 'text-yazz-warning', border: 'border-yazz-warning', bg: 'bg-yazz-warning/10' },
+                resume: { icon: Play, label: 'Reprise', color: 'text-yazz-primary', border: 'border-yazz-primary', bg: 'bg-yazz-primary/10' },
+                parking: { icon: MapPin, label: 'Stationnement actuel', color: 'text-yazz-error', border: 'border-yazz-error', bg: 'bg-yazz-error/10' },
+              };
 
-                <div className="space-y-1">
-                  {trips.map((trip, idx) => {
-                    const duration = trip.endedAt
-                      ? (new Date(trip.endedAt).getTime() - new Date(trip.startedAt).getTime()) / 60000
-                      : 0;
-                    const startTime = new Date(trip.startedAt).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
-                    const endTime = trip.endedAt
-                      ? new Date(trip.endedAt).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })
-                      : "—";
+              return (
+                <div className="relative">
+                  {/* Ligne verticale */}
+                  <div className="absolute left-[19px] top-3 bottom-3 w-0.5 bg-yazz-border-light" />
 
-                    return (
-                      <button
-                        key={trip.id}
-                        onClick={() => setSelectedTrip(trip)}
-                        className="relative flex w-full items-start gap-3 rounded-yazz-lg p-3 text-left transition-colors hover:bg-yazz-accent/40"
-                      >
-                        {/* Dot + icône */}
-                        <div className="relative z-10 grid h-10 w-10 shrink-0 place-items-center rounded-full bg-yazz-surface border-2 border-yazz-primary yazz-shadow-soft">
-                          <Route className="h-4 w-4 text-yazz-primary" />
-                        </div>
+                  <div className="space-y-1">
+                    {events.map((event, idx) => {
+                      const cfg = eventConfig[event.type];
+                      const Icon = cfg.icon;
+                      const isClickable = event.type === 'departure' || event.type === 'resume';
 
-                        {/* Contenu du trajet */}
-                        <div className="min-w-0 flex-1 pt-0.5">
-                          <div className="flex items-center justify-between gap-2">
-                            <p className="font-outfit text-[14px] font-semibold text-yazz-text-dark">
-                              Trajet #{idx + 1}
-                            </p>
-                            <p className="font-outfit text-[16px] font-bold text-yazz-primary shrink-0">
-                              {(trip.distanceKm ?? 0).toFixed(2)}
-                              <span className="ml-0.5 text-[10px] font-normal text-yazz-text-caption">km</span>
-                            </p>
+                      const content = (
+                        <>
+                          {/* Dot + icône */}
+                          <div className={cn(
+                            "relative z-10 grid h-10 w-10 shrink-0 place-items-center rounded-full bg-yazz-surface border-2 yazz-shadow-soft",
+                            cfg.border
+                          )}>
+                            <Icon className={cn("h-4 w-4", cfg.color)} />
                           </div>
 
-                          <p className="font-inter mt-0.5 text-[11px] text-yazz-text-muted">
-                            {startTime} → {endTime} · {formatDuration(duration)}
-                          </p>
+                          {/* Contenu de l'événement */}
+                          <div className="min-w-0 flex-1 pt-0.5">
+                            <div className="flex items-center justify-between gap-2">
+                              <p className="font-outfit text-[14px] font-semibold text-yazz-text-dark">
+                                {cfg.label}
+                              </p>
+                              <p className="font-inter text-[11px] text-yazz-text-caption shrink-0">
+                                {event.cumulativeKm.toFixed(1)} km
+                              </p>
+                            </div>
 
-                          {trip.startAddress && (
-                            <p className="font-inter mt-1 truncate text-[10px] text-yazz-text-caption">
-                              📍 {trip.startAddress}
-                              {trip.endAddress && ` → ${trip.endAddress}`}
+                            <p className="font-inter mt-0.5 text-[11px] text-yazz-text-muted">
+                              {event.timeLabel}
+                              {event.durationMin !== undefined && (
+                                <> · {formatDuration(event.durationMin)}</>
+                              )}
                             </p>
-                          )}
 
-                          <div className="mt-2 flex flex-wrap gap-1.5">
-                            {trip.summary?.max_speed !== undefined && (
-                              <span className="font-inter rounded-full bg-yazz-accent px-2 py-0.5 text-[9px] font-semibold text-yazz-text-body">
-                                Max {trip.summary.max_speed} km/h
-                              </span>
+                            {event.address && (
+                              <p className="font-inter mt-1 truncate text-[10px] text-yazz-text-caption">
+                                📍 {event.address}
+                              </p>
                             )}
-                            {trip.summary?.avg_speed !== undefined && (
-                              <span className="font-inter rounded-full bg-yazz-accent px-2 py-0.5 text-[9px] font-semibold text-yazz-text-body">
-                                Moy {trip.summary.avg_speed} km/h
-                              </span>
-                            )}
-                            {trip.stops && trip.stops.length > 0 && (
-                              <span className="font-inter rounded-full bg-yazz-warning/10 px-2 py-0.5 text-[9px] font-semibold text-yazz-warning">
-                                {trip.stops.length} arrêt{trip.stops.length > 1 ? "s" : ""}
-                              </span>
-                            )}
-                            {trip.polyline && (
-                              <span className="font-inter rounded-full bg-yazz-info/10 px-2 py-0.5 text-[9px] font-semibold text-yazz-info">
-                                {trip.polyline.length} points
-                              </span>
+
+                            {/* Badges pour les trajets (departure/resume) */}
+                            {isClickable && event.trip && (
+                              <div className="mt-2 flex flex-wrap gap-1.5">
+                                {event.trip.summary?.max_speed !== undefined && (
+                                  <span className="font-inter rounded-full bg-yazz-accent px-2 py-0.5 text-[9px] font-semibold text-yazz-text-body">
+                                    Max {event.trip.summary.max_speed} km/h
+                                  </span>
+                                )}
+                                {event.trip.summary?.avg_speed !== undefined && (
+                                  <span className="font-inter rounded-full bg-yazz-accent px-2 py-0.5 text-[9px] font-semibold text-yazz-text-body">
+                                    Moy {event.trip.summary.avg_speed} km/h
+                                  </span>
+                                )}
+                                {event.trip.polyline && (
+                                  <span className="font-inter rounded-full bg-yazz-info/10 px-2 py-0.5 text-[9px] font-semibold text-yazz-info">
+                                    {event.trip.polyline.length} points
+                                  </span>
+                                )}
+                              </div>
                             )}
                           </div>
+                        </>
+                      );
+
+                      if (isClickable && event.trip) {
+                        return (
+                          <button
+                            key={idx}
+                            onClick={() => setSelectedTrip(event.trip!)}
+                            className="relative flex w-full items-start gap-3 rounded-yazz-lg p-3 text-left transition-colors hover:bg-yazz-accent/40"
+                          >
+                            {content}
+                          </button>
+                        );
+                      }
+
+                      return (
+                        <div
+                          key={idx}
+                          className="relative flex w-full items-start gap-3 rounded-yazz-lg p-3"
+                        >
+                          {content}
                         </div>
-                      </button>
-                    );
-                  })}
+                      );
+                    })}
+                  </div>
                 </div>
-              </div>
-            )}
+              );
+            })()}
           </>
         )}
       </div>
