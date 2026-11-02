@@ -71,7 +71,7 @@ type TimelineEvent = {
   trip?: Trip;
 };
 
-function buildTimelineEvents(trips: Trip[]): TimelineEvent[] {
+function buildTimelineEvents(trips: Trip[], addresses?: Map<string, { start?: string; end?: string }>): TimelineEvent[] {
   const events: TimelineEvent[] = [];
   let cumulativeKm = 0;
 
@@ -83,7 +83,7 @@ function buildTimelineEvents(trips: Trip[]): TimelineEvent[] {
       type: i === 0 ? 'departure' : 'resume',
       time: trip.startedAt,
       timeLabel: new Date(trip.startedAt).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }),
-      address: trip.startAddress ?? undefined,
+      address: trip.startAddress ?? addresses?.get(trip.id)?.start ?? undefined,
       cumulativeKm,
       tripIndex: i,
       trip,
@@ -100,7 +100,7 @@ function buildTimelineEvents(trips: Trip[]): TimelineEvent[] {
           type: 'stop',
           time: trip.endedAt,
           timeLabel: new Date(trip.endedAt).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }),
-          address: trip.endAddress ?? undefined,
+          address: trip.endAddress ?? addresses?.get(trip.id)?.end ?? undefined,
           durationMin: gapMin,
           cumulativeKm,
         });
@@ -115,7 +115,7 @@ function buildTimelineEvents(trips: Trip[]): TimelineEvent[] {
           type: 'parking',
           time: trip.endedAt,
           timeLabel: new Date(trip.endedAt).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }),
-          address: trip.endAddress ?? undefined,
+          address: trip.endAddress ?? addresses?.get(trip.id)?.end ?? undefined,
           durationMin: parkedMin,
           cumulativeKm,
         });
@@ -137,6 +137,10 @@ export default function HistoryPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedTrip, setSelectedTrip] = useState<Trip | null>(null);
+  // FIX 2026-11-02 : résolution d'adresses via Nominatim (comme Flutter TripAddressResolver).
+  // Les trips en DB ont start_address/end_address = null. On résout côté client
+  // à partir des coordonnées du polyline (premier + dernier point).
+  const [tripAddresses, setTripAddresses] = useState<Map<string, { start?: string; end?: string }>>(new Map());
 
   // Auto-sélectionner le 1er véhicule
   useEffect(() => {
@@ -192,6 +196,70 @@ export default function HistoryPage() {
   useEffect(() => {
     fetchTrips();
   }, [fetchTrips]);
+
+  // FIX 2026-11-02 : résoudre les adresses des trips via Nominatim.
+  // Comme Flutter TripAddressResolver — prend le premier et dernier point
+  // du polyline et fait un reverse geocoding. Les adresses sont null en DB.
+  useEffect(() => {
+    if (trips.length === 0) return;
+    let cancelled = false;
+
+    const resolveAddresses = async () => {
+      const addresses = new Map<string, { start?: string; end?: string }>();
+
+      for (const trip of trips) {
+        if (cancelled) break;
+
+        // Skip si déjà résolu (trip a déjà ses adresses en DB)
+        if (trip.startAddress && trip.endAddress) {
+          addresses.set(trip.id, { start: trip.startAddress, end: trip.endAddress });
+          continue;
+        }
+
+        // Extraire les coordonnées du polyline
+        if (!trip.polyline || !Array.isArray(trip.polyline) || trip.polyline.length === 0) continue;
+        const firstPoint = trip.polyline[0];
+        const lastPoint = trip.polyline[trip.polyline.length - 1];
+
+        let startAddr = trip.startAddress ?? undefined;
+        let endAddr = trip.endAddress ?? undefined;
+
+        // Résoudre l'adresse de départ
+        if (!startAddr && firstPoint?.lat && firstPoint?.lng) {
+          try {
+            const res = await fetch(`/api/geocode/reverse?lat=${firstPoint.lat}&lng=${firstPoint.lng}`);
+            if (res.ok) {
+              const data = await res.json();
+              if (data.fullAddress) startAddr = data.fullAddress;
+            }
+          } catch { /* silencieux */ }
+          await new Promise(r => setTimeout(r, 300)); // Rate limit Nominatim
+        }
+
+        // Résoudre l'adresse d'arrivée
+        if (!endAddr && lastPoint?.lat && lastPoint?.lng) {
+          try {
+            const res = await fetch(`/api/geocode/reverse?lat=${lastPoint.lat}&lng=${lastPoint.lng}`);
+            if (res.ok) {
+              const data = await res.json();
+              if (data.fullAddress) endAddr = data.fullAddress;
+            }
+          } catch { /* silencieux */ }
+          await new Promise(r => setTimeout(r, 300)); // Rate limit Nominatim
+        }
+
+        addresses.set(trip.id, { start: startAddr, end: endAddr });
+      }
+
+      if (!cancelled) {
+        setTripAddresses(addresses);
+      }
+    };
+
+    resolveAddresses();
+
+    return () => { cancelled = true; };
+  }, [trips]);
 
   const navigateDay = (delta: number) => {
     const newDate = new Date(selectedDate);
@@ -320,7 +388,7 @@ export default function HistoryPage() {
 
             {/* Timeline des événements (Départ, Arrêt, Reprise, Stationnement) */}
             {trips.length > 0 && (() => {
-              const events = buildTimelineEvents(trips);
+              const events = buildTimelineEvents(trips, tripAddresses);
               const eventConfig = {
                 departure: { icon: Play, label: 'Départ', color: 'text-yazz-success', border: 'border-yazz-success', bg: 'bg-yazz-success/10' },
                 stop: { icon: MapPin, label: 'Arrêt détecté', color: 'text-yazz-warning', border: 'border-yazz-warning', bg: 'bg-yazz-warning/10' },
