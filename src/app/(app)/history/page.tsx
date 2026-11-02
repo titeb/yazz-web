@@ -250,83 +250,84 @@ export default function HistoryPage() {
               </div>
             )}
 
-            {/* Liste des trajets */}
+            {/* Timeline des trajets */}
             {trips.length > 0 && (
-              <ul className="space-y-2">
-                {trips.map((trip, idx) => {
-                  const duration = trip.endedAt
-                    ? (new Date(trip.endedAt).getTime() - new Date(trip.startedAt).getTime()) / 60000
-                    : 0;
-                  return (
-                    <li key={trip.id}>
+              <div className="relative">
+                {/* Ligne verticale de la timeline */}
+                <div className="absolute left-[19px] top-3 bottom-3 w-0.5 bg-yazz-border-light" />
+
+                <div className="space-y-1">
+                  {trips.map((trip, idx) => {
+                    const duration = trip.endedAt
+                      ? (new Date(trip.endedAt).getTime() - new Date(trip.startedAt).getTime()) / 60000
+                      : 0;
+                    const startTime = new Date(trip.startedAt).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+                    const endTime = trip.endedAt
+                      ? new Date(trip.endedAt).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })
+                      : "—";
+
+                    return (
                       <button
+                        key={trip.id}
                         onClick={() => setSelectedTrip(trip)}
-                        className="w-full rounded-yazz-xl border border-yazz-border-light bg-yazz-surface p-4 text-left yazz-shadow-soft transition-all hover:yazz-shadow-elevated hover:border-yazz-border-medium"
+                        className="relative flex w-full items-start gap-3 rounded-yazz-lg p-3 text-left transition-colors hover:bg-yazz-accent/40"
                       >
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="flex items-start gap-3 min-w-0 flex-1">
-                            <div className="grid h-10 w-10 shrink-0 place-items-center rounded-yazz-lg yazz-gradient-primary text-white">
-                              <Route className="h-4 w-4" />
-                            </div>
-                            <div className="min-w-0 flex-1">
-                              <p className="font-outfit text-[14px] font-semibold text-yazz-text-dark">
-                                Trajet #{idx + 1}
-                              </p>
-                              <p className="font-inter mt-0.5 text-[11px] text-yazz-text-muted">
-                                {new Date(trip.startedAt).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}
-                                {trip.endedAt && (
-                                  <>
-                                    {" → "}
-                                    {new Date(trip.endedAt).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}
-                                  </>
-                                )}
-                              </p>
-                              {trip.startAddress && (
-                                <p className="font-inter mt-1 truncate text-[10px] text-yazz-text-caption">
-                                  📍 {trip.startAddress}
-                                  {trip.endAddress && ` → ${trip.endAddress}`}
-                                </p>
-                              )}
-                            </div>
-                          </div>
-                          <div className="text-right shrink-0">
-                            <p className="font-outfit text-[16px] font-bold text-yazz-primary">
+                        {/* Dot + icône */}
+                        <div className="relative z-10 grid h-10 w-10 shrink-0 place-items-center rounded-full bg-yazz-surface border-2 border-yazz-primary yazz-shadow-soft">
+                          <Route className="h-4 w-4 text-yazz-primary" />
+                        </div>
+
+                        {/* Contenu du trajet */}
+                        <div className="min-w-0 flex-1 pt-0.5">
+                          <div className="flex items-center justify-between gap-2">
+                            <p className="font-outfit text-[14px] font-semibold text-yazz-text-dark">
+                              Trajet #{idx + 1}
+                            </p>
+                            <p className="font-outfit text-[16px] font-bold text-yazz-primary shrink-0">
                               {(trip.distanceKm ?? 0).toFixed(2)}
                               <span className="ml-0.5 text-[10px] font-normal text-yazz-text-caption">km</span>
                             </p>
-                            <p className="font-inter text-[10px] text-yazz-text-caption">
-                              {formatDuration(duration)}
+                          </div>
+
+                          <p className="font-inter mt-0.5 text-[11px] text-yazz-text-muted">
+                            {startTime} → {endTime} · {formatDuration(duration)}
+                          </p>
+
+                          {trip.startAddress && (
+                            <p className="font-inter mt-1 truncate text-[10px] text-yazz-text-caption">
+                              📍 {trip.startAddress}
+                              {trip.endAddress && ` → ${trip.endAddress}`}
                             </p>
+                          )}
+
+                          <div className="mt-2 flex flex-wrap gap-1.5">
+                            {trip.summary?.max_speed !== undefined && (
+                              <span className="font-inter rounded-full bg-yazz-accent px-2 py-0.5 text-[9px] font-semibold text-yazz-text-body">
+                                Max {trip.summary.max_speed} km/h
+                              </span>
+                            )}
+                            {trip.summary?.avg_speed !== undefined && (
+                              <span className="font-inter rounded-full bg-yazz-accent px-2 py-0.5 text-[9px] font-semibold text-yazz-text-body">
+                                Moy {trip.summary.avg_speed} km/h
+                              </span>
+                            )}
+                            {trip.stops && trip.stops.length > 0 && (
+                              <span className="font-inter rounded-full bg-yazz-warning/10 px-2 py-0.5 text-[9px] font-semibold text-yazz-warning">
+                                {trip.stops.length} arrêt{trip.stops.length > 1 ? "s" : ""}
+                              </span>
+                            )}
+                            {trip.polyline && (
+                              <span className="font-inter rounded-full bg-yazz-info/10 px-2 py-0.5 text-[9px] font-semibold text-yazz-info">
+                                {trip.polyline.length} points
+                              </span>
+                            )}
                           </div>
                         </div>
-
-                        <div className="mt-3 flex flex-wrap gap-1.5">
-                          {trip.summary?.max_speed !== undefined && (
-                            <span className="font-inter rounded-full bg-yazz-accent px-2 py-0.5 text-[9px] font-semibold text-yazz-text-body">
-                              Max {trip.summary.max_speed} km/h
-                            </span>
-                          )}
-                          {trip.summary?.avg_speed !== undefined && (
-                            <span className="font-inter rounded-full bg-yazz-accent px-2 py-0.5 text-[9px] font-semibold text-yazz-text-body">
-                              Moy {trip.summary.avg_speed} km/h
-                            </span>
-                          )}
-                          {trip.stops && trip.stops.length > 0 && (
-                            <span className="font-inter rounded-full bg-yazz-warning/10 px-2 py-0.5 text-[9px] font-semibold text-yazz-warning">
-                              {trip.stops.length} arrêt{trip.stops.length > 1 ? "s" : ""}
-                            </span>
-                          )}
-                          {trip.polyline && (
-                            <span className="font-inter rounded-full bg-yazz-info/10 px-2 py-0.5 text-[9px] font-semibold text-yazz-info">
-                              {trip.polyline.length} points
-                            </span>
-                          )}
-                        </div>
                       </button>
-                    </li>
-                  );
-                })}
-              </ul>
+                    );
+                  })}
+                </div>
+              </div>
             )}
           </>
         )}
