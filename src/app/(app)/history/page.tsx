@@ -241,6 +241,16 @@ export default function HistoryPage() {
     const resolveAddresses = async () => {
       const addresses = new Map<string, { start?: string; end?: string }>();
 
+      // FIX 2026-11-03 : cache localStorage pour éviter de re-appeler Nominatim
+      // à chaque chargement de page. La 1ère fois = lent (Nominatim), ensuite = instantané.
+      const getCacheKey = (lat: number, lng: number) => `geo:${lat.toFixed(4)},${lng.toFixed(4)}`;
+      const getCached = (lat: number, lng: number): string | null => {
+        try { return localStorage.getItem(getCacheKey(lat, lng)); } catch { return null; }
+      };
+      const setCached = (lat: number, lng: number, addr: string) => {
+        try { localStorage.setItem(getCacheKey(lat, lng), addr); } catch {}
+      };
+
       // FIX 2026-11-03 : résolution en PARALLÈLE (Promise.all) au lieu de
       // séquentiel. Avant : 6 appels × 800ms = 4.8s. Maintenant : ~0.8s.
       const promises: Promise<void>[] = [];
@@ -259,24 +269,33 @@ export default function HistoryPage() {
         const firstPoint = trip.polyline[0];
         const lastPoint = trip.polyline[trip.polyline.length - 1];
 
+        // Helper : résoudre 1 adresse (cache localStorage → Nominatim → cache)
+        const resolveOne = async (lat?: number, lng?: number, dbAddr?: string | null): Promise<string | undefined> => {
+          if (dbAddr) return dbAddr;
+          if (!lat || !lng) return undefined;
+          // 1. Vérifier le cache localStorage (instantané)
+          const cached = getCached(lat, lng);
+          if (cached) return cached;
+          // 2. Appeler Nominatim (lent, mais seulement la 1ère fois)
+          try {
+            const res = await fetch(`/api/geocode/reverse?lat=${lat}&lng=${lng}`);
+            if (res.ok) {
+              const data = await res.json();
+              if (data.fullAddress) {
+                setCached(lat, lng, data.fullAddress); // Sauver dans le cache
+                return data.fullAddress;
+              }
+            }
+          } catch { /* silencieux */ }
+          return undefined;
+        };
+
         // Créer les promises pour start + end en parallèle
-        const startPromise = (!trip.startAddress && firstPoint?.lat && firstPoint?.lng)
-          ? fetch(`/api/geocode/reverse?lat=${firstPoint.lat}&lng=${firstPoint.lng}`)
-              .then(res => res.ok ? res.json() : null)
-              .then(data => data?.fullAddress ?? undefined)
-              .catch(() => undefined)
-          : Promise.resolve(trip.startAddress ?? undefined);
-
-        const endPromise = (!trip.endAddress && lastPoint?.lat && lastPoint?.lng)
-          ? fetch(`/api/geocode/reverse?lat=${lastPoint.lat}&lng=${lastPoint.lng}`)
-              .then(res => res.ok ? res.json() : null)
-              .then(data => data?.fullAddress ?? undefined)
-              .catch(() => undefined)
-          : Promise.resolve(trip.endAddress ?? undefined);
-
-        // Stocker le résultat quand les 2 promises sont résolues
         promises.push(
-          Promise.all([startPromise, endPromise]).then(([startAddr, endAddr]) => {
+          Promise.all([
+            resolveOne(firstPoint?.lat, firstPoint?.lng, trip.startAddress),
+            resolveOne(lastPoint?.lat, lastPoint?.lng, trip.endAddress),
+          ]).then(([startAddr, endAddr]) => {
             addresses.set(trip.id, { start: startAddr, end: endAddr });
           })
         );
