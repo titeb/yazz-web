@@ -441,11 +441,10 @@ export default function HistoryPage() {
                               </p>
                             )}
 
-                            {/* Ligne 3: Durée (pour les arrêts) + indicateur >30min */}
+                            {/* Ligne 3: Durée (pour les arrêts) */}
                             {event.durationMin !== undefined && (
                               <p className="font-inter mt-0.5 text-[10px] text-yazz-text-caption">
-                                Stationné {formatDuration(event.durationMin)}
-                                {event.durationMin > 30 ? " · plus de 30 min" : ""}
+                                Le véhicule est resté surplace depuis plus de 30 minutes.
                               </p>
                             )}
                           </div>
