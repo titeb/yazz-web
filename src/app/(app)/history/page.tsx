@@ -72,18 +72,10 @@ type TimelineEvent = {
 };
 
 function buildTimelineEvents(trips: Trip[], addresses?: Map<string, { start?: string; end?: string }>): TimelineEvent[] {
-  // CAS 1 : Aucun trip → le véhicule n'a pas bougé de la journée
-  // → retourner un seul événement "parking" sans heure
-  if (trips.length === 0) {
-    return [{
-      type: 'parking',
-      time: '',
-      timeLabel: '',
-      cumulativeKm: 0,
-    }];
-  }
+  // Pas de trip → pas d'événement (l'empty state "Aucun trajet" s'affiche)
+  if (trips.length === 0) return [];
 
-  // CAS 2 : Des trips existent → fusionner les trips avec gap < 25 min
+  // Fusionner les trips avec gap < 25 min
   const mergedTrips: Trip[] = [];
   for (const trip of trips) {
     const lastMerged = mergedTrips[mergedTrips.length - 1];
