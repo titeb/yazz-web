@@ -417,29 +417,37 @@ export default function HistoryPage() {
                             <Icon className={cn("h-4 w-4", cfg.color)} />
                           </div>
 
-                          {/* Contenu de l'événement */}
+                          {/* Contenu de l'événement — format comme la référence */}
                           <div className="min-w-0 flex-1 pt-0.5">
-                            <div className="flex items-center justify-between gap-2">
-                              <p className="font-outfit text-[14px] font-semibold text-yazz-text-dark">
+                            {/* Ligne 1: Heure (grande) + Label */}
+                            <div className="flex items-center gap-2">
+                              <span className="font-outfit text-[15px] font-bold text-yazz-text-dark">
+                                {event.timeLabel.replace(":", "h")}
+                              </span>
+                              <span className={cn("font-inter text-[12px] font-semibold", cfg.color)}>
                                 {cfg.label}
-                              </p>
-                              <p className="font-inter text-[11px] text-yazz-text-caption shrink-0">
-                                {event.cumulativeKm.toFixed(1)} km
-                              </p>
+                              </span>
                             </div>
 
-                            <p className="font-inter mt-0.5 text-[12px] font-medium text-yazz-text-body">
-                              {event.timeLabel.replace(":", "h")}
-                              {event.durationMin !== undefined && (
-                                <span className="ml-2 text-yazz-text-muted">· {formatDuration(event.durationMin)}</span>
-                              )}
-                            </p>
-
+                            {/* Ligne 2: Adresse */}
                             {event.address && (
-                              <p className="font-inter mt-1 truncate text-[11px] text-yazz-text-muted">
+                              <p className="font-inter mt-1 text-[11px] text-yazz-text-muted">
                                 📍 {event.address}
                               </p>
                             )}
+
+                            {/* Ligne 3: Durée (pour les arrêts) + indicateur >30min */}
+                            {event.durationMin !== undefined && (
+                              <p className="font-inter mt-0.5 text-[10px] text-yazz-text-caption">
+                                Stationné {formatDuration(event.durationMin)}
+                                {event.durationMin > 30 ? " · plus de 30 min" : ""}
+                              </p>
+                            )}
+
+                            {/* Ligne 4: Kilométrage cumulé */}
+                            <p className="font-inter mt-0.5 text-[10px] text-yazz-text-caption">
+                              {event.cumulativeKm.toFixed(1)} km
+                            </p>
                           </div>
                         </>
                       );
