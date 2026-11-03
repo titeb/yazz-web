@@ -437,7 +437,7 @@ export default function HistoryPage() {
                             {/* Ligne 2: Adresse */}
                             {event.address && (
                               <p className="font-inter mt-1 text-[11px] text-yazz-text-muted">
-                                📍 {event.address}
+                                {event.type === 'resume' ? `📍 Départ : ${event.address}` : `📍 ${event.address}`}
                               </p>
                             )}
 
@@ -445,6 +445,13 @@ export default function HistoryPage() {
                             {event.type === 'departure' && (
                               <p className="font-inter mt-0.5 text-[10px] text-yazz-text-caption">
                                 Le véhicule commence sa journée.
+                              </p>
+                            )}
+
+                            {/* Ligne 3a-bis: Texte pour Reprise */}
+                            {event.type === 'resume' && (
+                              <p className="font-inter mt-0.5 text-[10px] text-yazz-text-caption">
+                                Le véhicule reprend sa route.
                               </p>
                             )}
 
