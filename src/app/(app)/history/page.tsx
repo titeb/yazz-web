@@ -448,10 +448,17 @@ export default function HistoryPage() {
                               </p>
                             )}
 
-                            {/* Ligne 3b: Texte pour les arrêts */}
-                            {event.durationMin !== undefined && (
+                            {/* Ligne 3b: Texte pour les arrêts entre trajets */}
+                            {event.type === 'stop' && (
                               <p className="font-inter mt-0.5 text-[10px] text-yazz-text-caption">
                                 Le véhicule est resté surplace depuis plus de 30 minutes.
+                              </p>
+                            )}
+
+                            {/* Ligne 3c: Texte pour le stationnement actuel (durée exacte) */}
+                            {event.type === 'parking' && event.durationMin !== undefined && (
+                              <p className="font-inter mt-0.5 text-[10px] text-yazz-text-caption">
+                                Le véhicule est resté surplace depuis {formatDuration(event.durationMin)}.
                               </p>
                             )}
                           </div>
