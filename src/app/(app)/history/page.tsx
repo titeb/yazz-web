@@ -448,7 +448,15 @@ export default function HistoryPage() {
                               </p>
                             )}
 
-                            {/* Ligne 3b: Texte pour les arrêts entre trajets */}
+                            {/* Ligne 3b: Durée exacte avec icône (pour les arrêts entre trajets) */}
+                            {event.type === 'stop' && event.durationMin !== undefined && (
+                              <p className="font-inter mt-0.5 flex items-center gap-1 text-[10px] text-yazz-text-caption">
+                                <Clock className="h-3 w-3" />
+                                {formatDuration(event.durationMin)} à l'arrêt
+                              </p>
+                            )}
+
+                            {/* Ligne 3c: Texte pour les arrêts entre trajets */}
                             {event.type === 'stop' && (
                               <p className="font-inter mt-0.5 text-[10px] text-yazz-text-caption">
                                 Le véhicule est resté surplace depuis plus de 30 minutes.
