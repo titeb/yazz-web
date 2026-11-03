@@ -175,6 +175,8 @@ export default function HistoryPage() {
   // Les trips en DB ont start_address/end_address = null. On résout côté client
   // à partir des coordonnées du polyline (premier + dernier point).
   const [tripAddresses, setTripAddresses] = useState<Map<string, { start?: string; end?: string }>>(new Map());
+  // FIX 2026-11-03 : état de chargement des adresses pour shimmer loading
+  const [addressesLoading, setAddressesLoading] = useState(false);
 
   // Auto-sélectionner le 1er véhicule
   useEffect(() => {
@@ -306,10 +308,12 @@ export default function HistoryPage() {
 
       if (!cancelled) {
         setTripAddresses(addresses);
+        setAddressesLoading(false);
       }
     };
 
     resolveAddresses();
+    setAddressesLoading(true);
 
     return () => { cancelled = true; };
   }, [trips]);
@@ -491,12 +495,17 @@ export default function HistoryPage() {
                               </p>
                             </div>
 
-                            {/* Ligne 2: Adresse */}
-                            {event.address && (
+                            {/* Ligne 2: Adresse ou shimmer pendant le chargement */}
+                            {event.address ? (
                               <p className="font-inter mt-1 text-[11px] text-yazz-text-muted">
                                 {event.type === 'resume' ? `📍 Départ : ${event.address}` : `📍 ${event.address}`}
                               </p>
-                            )}
+                            ) : addressesLoading && event.trip ? (
+                              <div className="mt-1 flex items-center gap-1.5">
+                                <span className="text-[11px]">📍</span>
+                                <div className="h-[11px] w-48 rounded-yazz-sm bg-yazz-accent yazz-shimmer" />
+                              </div>
+                            ) : null}
 
                             {/* Ligne 3a: Texte pour Départ */}
                             {event.type === 'departure' && (
