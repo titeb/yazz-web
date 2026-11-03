@@ -441,7 +441,14 @@ export default function HistoryPage() {
                               </p>
                             )}
 
-                            {/* Ligne 3: Durée (pour les arrêts) */}
+                            {/* Ligne 3a: Texte pour Départ */}
+                            {event.type === 'departure' && (
+                              <p className="font-inter mt-0.5 text-[10px] text-yazz-text-caption">
+                                Le véhicule commence sa journée.
+                              </p>
+                            )}
+
+                            {/* Ligne 3b: Texte pour les arrêts */}
                             {event.durationMin !== undefined && (
                               <p className="font-inter mt-0.5 text-[10px] text-yazz-text-caption">
                                 Le véhicule est resté surplace depuis plus de 30 minutes.
