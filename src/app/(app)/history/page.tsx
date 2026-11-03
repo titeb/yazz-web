@@ -72,13 +72,55 @@ type TimelineEvent = {
 };
 
 function buildTimelineEvents(trips: Trip[], addresses?: Map<string, { start?: string; end?: string }>): TimelineEvent[] {
+  // CAS 1 : Aucun trip → le véhicule n'a pas bougé de la journée
+  // → retourner un seul événement "parking" sans heure
+  if (trips.length === 0) {
+    return [{
+      type: 'parking',
+      time: '',
+      timeLabel: '',
+      cumulativeKm: 0,
+    }];
+  }
+
+  // CAS 2 : Des trips existent → fusionner les trips avec gap < 25 min
+  const mergedTrips: Trip[] = [];
+  for (const trip of trips) {
+    const lastMerged = mergedTrips[mergedTrips.length - 1];
+    if (lastMerged && lastMerged.endedAt && trip.startedAt) {
+      const gapMin = (new Date(trip.startedAt).getTime() - new Date(lastMerged.endedAt).getTime()) / 60000;
+      if (gapMin < 25) {
+        // Fusionner : cumuler distance + prendre endedAt du suivant
+        lastMerged.distanceKm = (lastMerged.distanceKm ?? 0) + (trip.distanceKm ?? 0);
+        lastMerged.endedAt = trip.endedAt;
+        lastMerged.endAddress = trip.endAddress ?? lastMerged.endAddress;
+        if (trip.polyline && lastMerged.polyline) {
+          lastMerged.polyline = [...lastMerged.polyline, ...trip.polyline];
+        } else if (trip.polyline) {
+          lastMerged.polyline = trip.polyline;
+        }
+        if (trip.summary && lastMerged.summary) {
+          lastMerged.summary = {
+            max_speed: Math.max(lastMerged.summary.max_speed ?? 0, trip.summary.max_speed ?? 0),
+            avg_speed: lastMerged.summary.avg_speed,
+            point_count: (lastMerged.summary.point_count ?? 0) + (trip.summary.point_count ?? 0),
+          };
+        }
+        continue;
+      }
+    }
+    // Pas de fusion → ajouter tel quel
+    mergedTrips.push({ ...trip });
+  }
+
+  // Construire les événements à partir des trips fusionnés
   const events: TimelineEvent[] = [];
   let cumulativeKm = 0;
 
-  for (let i = 0; i < trips.length; i++) {
-    const trip = trips[i];
+  for (let i = 0; i < mergedTrips.length; i++) {
+    const trip = mergedTrips[i];
 
-    // Départ (premier trajet) ou Reprise (trajets suivants)
+    // Départ (premier segment) ou Reprise (segments suivants — uniquement après un arrêt)
     events.push({
       type: i === 0 ? 'departure' : 'resume',
       time: trip.startedAt,
@@ -91,9 +133,9 @@ function buildTimelineEvents(trips: Trip[], addresses?: Map<string, { start?: st
 
     cumulativeKm += trip.distanceKm ?? 0;
 
-    // Arrêt entre ce trajet et le suivant (si gap > 25 min)
-    if (trip.endedAt && i < trips.length - 1) {
-      const nextTrip = trips[i + 1];
+    // Arrêt entre ce segment et le suivant (si gap > 25 min)
+    if (trip.endedAt && i < mergedTrips.length - 1) {
+      const nextTrip = mergedTrips[i + 1];
       const gapMin = (new Date(nextTrip.startedAt).getTime() - new Date(trip.endedAt).getTime()) / 60000;
       if (gapMin > 25) {
         events.push({
@@ -107,8 +149,8 @@ function buildTimelineEvents(trips: Trip[], addresses?: Map<string, { start?: st
       }
     }
 
-    // Stationnement actuel (dernier trajet terminé + véhicule toujours arrêté)
-    if (i === trips.length - 1 && trip.endedAt) {
+    // Stationnement actuel (dernier segment terminé + véhicule toujours arrêté)
+    if (i === mergedTrips.length - 1 && trip.endedAt) {
       const parkedMin = (Date.now() - new Date(trip.endedAt).getTime()) / 60000;
       if (parkedMin > 25) {
         events.push({
@@ -371,7 +413,7 @@ export default function HistoryPage() {
               </div>
             )}
 
-            {/* Empty state */}
+            {/* Empty state : plus pertinent — véhicule n'a pas bougé */}
             {trips.length === 0 && !error && (
               <div className="grid place-items-center py-12 text-center">
                 <div className="grid h-14 w-14 place-items-center rounded-full bg-yazz-accent">
@@ -387,8 +429,9 @@ export default function HistoryPage() {
             )}
 
             {/* Timeline des événements (Départ, Arrêt, Reprise, Stationnement) */}
-            {trips.length > 0 && (() => {
+            {(() => {
               const events = buildTimelineEvents(trips, tripAddresses);
+              if (events.length === 0) return null;
               const eventConfig = {
                 departure: { icon: Play, label: 'Départ', color: 'text-yazz-success', border: 'border-yazz-success', bg: 'bg-yazz-success/10' },
                 stop: { icon: MapPin, label: 'Arrêt détecté', color: 'text-yazz-warning', border: 'border-yazz-warning', bg: 'bg-yazz-warning/10' },
@@ -420,11 +463,14 @@ export default function HistoryPage() {
                           {/* Contenu de l'événement — format comme la référence */}
                           <div className="min-w-0 flex-1 pt-0.5">
                             {/* Ligne 1: Heure (grande) + Label + km à droite */}
+                            {/* Si pas d'heure (véhicule n'a pas bougé) → juste le label */}
                             <div className="flex items-center justify-between gap-2">
                               <div className="flex items-center gap-2">
-                                <span className="font-outfit text-[15px] font-bold text-yazz-text-dark">
-                                  {event.timeLabel.replace(":", "h")}
-                                </span>
+                                {event.timeLabel && (
+                                  <span className="font-outfit text-[15px] font-bold text-yazz-text-dark">
+                                    {event.timeLabel.replace(":", "h")}
+                                  </span>
+                                )}
                                 <span className={cn("font-inter text-[12px] font-semibold", cfg.color)}>
                                   {cfg.label}
                                 </span>
