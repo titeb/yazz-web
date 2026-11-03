@@ -419,14 +419,19 @@ export default function HistoryPage() {
 
                           {/* Contenu de l'événement — format comme la référence */}
                           <div className="min-w-0 flex-1 pt-0.5">
-                            {/* Ligne 1: Heure (grande) + Label */}
-                            <div className="flex items-center gap-2">
-                              <span className="font-outfit text-[15px] font-bold text-yazz-text-dark">
-                                {event.timeLabel.replace(":", "h")}
-                              </span>
-                              <span className={cn("font-inter text-[12px] font-semibold", cfg.color)}>
-                                {cfg.label}
-                              </span>
+                            {/* Ligne 1: Heure (grande) + Label + km à droite */}
+                            <div className="flex items-center justify-between gap-2">
+                              <div className="flex items-center gap-2">
+                                <span className="font-outfit text-[15px] font-bold text-yazz-text-dark">
+                                  {event.timeLabel.replace(":", "h")}
+                                </span>
+                                <span className={cn("font-inter text-[12px] font-semibold", cfg.color)}>
+                                  {cfg.label}
+                                </span>
+                              </div>
+                              <p className="font-inter text-[11px] text-yazz-text-caption shrink-0">
+                                {event.cumulativeKm.toFixed(1)} km
+                              </p>
                             </div>
 
                             {/* Ligne 2: Adresse */}
@@ -443,11 +448,6 @@ export default function HistoryPage() {
                                 {event.durationMin > 30 ? " · plus de 30 min" : ""}
                               </p>
                             )}
-
-                            {/* Ligne 4: Kilométrage cumulé */}
-                            <p className="font-inter mt-0.5 text-[10px] text-yazz-text-caption">
-                              {event.cumulativeKm.toFixed(1)} km
-                            </p>
                           </div>
                         </>
                       );
