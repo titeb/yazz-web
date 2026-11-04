@@ -540,7 +540,7 @@ export default function HistoryPage() {
                                 </span>
                               </div>
                               <p className="font-inter text-[11px] text-yazz-text-caption shrink-0">
-                                {event.cumulativeKm.toFixed(1)} km
+                                {event.cumulativeKm.toFixed(2)} km
                               </p>
                             </div>
 
