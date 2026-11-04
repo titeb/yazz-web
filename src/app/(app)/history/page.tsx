@@ -366,12 +366,22 @@ export default function HistoryPage() {
   const isFuture = selectedDate > new Date();
 
   // Stats du jour
+  // FIX 2026-11-04 : stats clarifiées pour l'utilisateur
+  // 1. Temps de conduite = somme des durées de chaque trip (uniquement le temps à rouler)
+  // 2. Distance parcourue = somme des distances
+  // 3. Vitesse maximale = vitesse max atteinte dans la journée
+  // 4. Temps d'arrêt = somme des gaps > 25 min entre les trips (+ stationnement actuel si > 25 min)
   const totalDistance = trips.reduce((sum, t) => sum + (t.distanceKm ?? 0), 0);
-  const totalDurationMin = trips.reduce((sum, t) => {
+  const totalDriveMin = trips.reduce((sum, t) => {
     if (!t.endedAt) return sum;
     return sum + (new Date(t.endedAt).getTime() - new Date(t.startedAt).getTime()) / 60000;
   }, 0);
   const maxSpeed = trips.reduce((max, t) => Math.max(max, t.summary?.max_speed ?? 0), 0);
+  const totalStopMin = trips.reduce((sum, t, i) => {
+    if (i === 0 || !trips[i - 1].endedAt) return sum;
+    const gap = (new Date(t.startedAt).getTime() - new Date(trips[i - 1].endedAt!).getTime()) / 60000;
+    return sum + (gap > 25 ? gap : 0);
+  }, 0);
 
   return (
     <div className="h-full overflow-y-auto">
@@ -452,10 +462,10 @@ export default function HistoryPage() {
             {/* Stats du jour */}
             {trips.length > 0 && (
               <div className="mb-6 grid grid-cols-2 gap-3 md:grid-cols-4">
-                <StatBox icon={Route} label="Trajets" value={String(trips.length)} color="text-yazz-primary" bg="bg-yazz-primary/10" />
-                <StatBox icon={MapPin} label="Distance" value={`${totalDistance.toFixed(2)} km`} color="text-yazz-success" bg="bg-yazz-success/10" />
-                <StatBox icon={Clock} label="Durée totale" value={formatDuration(totalDurationMin)} color="text-yazz-info" bg="bg-yazz-info/10" />
-                <StatBox icon={Gauge} label="Vitesse max" value={`${maxSpeed} km/h`} color="text-yazz-crawling" bg="bg-yazz-crawling/10" />
+                <StatBox icon={Clock} label="Temps de conduite" value={formatDuration(totalDriveMin)} color="text-yazz-info" bg="bg-yazz-info/10" />
+                <StatBox icon={MapPin} label="Distance parcourue" value={`${totalDistance.toFixed(2)} km`} color="text-yazz-success" bg="bg-yazz-success/10" />
+                <StatBox icon={Gauge} label="Vitesse maximale" value={`${maxSpeed} km/h`} color="text-yazz-crawling" bg="bg-yazz-crawling/10" />
+                <StatBox icon={Clock} label="Temps d'arrêt" value={formatDuration(totalStopMin)} color="text-yazz-warning" bg="bg-yazz-warning/10" />
               </div>
             )}
 
