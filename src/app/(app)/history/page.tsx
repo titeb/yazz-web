@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { cn, formatDistance } from "@/lib/utils";
 import { motion } from "framer-motion";
+import { TripPolylineMap } from "@/components/yazz/mapbox/trip-polyline-map";
 
 type Trip = {
   id: string;
@@ -734,7 +735,7 @@ function TripDetailModal({ trip, onClose }: { trip: Trip; onClose: () => void })
           </div>
         )}
 
-        {/* Polyline preview — animé pro */}
+        {/* Polyline preview — carte Mapbox réelle avec ligne animée */}
         {trip.polyline && trip.polyline.length > 0 && (
           <motion.div
             initial={{ opacity: 0, y: 8 }}
@@ -746,135 +747,8 @@ function TripDetailModal({ trip, onClose }: { trip: Trip; onClose: () => void })
               Tracé du trajet
               <span className="font-normal text-yazz-text-caption">({trip.polyline.length} points)</span>
             </p>
-            <div className="relative h-[300px] overflow-hidden rounded-yazz-md yazz-map-grid">
-              {/* Halo radial léger pour donner de la profondeur */}
-              <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(43,68,238,0.05),transparent_70%)]" />
-
-              <svg className="absolute inset-0 h-full w-full" preserveAspectRatio="xMidYMid meet" viewBox="0 0 100 100">
-                <defs>
-                  {/* Dégradé vert → bleu → rouge le long du trajet */}
-                  <linearGradient id={`trip-grad-${trip.id}`} x1="0%" y1="0%" x2="100%" y2="100%">
-                    <stop offset="0%" stopColor="#38A169" />
-                    <stop offset="50%" stopColor="#2B44EE" />
-                    <stop offset="100%" stopColor="#E53E3E" />
-                  </linearGradient>
-                  {/* Filtre glow sous la ligne */}
-                  <filter id={`trip-glow-${trip.id}`} x="-20%" y="-20%" width="140%" height="140%">
-                    <feGaussianBlur stdDeviation="0.6" result="blur" />
-                    <feMerge>
-                      <feMergeNode in="blur" />
-                      <feMergeNode in="SourceGraphic" />
-                    </feMerge>
-                  </filter>
-                </defs>
-
-                {(() => {
-                  const points = trip.polyline;
-                  if (points.length < 2) return null;
-                  const lats = points.map((p) => p.lat);
-                  const lngs = points.map((p) => p.lng);
-                  const minLat = Math.min(...lats);
-                  const maxLat = Math.max(...lats);
-                  const minLng = Math.min(...lngs);
-                  const maxLng = Math.max(...lngs);
-                  const latRange = maxLat - minLat || 0.01;
-                  const lngRange = maxLng - minLng || 0.01;
-                  const padding = 5;
-
-                  const path = points
-                    .map((p, i) => {
-                      const x = padding + ((p.lng - minLng) / lngRange) * (100 - 2 * padding);
-                      const y = padding + (1 - (p.lat - minLat) / latRange) * (100 - 2 * padding);
-                      return `${i === 0 ? "M" : "L"} ${x} ${y}`;
-                    })
-                    .join(" ");
-
-                  const startX = padding + ((points[0].lng - minLng) / lngRange) * (100 - 2 * padding);
-                  const startY = padding + (1 - (points[0].lat - minLat) / latRange) * (100 - 2 * padding);
-                  const endX = padding + ((points[points.length - 1].lng - minLng) / lngRange) * (100 - 2 * padding);
-                  const endY = padding + (1 - (points[points.length - 1].lat - minLat) / latRange) * (100 - 2 * padding);
-
-                  return (
-                    <>
-                      {/* Ligne animée : se dessine progressivement (1.4s) avec glow */}
-                      <motion.path
-                        d={path}
-                        stroke={`url(#trip-grad-${trip.id})`}
-                        strokeWidth="1.8"
-                        fill="none"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        filter={`url(#trip-glow-${trip.id})`}
-                        initial={{ pathLength: 0, opacity: 0 }}
-                        animate={{ pathLength: 1, opacity: 1 }}
-                        transition={{
-                          pathLength: { duration: 1.4, ease: "easeInOut" },
-                          opacity: { duration: 0.2 },
-                        }}
-                      />
-
-                      {/* Halo pulsant départ (apparaît après le tracé) */}
-                      <motion.circle
-                        cx={startX}
-                        cy={startY}
-                        fill="none"
-                        stroke="#38A169"
-                        strokeWidth="0.3"
-                        initial={{ r: 1.8, opacity: 0 }}
-                        animate={{ r: [1.8, 3.5, 1.8], opacity: [0.7, 0, 0] }}
-                        transition={{
-                          delay: 1.3,
-                          duration: 2,
-                          repeat: Infinity,
-                          ease: "easeOut",
-                        }}
-                      />
-                      {/* Point départ */}
-                      <motion.circle
-                        cx={startX}
-                        cy={startY}
-                        r="1.8"
-                        fill="#38A169"
-                        stroke="white"
-                        strokeWidth="0.4"
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        transition={{ delay: 1.3, duration: 0.3 }}
-                      />
-
-                      {/* Halo pulsant arrivée (apparaît en décalé) */}
-                      <motion.circle
-                        cx={endX}
-                        cy={endY}
-                        fill="none"
-                        stroke="#E53E3E"
-                        strokeWidth="0.3"
-                        initial={{ r: 1.8, opacity: 0 }}
-                        animate={{ r: [1.8, 3.5, 1.8], opacity: [0.7, 0, 0] }}
-                        transition={{
-                          delay: 1.6,
-                          duration: 2,
-                          repeat: Infinity,
-                          ease: "easeOut",
-                          repeatDelay: 0.3,
-                        }}
-                      />
-                      {/* Point arrivée */}
-                      <motion.circle
-                        cx={endX}
-                        cy={endY}
-                        r="1.8"
-                        fill="#E53E3E"
-                        stroke="white"
-                        strokeWidth="0.4"
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        transition={{ delay: 1.6, duration: 0.3 }}
-                      />
-                    </>
-                  );
-                })()}
-              </svg>
+            <div className="relative h-[300px] overflow-hidden rounded-yazz-md border border-yazz-border-light">
+              <TripPolylineMap polyline={trip.polyline} tripId={trip.id} />
             </div>
             <p className="font-inter mt-1.5 flex items-center gap-3 text-[10px] text-yazz-text-caption">
               <span className="flex items-center gap-1">

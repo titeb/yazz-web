@@ -395,3 +395,47 @@
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
+/* ===== Trip polyline markers (modal de détail trajet) ===== */
+/* Pastille départ/arrivée sur la carte Mapbox, avec halo pulsant */
+.yazz-trip-marker {
+  position: relative;
+  width: 14px;
+  height: 14px;
+  pointer-events: none;
+}
+.yazz-trip-marker-dot {
+  position: absolute;
+  inset: 3px;
+  border-radius: 50%;
+  border: 2px solid white;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+}
+.yazz-trip-marker-pulse {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  animation: yazz-trip-pulse 2s ease-out infinite;
+}
+.yazz-trip-marker-start .yazz-trip-marker-dot {
+  background: #38A169;
+}
+.yazz-trip-marker-start .yazz-trip-marker-pulse {
+  background: rgba(56, 161, 105, 0.45);
+}
+.yazz-trip-marker-end .yazz-trip-marker-dot {
+  background: #E53E3E;
+}
+.yazz-trip-marker-end .yazz-trip-marker-pulse {
+  background: rgba(229, 62, 62, 0.45);
+}
+@keyframes yazz-trip-pulse {
+  0% {
+    transform: scale(1);
+    opacity: 0.7;
+  }
+  100% {
+    transform: scale(2.8);
+    opacity: 0;
+  }
+}
