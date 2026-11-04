@@ -17,6 +17,7 @@ import {
   X,
 } from "lucide-react";
 import { cn, formatDistance } from "@/lib/utils";
+import { motion } from "framer-motion";
 
 type Trip = {
   id: string;
@@ -733,14 +734,40 @@ function TripDetailModal({ trip, onClose }: { trip: Trip; onClose: () => void })
           </div>
         )}
 
-        {/* Polyline preview */}
+        {/* Polyline preview — animé pro */}
         {trip.polyline && trip.polyline.length > 0 && (
-          <div>
-            <p className="font-inter mb-2 text-[11px] font-medium text-yazz-text-body">
-              Tracé du trajet ({trip.polyline.length} points)
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, ease: "easeOut" }}
+          >
+            <p className="font-inter mb-2 flex items-center gap-1.5 text-[11px] font-medium text-yazz-text-body">
+              <Route className="h-3 w-3 text-yazz-primary" />
+              Tracé du trajet
+              <span className="font-normal text-yazz-text-caption">({trip.polyline.length} points)</span>
             </p>
             <div className="relative h-[300px] overflow-hidden rounded-yazz-md yazz-map-grid">
+              {/* Halo radial léger pour donner de la profondeur */}
+              <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(43,68,238,0.05),transparent_70%)]" />
+
               <svg className="absolute inset-0 h-full w-full" preserveAspectRatio="xMidYMid meet" viewBox="0 0 100 100">
+                <defs>
+                  {/* Dégradé vert → bleu → rouge le long du trajet */}
+                  <linearGradient id={`trip-grad-${trip.id}`} x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stopColor="#38A169" />
+                    <stop offset="50%" stopColor="#2B44EE" />
+                    <stop offset="100%" stopColor="#E53E3E" />
+                  </linearGradient>
+                  {/* Filtre glow sous la ligne */}
+                  <filter id={`trip-glow-${trip.id}`} x="-20%" y="-20%" width="140%" height="140%">
+                    <feGaussianBlur stdDeviation="0.6" result="blur" />
+                    <feMerge>
+                      <feMergeNode in="blur" />
+                      <feMergeNode in="SourceGraphic" />
+                    </feMerge>
+                  </filter>
+                </defs>
+
                 {(() => {
                   const points = trip.polyline;
                   if (points.length < 2) return null;
@@ -762,30 +789,105 @@ function TripDetailModal({ trip, onClose }: { trip: Trip; onClose: () => void })
                     })
                     .join(" ");
 
+                  const startX = padding + ((points[0].lng - minLng) / lngRange) * (100 - 2 * padding);
+                  const startY = padding + (1 - (points[0].lat - minLat) / latRange) * (100 - 2 * padding);
+                  const endX = padding + ((points[points.length - 1].lng - minLng) / lngRange) * (100 - 2 * padding);
+                  const endY = padding + (1 - (points[points.length - 1].lat - minLat) / latRange) * (100 - 2 * padding);
+
                   return (
                     <>
-                      <path d={path} stroke="#2B44EE" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
-                      <circle
-                        cx={padding + ((points[0].lng - minLng) / lngRange) * (100 - 2 * padding)}
-                        cy={padding + (1 - (points[0].lat - minLat) / latRange) * (100 - 2 * padding)}
-                        r="1.5"
-                        fill="#38A169"
+                      {/* Ligne animée : se dessine progressivement (1.4s) avec glow */}
+                      <motion.path
+                        d={path}
+                        stroke={`url(#trip-grad-${trip.id})`}
+                        strokeWidth="1.8"
+                        fill="none"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        filter={`url(#trip-glow-${trip.id})`}
+                        initial={{ pathLength: 0, opacity: 0 }}
+                        animate={{ pathLength: 1, opacity: 1 }}
+                        transition={{
+                          pathLength: { duration: 1.4, ease: "easeInOut" },
+                          opacity: { duration: 0.2 },
+                        }}
                       />
-                      <circle
-                        cx={padding + ((points[points.length - 1].lng - minLng) / lngRange) * (100 - 2 * padding)}
-                        cy={padding + (1 - (points[points.length - 1].lat - minLat) / latRange) * (100 - 2 * padding)}
-                        r="1.5"
+
+                      {/* Halo pulsant départ (apparaît après le tracé) */}
+                      <motion.circle
+                        cx={startX}
+                        cy={startY}
+                        fill="none"
+                        stroke="#38A169"
+                        strokeWidth="0.3"
+                        initial={{ r: 1.8, opacity: 0 }}
+                        animate={{ r: [1.8, 3.5, 1.8], opacity: [0.7, 0, 0] }}
+                        transition={{
+                          delay: 1.3,
+                          duration: 2,
+                          repeat: Infinity,
+                          ease: "easeOut",
+                        }}
+                      />
+                      {/* Point départ */}
+                      <motion.circle
+                        cx={startX}
+                        cy={startY}
+                        r="1.8"
+                        fill="#38A169"
+                        stroke="white"
+                        strokeWidth="0.4"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ delay: 1.3, duration: 0.3 }}
+                      />
+
+                      {/* Halo pulsant arrivée (apparaît en décalé) */}
+                      <motion.circle
+                        cx={endX}
+                        cy={endY}
+                        fill="none"
+                        stroke="#E53E3E"
+                        strokeWidth="0.3"
+                        initial={{ r: 1.8, opacity: 0 }}
+                        animate={{ r: [1.8, 3.5, 1.8], opacity: [0.7, 0, 0] }}
+                        transition={{
+                          delay: 1.6,
+                          duration: 2,
+                          repeat: Infinity,
+                          ease: "easeOut",
+                          repeatDelay: 0.3,
+                        }}
+                      />
+                      {/* Point arrivée */}
+                      <motion.circle
+                        cx={endX}
+                        cy={endY}
+                        r="1.8"
                         fill="#E53E3E"
+                        stroke="white"
+                        strokeWidth="0.4"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ delay: 1.6, duration: 0.3 }}
                       />
                     </>
                   );
                 })()}
               </svg>
             </div>
-            <p className="font-inter mt-1.5 text-[10px] text-yazz-text-caption">
-              🟢 Départ → 🔴 Arrivée
+            <p className="font-inter mt-1.5 flex items-center gap-3 text-[10px] text-yazz-text-caption">
+              <span className="flex items-center gap-1">
+                <span className="h-1.5 w-1.5 rounded-full bg-yazz-success" /> Départ
+              </span>
+              <span className="flex items-center gap-1">
+                <span className="h-1.5 w-1.5 rounded-full bg-yazz-primary" /> Trajet
+              </span>
+              <span className="flex items-center gap-1">
+                <span className="h-1.5 w-1.5 rounded-full bg-yazz-error" /> Arrivée
+              </span>
             </p>
-          </div>
+          </motion.div>
         )}
 
         {/* Stops */}
