@@ -71,7 +71,11 @@ type TimelineEvent = {
   trip?: Trip;
 };
 
-function buildTimelineEvents(trips: Trip[], addresses?: Map<string, { start?: string; end?: string }>): TimelineEvent[] {
+function buildTimelineEvents(
+  trips: Trip[],
+  addresses?: Map<string, { start?: string; end?: string }>,
+  currentAddress?: string
+): TimelineEvent[] {
   // Pas de trip → pas d'événement (l'empty state "Aucun trajet" s'affiche)
   if (trips.length === 0) return [];
 
@@ -149,7 +153,10 @@ function buildTimelineEvents(trips: Trip[], addresses?: Map<string, { start?: st
           type: 'parking',
           time: trip.endedAt,
           timeLabel: new Date(trip.endedAt).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit", timeZone: "Africa/Kinshasa" }),
-          address: trip.endAddress ?? addresses?.get(trip.id)?.end ?? undefined,
+          // FIX 2026-11-04 : pour "Stationnement actuel", utiliser l'adresse de
+          // la position ACTUELLE du véhicule (last_known_positions) au lieu du
+          // dernier point du trip. Comme ça, l'adresse correspond au dashboard.
+          address: currentAddress ?? trip.endAddress ?? addresses?.get(trip.id)?.end ?? undefined,
           durationMin: parkedMin,
           cumulativeKm,
         });
@@ -175,6 +182,9 @@ export default function HistoryPage() {
   // Les trips en DB ont start_address/end_address = null. On résout côté client
   // à partir des coordonnées du polyline (premier + dernier point).
   const [tripAddresses, setTripAddresses] = useState<Map<string, { start?: string; end?: string }>>(new Map());
+  // FIX 2026-11-04 : adresse de la position ACTUELLE du véhicule (pour "Stationnement actuel")
+  // Utilise last_known_positions → même adresse que le dashboard.
+  const [currentAddress, setCurrentAddress] = useState<string | undefined>(undefined);
   // FIX 2026-11-03 : état de chargement des adresses pour shimmer loading
   const [addressesLoading, setAddressesLoading] = useState(false);
 
@@ -183,6 +193,34 @@ export default function HistoryPage() {
     if (!selectedDeviceId && vehicles.length > 0) {
       setSelectedDeviceId(vehicles[0].deviceId);
     }
+  }, [vehicles, selectedDeviceId]);
+
+  // FIX 2026-11-04 : résoudre l'adresse de la position ACTUELLE du véhicule sélectionné.
+  // Utilise last_known_positions (même source que le dashboard) → adresse identique.
+  useEffect(() => {
+    const vehicle = vehicles.find((v) => v.deviceId === selectedDeviceId);
+    if (!vehicle || !vehicle.lat || !vehicle.lng) {
+      setCurrentAddress(undefined);
+      return;
+    }
+    let cancelled = false;
+    // Vérifier le cache localStorage d'abord
+    const cacheKey = `geo:${vehicle.lat.toFixed(4)},${vehicle.lng.toFixed(4)}`;
+    try {
+      const cached = localStorage.getItem(cacheKey);
+      if (cached) { setCurrentAddress(cached); return; }
+    } catch {}
+
+    // Sinon, résoudre via Nominatim
+    fetch(`/api/geocode/reverse?lat=${vehicle.lat}&lng=${vehicle.lng}`)
+      .then((res) => res.ok ? res.json() : null)
+      .then((data) => {
+        if (cancelled || !data?.fullAddress) return;
+        setCurrentAddress(data.fullAddress);
+        try { localStorage.setItem(cacheKey, data.fullAddress); } catch {}
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
   }, [vehicles, selectedDeviceId]);
 
   const fetchTrips = useCallback(async () => {
@@ -445,7 +483,7 @@ export default function HistoryPage() {
 
             {/* Timeline des événements (Départ, Arrêt, Reprise, Stationnement) */}
             {(() => {
-              const events = buildTimelineEvents(trips, tripAddresses);
+              const events = buildTimelineEvents(trips, tripAddresses, currentAddress);
               if (events.length === 0) return null;
               const eventConfig = {
                 departure: { icon: Play, label: 'Départ', color: 'text-yazz-success', border: 'border-yazz-success', bg: 'bg-yazz-success/10' },
