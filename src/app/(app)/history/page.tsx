@@ -16,7 +16,7 @@ import {
   Play,
   X,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, formatDistance } from "@/lib/utils";
 
 type Trip = {
   id: string;
@@ -463,7 +463,7 @@ export default function HistoryPage() {
             {trips.length > 0 && (
               <div className="mb-6 grid grid-cols-2 gap-3 md:grid-cols-4">
                 <StatBox icon={Clock} label="Temps de conduite" value={formatDuration(totalDriveMin)} color="text-yazz-info" bg="bg-yazz-info/10" />
-                <StatBox icon={MapPin} label="Distance parcourue" value={`${totalDistance.toFixed(2)} km`} color="text-yazz-success" bg="bg-yazz-success/10" />
+                <StatBox icon={MapPin} label="Distance parcourue" value={formatDistance(totalDistance)} color="text-yazz-success" bg="bg-yazz-success/10" />
                 <StatBox icon={Gauge} label="Vitesse maximale" value={`${maxSpeed} km/h`} color="text-yazz-crawling" bg="bg-yazz-crawling/10" />
                 <StatBox icon={Clock} label="Temps d'arrêt" value={formatDuration(totalStopMin)} color="text-yazz-warning" bg="bg-yazz-warning/10" />
               </div>
@@ -540,7 +540,7 @@ export default function HistoryPage() {
                                 </span>
                               </div>
                               <p className="font-inter text-[11px] text-yazz-text-caption shrink-0">
-                                {event.cumulativeKm.toFixed(2)} km
+                                {formatDistance(event.cumulativeKm)}
                               </p>
                             </div>
 
@@ -703,7 +703,7 @@ function TripDetailModal({ trip, onClose }: { trip: Trip; onClose: () => void })
 
         {/* Stats */}
         <div className="mb-4 grid grid-cols-2 gap-3 md:grid-cols-4">
-          <StatBox icon={MapPin} label="Distance" value={`${(trip.distanceKm ?? 0).toFixed(2)} km`} color="text-yazz-success" bg="bg-yazz-success/10" />
+          <StatBox icon={MapPin} label="Distance" value={formatDistance(trip.distanceKm)} color="text-yazz-success" bg="bg-yazz-success/10" />
           <StatBox icon={Clock} label="Durée" value={formatDuration(duration)} color="text-yazz-info" bg="bg-yazz-info/10" />
           <StatBox icon={Gauge} label="V. max" value={`${trip.summary?.max_speed ?? 0} km/h`} color="text-yazz-crawling" bg="bg-yazz-crawling/10" />
           <StatBox icon={Gauge} label="V. moy" value={`${trip.summary?.avg_speed ?? 0} km/h`} color="text-yazz-primary" bg="bg-yazz-primary/10" />
