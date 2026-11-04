@@ -370,29 +370,18 @@ export default function HistoryPage() {
   // 1. Temps de conduite = somme des durées de chaque trip (uniquement le temps à rouler)
   // 2. Distance parcourue = somme des distances
   // 3. Vitesse maximale = vitesse max atteinte dans la journée
-  // 4. Temps d'arrêt = gaps > 25 min entre trips + stationnement actuel (> 25 min)
-  //    FIX 2026-11-04 (suite) : avant, le stationnement en cours n'était pas compté →
-  //    "0 min" affiché même si véhicule stationné depuis 2h. Maintenant cohérent
-  //    avec l'événement "Stationnement actuel" de la timeline.
+  // 4. Temps d'arrêt = somme des gaps > 25 min entre les trips (+ stationnement actuel si > 25 min)
   const totalDistance = trips.reduce((sum, t) => sum + (t.distanceKm ?? 0), 0);
   const totalDriveMin = trips.reduce((sum, t) => {
     if (!t.endedAt) return sum;
     return sum + (new Date(t.endedAt).getTime() - new Date(t.startedAt).getTime()) / 60000;
   }, 0);
   const maxSpeed = trips.reduce((max, t) => Math.max(max, t.summary?.max_speed ?? 0), 0);
-  // 4a. Gaps > 25 min entre trips consécutifs (arrêts en cours de journée)
-  const interTripStopMin = trips.reduce((sum, t, i) => {
+  const totalStopMin = trips.reduce((sum, t, i) => {
     if (i === 0 || !trips[i - 1].endedAt) return sum;
     const gap = (new Date(t.startedAt).getTime() - new Date(trips[i - 1].endedAt!).getTime()) / 60000;
     return sum + (gap > 25 ? gap : 0);
   }, 0);
-  // 4b. Stationnement actuel : dernier trip terminé → maintenant (si > 25 min)
-  //     Cohérent avec buildTimelineEvents() ligne ~152.
-  const lastTrip = trips[trips.length - 1];
-  const currentParkingMin = lastTrip?.endedAt
-    ? (Date.now() - new Date(lastTrip.endedAt).getTime()) / 60000
-    : 0;
-  const totalStopMin = interTripStopMin + (currentParkingMin > 25 ? currentParkingMin : 0);
 
   return (
     <div className="h-full overflow-y-auto">
