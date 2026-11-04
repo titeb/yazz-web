@@ -61,7 +61,7 @@ function isSameDay(d1: Date, d2: Date): boolean {
 // FIX 2026-11-02 : timeline basée sur des ÉVÉNEMENTS (pas des trajets).
 // Comme la référence : Départ → Arrêt détecté → Reprise → ... → Stationnement actuel.
 type TimelineEvent = {
-  type: 'departure' | 'stop' | 'resume' | 'parking';
+  type: 'departure' | 'stop' | 'resume' | 'parking' | 'parking_past';
   time: string;
   timeLabel: string;
   address?: string;
@@ -74,7 +74,8 @@ type TimelineEvent = {
 function buildTimelineEvents(
   trips: Trip[],
   addresses?: Map<string, { start?: string; end?: string }>,
-  currentAddress?: string
+  currentAddress?: string,
+  isToday?: boolean
 ): TimelineEvent[] {
   // Pas de trip → pas d'événement (l'empty state "Aucun trajet" s'affiche)
   if (trips.length === 0) return [];
@@ -145,17 +146,16 @@ function buildTimelineEvents(
       }
     }
 
-    // Stationnement actuel (dernier segment terminé + véhicule toujours arrêté)
+    // Stationnement (dernier segment terminé + véhicule arrêté > 25 min)
+    // FIX 2026-11-04 : si jour passé → "parking_past" au lieu de "parking"
+    // pour différencier "Stationnement actuel" (aujourd'hui) vs "Stationnement" (jour passé)
     if (i === mergedTrips.length - 1 && trip.endedAt) {
       const parkedMin = (Date.now() - new Date(trip.endedAt).getTime()) / 60000;
       if (parkedMin > 25) {
         events.push({
-          type: 'parking',
+          type: isToday ? 'parking' : 'parking_past',
           time: trip.endedAt,
           timeLabel: new Date(trip.endedAt).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit", timeZone: "Africa/Kinshasa" }),
-          // FIX 2026-11-04 : pour "Stationnement actuel", utiliser l'adresse de
-          // la position ACTUELLE du véhicule (last_known_positions) au lieu du
-          // dernier point du trip. Comme ça, l'adresse correspond au dashboard.
           address: currentAddress ?? trip.endAddress ?? addresses?.get(trip.id)?.end ?? undefined,
           durationMin: parkedMin,
           cumulativeKm,
@@ -483,13 +483,14 @@ export default function HistoryPage() {
 
             {/* Timeline des événements (Départ, Arrêt, Reprise, Stationnement) */}
             {(() => {
-              const events = buildTimelineEvents(trips, tripAddresses, currentAddress);
+              const events = buildTimelineEvents(trips, tripAddresses, currentAddress, isToday);
               if (events.length === 0) return null;
               const eventConfig = {
                 departure: { icon: Play, label: 'Départ', color: 'text-yazz-success', border: 'border-yazz-success', bg: 'bg-yazz-success/10' },
                 stop: { icon: MapPin, label: 'Arrêt détecté', color: 'text-yazz-warning', border: 'border-yazz-warning', bg: 'bg-yazz-warning/10' },
                 resume: { icon: Play, label: 'Reprise', color: 'text-yazz-primary', border: 'border-yazz-primary', bg: 'bg-yazz-primary/10' },
                 parking: { icon: MapPin, label: 'Stationnement actuel', color: 'text-yazz-error', border: 'border-yazz-error', bg: 'bg-yazz-error/10' },
+                parking_past: { icon: MapPin, label: 'Stationnement', color: 'text-yazz-text-muted', border: 'border-yazz-border-medium', bg: 'bg-yazz-accent' },
               };
 
               return (
@@ -545,12 +546,19 @@ export default function HistoryPage() {
                               </div>
                             ) : null}
 
-                            {/* Ligne 3a: Texte pour Départ */}
-                            {event.type === 'departure' && (
-                              <p className="font-inter mt-0.5 text-[10px] text-yazz-text-caption">
-                                Le véhicule commence sa journée.
-                              </p>
-                            )}
+                            {/* Ligne 3a: Texte pour Départ — adapté selon l'heure */}
+                            {event.type === 'departure' && (() => {
+                              // FIX 2026-11-04 : si Départ après 12h → "démarre son premier trajet"
+                              // au lieu de "commence sa journée" (pas logique le soir)
+                              const depHour = parseInt(event.timeLabel.split(":")[0], 10);
+                              return (
+                                <p className="font-inter mt-0.5 text-[10px] text-yazz-text-caption">
+                                  {depHour < 12
+                                    ? "Le véhicule commence sa journée."
+                                    : "Le véhicule démarre son premier trajet."}
+                                </p>
+                              );
+                            })()}
 
                             {/* Ligne 3a-bis: Texte pour Reprise */}
                             {event.type === 'resume' && (
@@ -574,10 +582,17 @@ export default function HistoryPage() {
                               </p>
                             )}
 
-                            {/* Ligne 3c: Texte pour le stationnement actuel (durée exacte) */}
+                            {/* Ligne 3d: Texte pour Stationnement actuel (aujourd'hui, en cours) */}
                             {event.type === 'parking' && event.durationMin !== undefined && (
                               <p className="font-inter mt-0.5 text-[10px] text-yazz-text-caption">
                                 Le véhicule est resté surplace depuis {formatDuration(event.durationMin)}.
+                              </p>
+                            )}
+
+                            {/* Ligne 3e: Texte pour Stationnement (jour passé, terminé) */}
+                            {event.type === 'parking_past' && event.durationMin !== undefined && (
+                              <p className="font-inter mt-0.5 text-[10px] text-yazz-text-caption">
+                                Le véhicule est resté surplace pendant {formatDuration(event.durationMin)}.
                               </p>
                             )}
                           </div>
