@@ -23,7 +23,9 @@
  */
 
 const MAX_POINTS_PER_REQUEST = 100;
-const CACHE_KEY_PREFIX = "yazz:snap:";
+// FIX 2026-11-05 (v2) : bump v2 → invalide le cache v1 qui contenait
+// les résultats buggy (matchings[0] seulement → lignes avec trous).
+const CACHE_KEY_PREFIX = "yazz:snap-v2:";
 const CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 jours
 
 export type PolylinePoint = { lat: number; lng: number };
@@ -100,14 +102,87 @@ async function matchChunk(
     throw new Error(`Map Matching API ${res.status}: ${await res.text()}`);
   }
   const data = await res.json();
-  if (!data?.matchings || !Array.isArray(data.matchings) || data.matchings.length === 0) {
-    throw new Error("No matchings returned");
+
+  // FIX 2026-11-05 (v2) : AVANT on ne prenait que matchings[0] → si Mapbox
+  // retournait plusieurs matchings (parce que le GPS a des sauts ou points
+  // impossibles à matcher), on jetait les autres → la ligne avait des trous
+  // → effets de "saut" visibles.
+  //
+  // MAINTENANT : on utilise le tableau `tracepoints` qui est dans l'ordre
+  // des points d'entrée. Pour chaque point d'entrée on a soit :
+  //   - location: [lng, lat] si matched
+  //   - location: null si impossible à matcher (gap, point aberrant)
+  //
+  // Pour préserver la géométrie complète des routes (pas juste les points
+  // snappés), on consomme les matchings dans l'ordre et on insère les
+  // points bruts pour les tracepoints unmatched.
+  const tracepoints: Array<{
+    location?: [number, number] | null;
+    matchings_index?: number | null;
+  }> = Array.isArray(data?.tracepoints) ? data.tracepoints : [];
+  const matchings: Array<{
+    geometry?: { coordinates?: [number, number][] };
+  }> = Array.isArray(data?.matchings) ? data.matchings : [];
+
+  if (tracepoints.length === 0 && matchings.length === 0) {
+    throw new Error("No tracepoints or matchings returned");
   }
-  const geom = data.matchings[0].geometry;
-  if (!geom?.coordinates || !Array.isArray(geom.coordinates)) {
-    throw new Error("Invalid geometry");
+
+  // Stratégie : on itère sur les tracepoints dans l'ordre d'entrée.
+  // Quand on rencontre un tracepoint matched avec un matchings_index
+  // différent du précédent, on ajoute toute la géométrie du nouveau matching.
+  // Pour les tracepoints unmatched (location null), on insère le point GPS brut.
+  const result: [number, number][] = [];
+  let lastMatchingIdx = -1;
+
+  for (let i = 0; i < tracepoints.length; i++) {
+    const tp = tracepoints[i];
+    const inputPoint = points[i];
+
+    if (tp.location == null || tp.matchings_index == null) {
+      // Point unmatched — insère le GPS brut pour éviter les trous
+      result.push([inputPoint.lng, inputPoint.lat]);
+      continue;
+    }
+
+    // Point matched — si on change de matching, ajoute toute sa géométrie
+    if (tp.matchings_index !== lastMatchingIdx) {
+      const matching = matchings[tp.matchings_index];
+      const matchedCoords = matching?.geometry?.coordinates;
+      if (Array.isArray(matchedCoords) && matchedCoords.length > 0) {
+        // Évite de dupliquer le point de jointure entre matchings
+        if (result.length > 0) {
+          const last = result[result.length - 1];
+          const first = matchedCoords[0];
+          if (last[0] === first[0] && last[1] === first[1]) {
+            result.push(...matchedCoords.slice(1));
+          } else {
+            // Petit gap entre matchings — connecte en ligne droite (court)
+            result.push(...matchedCoords);
+          }
+        } else {
+          result.push(...matchedCoords);
+        }
+        lastMatchingIdx = tp.matchings_index;
+      } else {
+        // Matching sans géométrie — fallback sur location du tracepoint
+        result.push(tp.location);
+        lastMatchingIdx = tp.matchings_index;
+      }
+    }
+    // Si même matching, géométrie déjà ajoutée — rien à faire
   }
-  return geom.coordinates as [number, number][];
+
+  // Fallback si result vide : utiliser directement matchings[0].geometry
+  if (result.length < 2 && matchings.length > 0) {
+    const coords0 = matchings[0].geometry?.coordinates;
+    if (Array.isArray(coords0) && coords0.length >= 2) {
+      return coords0;
+    }
+    throw new Error("Insufficient matched coordinates");
+  }
+
+  return result;
 }
 
 /**
