@@ -307,6 +307,62 @@
   animation: yazz-shimmer 1.5s ease-in-out infinite;
 }
 
+/* ===== Skeleton screens (loading states) ===== */
+/* Utilisé pendant le chargement des données pour montrer des formes grises
+ * animées qui imitent la structure réelle du contenu. Comme Uber, Airbnb,
+ * Lyft — l'utilisateur voit instantanément "quelque chose se charge" au lieu
+ * de "vide" / "aucun trajet".
+ *
+ * Variant dark mode : fond plus foncé + shimmer blanc plus subtil.
+ */
+.yazz-skeleton {
+  position: relative;
+  overflow: hidden;
+  background-color: rgba(221, 225, 242, 0.25);
+  border-radius: var(--radius, 8px);
+}
+.yazz-skeleton::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.45) 50%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  background-size: 200% 100%;
+  animation: yazz-shimmer 1.5s ease-in-out infinite;
+  pointer-events: none;
+}
+.dark .yazz-skeleton {
+  background-color: rgba(42, 42, 74, 0.6);
+}
+.dark .yazz-skeleton::after {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.08) 50%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  background-size: 200% 100%;
+}
+
+/* Variantes tailles — réutilisable ailleurs dans l'app */
+.yazz-skeleton-line {
+  height: 12px;
+  border-radius: 6px;
+}
+.yazz-skeleton-line-sm {
+  height: 10px;
+  width: 60%;
+  border-radius: 5px;
+}
+.yazz-skeleton-line-lg {
+  height: 16px;
+  border-radius: 8px;
+}
+
 .yazz-blink {
   animation: yazz-blink 1.5s ease-in-out infinite;
 }

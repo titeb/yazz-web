@@ -172,7 +172,7 @@ function buildTimelineEvents(
 
 export default function HistoryPage() {
   const isReady = isSupabaseConfigured();
-  const { vehicles } = useUserVehicles();
+  const { vehicles, loading: vehiclesLoading } = useUserVehicles();
   const supabase = createClientSafe();
 
   const [selectedDeviceId, setSelectedDeviceId] = useState<string>("");
@@ -413,21 +413,29 @@ export default function HistoryPage() {
                 <label className="font-inter mb-1.5 block text-[11px] font-medium text-yazz-text-body">
                   Véhicule
                 </label>
-                <select
-                  value={selectedDeviceId}
-                  onChange={(e) => setSelectedDeviceId(e.target.value)}
-                  className="font-inter h-11 w-full rounded-yazz-sm border border-yazz-border-light bg-yazz-background px-3 text-[13px] text-yazz-text-dark focus:border-yazz-primary focus:outline-none focus:ring-2 focus:ring-yazz-primary/20"
-                >
-                  {vehicles.length === 0 ? (
+                {/* Skeleton pendant chargement véhicules — évite "Aucun véhicule" trompeur */}
+                {vehiclesLoading && vehicles.length === 0 ? (
+                  <div className="yazz-skeleton h-11 w-full rounded-yazz-sm" />
+                ) : vehicles.length === 0 ? (
+                  <select
+                    disabled
+                    className="font-inter h-11 w-full rounded-yazz-sm border border-yazz-border-light bg-yazz-background px-3 text-[13px] text-yazz-text-caption"
+                  >
                     <option value="">Aucun véhicule</option>
-                  ) : (
-                    vehicles.map((v) => (
+                  </select>
+                ) : (
+                  <select
+                    value={selectedDeviceId}
+                    onChange={(e) => setSelectedDeviceId(e.target.value)}
+                    className="font-inter h-11 w-full rounded-yazz-sm border border-yazz-border-light bg-yazz-background px-3 text-[13px] text-yazz-text-dark focus:border-yazz-primary focus:outline-none focus:ring-2 focus:ring-yazz-primary/20"
+                  >
+                    {vehicles.map((v) => (
                       <option key={v.deviceId} value={v.deviceId}>
                         {v.name}
                       </option>
-                    ))
-                  )}
-                </select>
+                    ))}
+                  </select>
+                )}
               </div>
 
               <div className="flex items-center gap-2">
@@ -462,15 +470,26 @@ export default function HistoryPage() {
               </div>
             </div>
 
-            {/* Stats du jour */}
-            {trips.length > 0 && (
+            {/* Stats du jour — skeleton pendant chargement, contenu si trips, rien sinon */}
+            {trips.length > 0 ? (
               <div className="mb-6 grid grid-cols-2 gap-3 md:grid-cols-4">
                 <StatBox icon={Clock} label="Temps de conduite" value={formatDuration(totalDriveMin)} color="text-yazz-info" bg="bg-yazz-info/10" />
                 <StatBox icon={MapPin} label="Distance parcourue" value={formatDistance(totalDistance)} color="text-yazz-success" bg="bg-yazz-success/10" />
                 <StatBox icon={Gauge} label="Vitesse maximale" value={`${maxSpeed} km/h`} color="text-yazz-crawling" bg="bg-yazz-crawling/10" />
                 <StatBox icon={Clock} label="Temps d'arrêt" value={formatDuration(totalStopMin)} color="text-yazz-warning" bg="bg-yazz-warning/10" />
               </div>
-            )}
+            ) : (loading || vehiclesLoading) && !error ? (
+              // FIX 2026-11-05 : skeleton stats grid pendant chargement
+              // (avant : rien ne s'affichait → impression de "page vide")
+              // Inclut vehiclesLoading pour couvrir la phase initiale où les
+              // véhicules chargent mais selectedDeviceId n'est pas encore set.
+              <div className="mb-6 grid grid-cols-2 gap-3 md:grid-cols-4">
+                <StatBoxSkeleton />
+                <StatBoxSkeleton />
+                <StatBoxSkeleton />
+                <StatBoxSkeleton />
+              </div>
+            ) : null}
 
             {/* Erreur */}
             {error && (
@@ -479,8 +498,17 @@ export default function HistoryPage() {
               </div>
             )}
 
-            {/* Empty state : plus pertinent — véhicule n'a pas bougé */}
-            {trips.length === 0 && !error && (
+            {/* Skeleton timeline pendant chargement — evite "Aucun trajet" trompeur */}
+            {(loading || vehiclesLoading) && trips.length === 0 && !error && (
+              <div className="space-y-2">
+                <TimelineEventSkeleton />
+                <TimelineEventSkeleton />
+                <TimelineEventSkeleton />
+              </div>
+            )}
+
+            {/* Empty state — seulement quand PLUS de chargement (sinon skeleton au-dessus) */}
+            {trips.length === 0 && !loading && !vehiclesLoading && !error && (
               <div className="grid place-items-center py-12 text-center">
                 <div className="grid h-14 w-14 place-items-center rounded-full bg-yazz-accent">
                   <Route className="h-6 w-6 text-yazz-text-muted" />
@@ -673,6 +701,40 @@ function StatBox({
           <p className="font-outfit text-[14px] font-bold text-yazz-text-dark">{value}</p>
         </div>
       </div>
+    </div>
+  );
+}
+
+// FIX 2026-11-05 : skeleton StatBox pendant le chargement.
+// Mêmes dimensions que StatBox pour transition fluide.
+function StatBoxSkeleton() {
+  return (
+    <div className="rounded-yazz-md border border-yazz-border-light bg-yazz-surface p-3">
+      <div className="flex items-center gap-2">
+        <div className="yazz-skeleton h-8 w-8 rounded-yazz-lg" />
+        <div className="flex-1 space-y-1.5">
+          <div className="yazz-skeleton yazz-skeleton-line-sm" />
+          <div className="yazz-skeleton yazz-skeleton-line w-3/4" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// FIX 2026-11-05 : skeleton timeline event pendant le chargement.
+// Imite la structure d'un événement (heure + label + adresse).
+function TimelineEventSkeleton() {
+  return (
+    <div className="rounded-yazz-xl border border-yazz-border-light bg-yazz-surface p-4 yazz-shadow-soft">
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <div className="yazz-skeleton h-4 w-12 rounded" />
+          <div className="yazz-skeleton h-3 w-16 rounded" />
+        </div>
+        <div className="yazz-skeleton h-3 w-10 rounded" />
+      </div>
+      <div className="yazz-skeleton yazz-skeleton-line mt-2 w-2/3" />
+      <div className="yazz-skeleton yazz-skeleton-line-sm mt-1.5" />
     </div>
   );
 }
