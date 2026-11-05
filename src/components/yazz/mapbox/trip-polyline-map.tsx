@@ -104,14 +104,15 @@ export function TripPolylineMap({ polyline, tripId }: TripPolylineMapProps) {
         paint: {
           "line-color": "#2B44EE",
           "line-width": 10,
-          "line-opacity": 0.18,
+          "line-opacity": 0.25,
           "line-blur": 4,
         },
       });
 
-      // Layer ligne principale
-      // Animation "draw" via line-trim-offset : [0, 0] → [0, 1]
-      // line-trim-offset supporté par mapbox-gl v2.11+ (on a 3.32 ✅)
+      // Layer ligne principale — opacity fade-in (fiable, marche sur tous les mapbox-gl)
+      // FIX 2026-11-05 : avant utilisait line-trim-offset [0,0]→[0,1] qui au
+      // final masquait TOUTE la ligne (la ligne disparaissait à la fin de
+      // l'animation). Retour au fade-in opacity classique, garanti visible.
       m.addLayer({
         id: lineId,
         type: "line",
@@ -122,24 +123,22 @@ export function TripPolylineMap({ polyline, tripId }: TripPolylineMapProps) {
         },
         paint: {
           "line-color": "#2B44EE",
-          "line-width": 3.5,
-          "line-opacity": 1,
-          "line-trim-offset": [0, 0], // au début : rien visible
+          "line-width": 4,
+          "line-opacity": 0, // démarre invisible, fade-in à 1
         },
       });
 
-      // Animation "draw" : la ligne se dessine progressivement (1.4s)
+      // Animation fade-in (0 → 1 en 1.4s, ease-out cubic — feel pro)
       const startTime = performance.now();
       const duration = 1400;
-      const animateDraw = (now: number) => {
+      const animateFadeIn = (now: number) => {
         if (!map.current) return;
         const t = Math.min(1, (now - startTime) / duration);
-        // ease-in-out cubic pour feel pro
-        const eased = t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
-        map.current.setPaintProperty(lineId, "line-trim-offset", [0, eased]);
-        if (t < 1) requestAnimationFrame(animateDraw);
+        const eased = 1 - Math.pow(1 - t, 3); // ease-out cubic
+        map.current.setPaintProperty(lineId, "line-opacity", eased);
+        if (t < 1) requestAnimationFrame(animateFadeIn);
       };
-      requestAnimationFrame(animateDraw);
+      requestAnimationFrame(animateFadeIn);
 
       // Markers départ + arrivée (pastilles avec halo pulsant CSS)
       const startEl = document.createElement("div");
@@ -169,24 +168,30 @@ export function TripPolylineMap({ polyline, tripId }: TripPolylineMapProps) {
       snapPolylineToRoad(polyline, tripId)
         .then((snapped) => {
           if (!map.current) return;
-          // Si snapped == polyline (fallback), rien à faire
-          if (snapped.length === polyline.length) {
-            // Heuristique: si même longueur, c'est probablement le fallback
-            // (les résultats Map Matching ont généralement beaucoup plus de
-            // points car ils ajoutent les vertices routiers)
-            // On compare quand même les 2 premiers points
-            const same =
-              snapped[0].lat === polyline[0].lat &&
-              snapped[0].lng === polyline[0].lng;
-            if (same) {
-              setSnapping(false);
-              return;
-            }
+
+          // FIX 2026-11-05 : avant on sautait l'update si snapped.length ==
+          // polyline.length (heuristique cassée — si le snap réussissait avec
+          // peu de points ajoutés, on skipait l'update). Maintenant on update
+          // TOUJOURS si snapped a des coordonnées différentes du brut.
+          // Détecte différence en comparant le 1er ET dernier point.
+          const sameFirst =
+            snapped.length > 0 &&
+            Math.abs(snapped[0].lat - polyline[0].lat) < 1e-9 &&
+            Math.abs(snapped[0].lng - polyline[0].lng) < 1e-9;
+          const sameLast =
+            snapped.length > 0 &&
+            Math.abs(snapped[snapped.length - 1].lat - polyline[polyline.length - 1].lat) < 1e-9 &&
+            Math.abs(snapped[snapped.length - 1].lng - polyline[polyline.length - 1].lng) < 1e-9;
+          // Si 1er et dernier identiques ET même nombre de points → probablement
+          // le fallback (pas de snap), on ne fait rien
+          if (sameFirst && sameLast && snapped.length === polyline.length) {
+            setSnapping(false);
+            return;
           }
 
           const snappedCoords: [number, number][] = snapped.map((p) => [p.lng, p.lat]);
 
-          // Mettre à jour la source GeoJSON
+          // Mettre à jour la source GeoJSON avec les coords snappées
           sourceRef.setData({
             type: "Feature",
             properties: {},

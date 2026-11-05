@@ -79,18 +79,21 @@ async function matchChunk(
   token: string,
 ): Promise<[number, number][]> {
   const coords = points.map((p) => `${p.lng},${p.lat}`).join(";");
-  // tidy=true supprime les points impossibles à matcher
-  // overview=full retourne toute la géométrie
-  // geometries=geojson pour parser facilement
-  // radius=30 tolère 30m de distance max entre point GPS et route
+  // FIX 2026-11-05 : utilisait `radius=30` (singular, NON documenté) → l'API
+  // l'ignorait silencieusement et utilisait le défaut 5m, trop strict pour
+  // Kinshasa (GPS bruité + routes OSM imparfaites). Maintenant on utilise
+  // `radiuses` (pluriel, séparé par virgules) avec 50m par point.
+  // tidy retiré : il supprimait des points valides quand le GPS était bruité,
+  // laissant des trous dans le tracé matched.
+  const radiuses = points.map(() => "50").join(";");
   const url =
     `https://api.mapbox.com/matching/v5/mapbox/driving/${coords}` +
     `?access_token=${token}` +
     `&geometries=geojson` +
     `&overview=full` +
-    `&radius=30` +
-    `&tidy=true` +
-    `&steps=false`;
+    `&radiuses=${radiuses}` +
+    `&steps=false` +
+    `&annotations=false`;
 
   const res = await fetch(url);
   if (!res.ok) {
