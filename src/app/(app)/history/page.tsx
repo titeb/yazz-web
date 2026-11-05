@@ -19,6 +19,7 @@ import {
 import { cn, formatDistance } from "@/lib/utils";
 import { motion } from "framer-motion";
 import { TripPolylineMap } from "@/components/yazz/mapbox/trip-polyline-map";
+import { computeDrivingTimeMin } from "@/lib/yazz/snap-polyline";
 
 type Trip = {
   id: string;
@@ -677,9 +678,23 @@ function StatBox({
 }
 
 function TripDetailModal({ trip, onClose }: { trip: Trip; onClose: () => void }) {
-  const duration = trip.endedAt
-    ? (new Date(trip.endedAt).getTime() - new Date(trip.startedAt).getTime()) / 60000
-    : 0;
+  // FIX 2026-11-04 : "Durée" → "Temps de conduite"
+  // Avant : duration = (endedAt - startedAt) → inclut les arrêts < 25 min
+  //         (feux rouges, embouteillages, pauses courtes), ce qui donnait des
+  //         durées absurdes (1h47 pour 2.21 km, vitesse moy 0.3 km/h).
+  // Maintenant : computeDrivingTimeMin() somme uniquement les intervalles
+  //         entre points GPS où le véhicule a réellement bougé (> 10m),
+  //         excluant donc les arrêts intra-trip < 25 min.
+  // Fallback : si pas de polyline (ou pas de timestamps), on retombe sur la
+  //         durée brute endedAt - startedAt.
+  const drivingTimeMin = (() => {
+    const computed = computeDrivingTimeMin(trip.polyline);
+    if (computed > 0) return computed;
+    // Fallback : durée brute si pas de timestamps dans la polyline
+    return trip.endedAt
+      ? (new Date(trip.endedAt).getTime() - new Date(trip.startedAt).getTime()) / 60000
+      : 0;
+  })();
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
@@ -706,7 +721,7 @@ function TripDetailModal({ trip, onClose }: { trip: Trip; onClose: () => void })
         {/* Stats */}
         <div className="mb-4 grid grid-cols-2 gap-3 md:grid-cols-4">
           <StatBox icon={MapPin} label="Distance" value={formatDistance(trip.distanceKm)} color="text-yazz-success" bg="bg-yazz-success/10" />
-          <StatBox icon={Clock} label="Durée" value={formatDuration(duration)} color="text-yazz-info" bg="bg-yazz-info/10" />
+          <StatBox icon={Clock} label="Temps de conduite" value={formatDuration(drivingTimeMin)} color="text-yazz-info" bg="bg-yazz-info/10" />
           <StatBox icon={Gauge} label="V. max" value={`${trip.summary?.max_speed ?? 0} km/h`} color="text-yazz-crawling" bg="bg-yazz-crawling/10" />
           <StatBox icon={Gauge} label="V. moy" value={`${trip.summary?.avg_speed ?? 0} km/h`} color="text-yazz-primary" bg="bg-yazz-primary/10" />
         </div>
