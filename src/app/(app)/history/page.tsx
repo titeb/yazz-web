@@ -84,7 +84,14 @@ function buildTimelineEvents(
   if (trips.length === 0) return [];
 
   // Fusionner les trips avec gap < 25 min
+  // FIX 2026-11-06 : on retient l'id du DERNIER trajet de chaque segment fusionné.
+  // Les adresses résolues (Nominatim) sont indexées par trajet d'origine : la fin
+  // d'un segment fusionné est la fin de son dernier trajet, pas celle du premier.
+  // Avant : l'arrêt qui suivait 2 trajets fusionnés affichait l'adresse où le
+  // véhicule s'était arrêté APRÈS LE 1er trajet (ex: le resto) au lieu de
+  // l'endroit où il s'est vraiment arrêté (ex: Limete).
   const mergedTrips: Trip[] = [];
+  const lastTripIds: string[] = [];
   for (const trip of trips) {
     const lastMerged = mergedTrips[mergedTrips.length - 1];
     if (lastMerged && lastMerged.endedAt && trip.startedAt) {
@@ -93,7 +100,9 @@ function buildTimelineEvents(
         // Fusionner : cumuler distance + prendre endedAt du suivant
         lastMerged.distanceKm = (lastMerged.distanceKm ?? 0) + (trip.distanceKm ?? 0);
         lastMerged.endedAt = trip.endedAt;
-        lastMerged.endAddress = trip.endAddress ?? lastMerged.endAddress;
+        // L'arrivée du segment est celle du trajet ajouté (jamais celle du 1er)
+        lastMerged.endAddress = trip.endAddress ?? null;
+        lastTripIds[lastTripIds.length - 1] = trip.id;
         if (trip.polyline && lastMerged.polyline) {
           lastMerged.polyline = [...lastMerged.polyline, ...trip.polyline];
         } else if (trip.polyline) {
@@ -111,7 +120,13 @@ function buildTimelineEvents(
     }
     // Pas de fusion → ajouter tel quel
     mergedTrips.push({ ...trip });
+    lastTripIds.push(trip.id);
   }
+
+  // Adresse d'arrivée d'un segment : adresse en DB, sinon adresse résolue
+  // du DERNIER trajet du segment.
+  const endAddressOf = (i: number): string | undefined =>
+    mergedTrips[i].endAddress ?? addresses?.get(lastTripIds[i])?.end ?? undefined;
 
   // Construire les événements à partir des trips fusionnés
   const events: TimelineEvent[] = [];
@@ -142,7 +157,7 @@ function buildTimelineEvents(
           type: 'stop',
           time: trip.endedAt,
           timeLabel: new Date(trip.endedAt).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit", timeZone: "Africa/Kinshasa" }),
-          address: trip.endAddress ?? addresses?.get(trip.id)?.end ?? undefined,
+          address: endAddressOf(i),
           durationMin: gapMin,
           cumulativeKm,
         });
@@ -159,7 +174,10 @@ function buildTimelineEvents(
           type: isToday ? 'parking' : 'parking_past',
           time: trip.endedAt,
           timeLabel: new Date(trip.endedAt).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit", timeZone: "Africa/Kinshasa" }),
-          address: currentAddress ?? trip.endAddress ?? addresses?.get(trip.id)?.end ?? undefined,
+          // FIX 2026-11-06 : aujourd'hui → position actuelle du véhicule ;
+          // jour passé → là où il s'est garé ce jour-là (avant : la position
+          // actuelle s'affichait aussi pour les jours passés).
+          address: isToday ? (currentAddress ?? endAddressOf(i)) : endAddressOf(i),
           durationMin: parkedMin,
           cumulativeKm,
         });
