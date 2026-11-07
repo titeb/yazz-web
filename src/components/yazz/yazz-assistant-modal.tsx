@@ -14,11 +14,44 @@ const USE_WS = process.env.NEXT_PUBLIC_AI_USE_WS === "true";
 
 type OrbState = "idle" | "listening" | "thinking" | "speaking" | "error";
 
+interface CardAction {
+  label: string;
+  action: string; // 'confirm' | 'cancel' | 'confirm_delete' | …
+}
+
+interface ConfirmationCard {
+  card_id: string;
+  title: string;
+  summary: string;
+  details?: Record<string, unknown>;
+  actions?: CardAction[];
+}
+
 interface Message {
   role: "user" | "assistant";
   content: string;
   audioUrl?: string;
-  confirmationCard?: any;
+  confirmationCard?: ConfirmationCard;
+  /** Carte déjà traitée (confirmée, annulée ou fermée) : boutons masqués. */
+  cardResolved?: boolean;
+}
+
+/**
+ * Accroche la carte de confirmation reçue au message de l'assistant (ou en
+ * crée un si l'IA n'a pas produit de texte).
+ * FIX 2026-11-07 : avant, la carte n'était jamais affichée sur le web (mode
+ * SSE : ignorée ; mode WS : stockée mais jamais rendue) → impossible de
+ * confirmer une action (mode parking, SOS…).
+ */
+function withCard(prev: Message[], card: ConfirmationCard, text?: string): Message[] {
+  const updated = [...prev];
+  const lastIdx = updated.length - 1;
+  if (updated[lastIdx]?.role === "assistant") {
+    updated[lastIdx] = { ...updated[lastIdx], confirmationCard: card, cardResolved: false };
+  } else {
+    updated.push({ role: "assistant", content: text || "", confirmationCard: card, cardResolved: false });
+  }
+  return updated;
 }
 
 // Web Speech API types (not in TS by default)
@@ -32,6 +65,8 @@ declare global {
 export function YazzAssistantModal({ onClose }: { onClose: () => void }) {
   const [state, setState] = useState<OrbState>("idle");
   const [messages, setMessages] = useState<Message[]>([]);
+  // Carte en cours de confirmation (index du message) — évite le double clic
+  const [confirmingIdx, setConfirmingIdx] = useState<number | null>(null);
   const [showTextInput, setShowTextInput] = useState(false);
   const [textInput, setTextInput] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -352,14 +387,7 @@ export function YazzAssistantModal({ onClose }: { onClose: () => void }) {
       if (result.conversationId) setConversationId(result.conversationId);
       if (result.confirmationCard) {
         setState("idle");
-        setMessages((prev) => {
-          const updated = [...prev];
-          const lastIdx = updated.length - 1;
-          if (updated[lastIdx]?.role === "assistant") {
-            updated[lastIdx] = { ...updated[lastIdx], confirmationCard: result.confirmationCard };
-          }
-          return updated;
-        });
+        setMessages((prev) => withCard(prev, result.confirmationCard, result.text));
       } else {
         setState("idle");
         // ⚠ FIX ECHO LOOP: ne PAS appeler autoRestartListening() ici.
@@ -513,6 +541,7 @@ export function YazzAssistantModal({ onClose }: { onClose: () => void }) {
                   if (data.conversationId) setConversationId(data.conversationId);
                   if (data.confirmationCard) {
                     setState("idle");
+                    setMessages((prev) => withCard(prev, data.confirmationCard, data.text));
                   } else {
                     setState("idle");
                     // ⚠ FIX ECHO LOOP: ne PAS appeler autoRestartListening() ici.
@@ -626,6 +655,55 @@ export function YazzAssistantModal({ onClose }: { onClose: () => void }) {
     });
   };
 
+  /**
+   * Réponse à une carte : confirmer (appel serveur, qui revérifie les droits
+   * puis exécute l'action), annuler, ou fermer une carte d'information.
+   * Le résultat est écrit dans la conversation.
+   */
+  const respondToCard = useCallback(
+    async (index: number, kind: "confirm" | "cancel" | "dismiss") => {
+      const card = messages[index]?.confirmationCard;
+      if (!card || confirmingIdx !== null) return;
+      const resolve = (reply?: string) =>
+        setMessages((prev) => {
+          const updated = [...prev];
+          if (updated[index]) updated[index] = { ...updated[index], cardResolved: true };
+          if (reply) updated.push({ role: "assistant", content: reply });
+          return updated;
+        });
+
+      if (kind === "dismiss") return resolve();
+      if (kind === "cancel") return resolve("D'accord, j'ai annulé. Dis-moi si tu veux autre chose.");
+
+      setConfirmingIdx(index);
+      try {
+        const supabase = createClientSafe();
+        const { data: { session } } = await supabase!.auth.getSession();
+        if (!session) {
+          resolve("Session expirée. Reconnecte-toi puis redemande l'action.");
+          return;
+        }
+        const res = await fetch("/api/ai/confirm", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
+          body: JSON.stringify({ card_id: card.card_id, details: card.details }),
+        });
+        const data = await res.json().catch(() => ({}));
+        const message: string = data?.message || data?.error || "";
+        resolve(
+          data?.confirmed
+            ? message || "C'est fait."
+            : `Je n'ai pas pu terminer l'action : ${message || `erreur ${res.status}`}`,
+        );
+      } catch {
+        resolve("Je n'ai pas pu terminer l'action : problème de connexion. Réessaie.");
+      } finally {
+        setConfirmingIdx(null);
+      }
+    },
+    [messages, confirmingIdx],
+  );
+
   const stateLabel: Record<OrbState, string> = {
     idle: "Prêt à t'écouter",
     listening: "Je t'écoute…",
@@ -666,17 +744,28 @@ export function YazzAssistantModal({ onClose }: { onClose: () => void }) {
         {messages.map((msg, i) => (
           <div
             key={i}
-            className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
+            className={`flex flex-col gap-2 ${msg.role === "user" ? "items-end" : "items-start"}`}
           >
-            <div
-              className={`rounded-2xl px-4 py-3 text-[13px] leading-relaxed max-w-[70%] sm:max-w-[60%] ${
-                msg.role === "user"
-                  ? "bg-[#1b6d97] text-white rounded-br-sm"
-                  : "bg-white/8 text-white/90 rounded-bl-sm border border-white/5"
-              }`}
-            >
-              {msg.content}
-            </div>
+            {msg.content && (
+              <div
+                className={`rounded-2xl px-4 py-3 text-[13px] leading-relaxed max-w-[70%] sm:max-w-[60%] ${
+                  msg.role === "user"
+                    ? "bg-[#1b6d97] text-white rounded-br-sm"
+                    : "bg-white/8 text-white/90 rounded-bl-sm border border-white/5"
+                }`}
+              >
+                {msg.content}
+              </div>
+            )}
+            {msg.confirmationCard && !msg.cardResolved && (
+              <ConfirmationCardView
+                card={msg.confirmationCard}
+                busy={confirmingIdx === i}
+                onConfirm={() => respondToCard(i, "confirm")}
+                onCancel={() => respondToCard(i, "cancel")}
+                onDismiss={() => respondToCard(i, "dismiss")}
+              />
+            )}
           </div>
         ))}
       </div>
@@ -738,5 +827,65 @@ export function YazzAssistantModal({ onClose }: { onClose: () => void }) {
         </button>
       </div>
     </motion.div>
+  );
+}
+
+/**
+ * Carte de confirmation d'une action (mode parking, SOS, alerte…). Les
+ * boutons viennent du serveur ; une carte d'information (SOS déjà en cours,
+ * permission…) n'a qu'un bouton « J'ai compris ».
+ */
+function ConfirmationCardView({
+  card,
+  busy,
+  onConfirm,
+  onCancel,
+  onDismiss,
+}: {
+  card: ConfirmationCard;
+  busy: boolean;
+  onConfirm: () => void;
+  onCancel: () => void;
+  onDismiss: () => void;
+}) {
+  const actions = card.actions ?? [];
+  const confirm = actions.find((a) => a.action === "confirm" || a.action === "confirm_delete");
+  const cancel = actions.find((a) => a.action === "cancel");
+  return (
+    <div
+      role="dialog"
+      aria-label={card.title}
+      className="max-w-[85%] sm:max-w-[60%] rounded-xl border border-[#a38445] bg-[#a38445]/15 p-4"
+    >
+      <p className="text-[15px] font-semibold text-white">{card.title}</p>
+      <p className="mt-2 text-[13px] leading-relaxed text-white/70">{card.summary}</p>
+      <div className="mt-4 flex items-center justify-end gap-2">
+        {confirm ? (
+          <>
+            <button
+              onClick={onCancel}
+              disabled={busy}
+              className="rounded-lg px-3 py-2 text-[13px] text-white/60 hover:text-white disabled:opacity-40"
+            >
+              {cancel?.label || "Annuler"}
+            </button>
+            <button
+              onClick={onConfirm}
+              disabled={busy}
+              className="rounded-lg bg-[#1b6d97] px-4 py-2 text-[13px] font-medium text-white hover:bg-[#1b6d97]/90 disabled:opacity-60"
+            >
+              {busy ? "…" : confirm.label}
+            </button>
+          </>
+        ) : (
+          <button
+            onClick={onDismiss}
+            className="rounded-lg bg-[#1b6d97] px-4 py-2 text-[13px] font-medium text-white"
+          >
+            {cancel?.label || "J'ai compris"}
+          </button>
+        )}
+      </div>
+    </div>
   );
 }
