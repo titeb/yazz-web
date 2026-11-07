@@ -495,3 +495,18 @@
     opacity: 0;
   }
 }
+
+/* ── Hauteur d'écran réellement visible ──────────────────────────────────
+ * Sur téléphone et tablette, 100vh compte aussi la zone cachée par la barre
+ * du navigateur (adresse / boutons) : le bas de l'app passait dessous, dont
+ * le bouton de l'assistant IA (en bas à gauche) et le zoom de la carte.
+ * 100dvh = hauteur visible, qui suit l'apparition de la barre.
+ * Navigateurs trop anciens : 100vh, corrigé en JS (voir (app)/layout.tsx). */
+:root {
+  --yazz-vh: 100vh;
+}
+@supports (height: 100dvh) {
+  :root {
+    --yazz-vh: 100dvh;
+  }
+}

@@ -75,7 +75,7 @@ export function YazzVehicleCard({ vehicles, selectedId, onSelect }: YazzVehicleC
   }), [vehicles]);
 
   return (
-    <div className="flex max-h-[calc(100vh-180px)] w-[260px] flex-col overflow-hidden rounded-yazz-xl border border-yazz-border-light bg-yazz-surface/95 yazz-glass yazz-shadow-elevated">
+    <div className="flex max-h-[calc(var(--yazz-vh)-180px)] w-[260px] flex-col overflow-hidden rounded-yazz-xl border border-yazz-border-light bg-yazz-surface/95 yazz-glass yazz-shadow-elevated">
       {/* Header — cliquable pour collapse */}
       <button
         onClick={() => setCollapsed((c) => !c)}

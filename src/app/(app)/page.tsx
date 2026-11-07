@@ -92,7 +92,7 @@ export default function DashboardPage() {
 
       {/* Panneau détail en overlay à droite quand un véhicule est sélectionné */}
       {selectedVehicle && (
-        <div className="absolute right-4 top-4 z-20 max-h-[calc(100vh-120px)] w-[340px] max-w-[calc(100vw-2rem)] overflow-hidden rounded-yazz-xl border border-yazz-border-light bg-yazz-surface yazz-shadow-high yazz-animate-slide-in-right md:right-6">
+        <div className="absolute right-4 top-4 z-20 max-h-[calc(var(--yazz-vh)-120px)] w-[340px] max-w-[calc(100vw-2rem)] overflow-hidden rounded-yazz-xl border border-yazz-border-light bg-yazz-surface yazz-shadow-high yazz-animate-slide-in-right md:right-6">
           <YazzVehicleDetail
             vehicle={selectedVehicle}
             onClose={() => setSelectedVehicleId(undefined)}
@@ -100,7 +100,7 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* AI Assistant FAB — superposé sur la carte, en bas à gauche, visible uniquement sur le dashboard */}
+      {/* AI Assistant FAB — superposé sur la carte, en bas à gauche (téléphone, tablette, ordinateur) */}
       <YazzAssistantFab enabled={true} />
     </div>
   );

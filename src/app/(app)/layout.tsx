@@ -14,6 +14,21 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { loading, showLoading, hideLoading } = useGlobalLoading();
 
+  // Navigateurs sans 100dvh : hauteur visible mesurée en JS (sinon le bas de
+  // l'app, dont le bouton de l'assistant, passe sous la barre du navigateur).
+  useEffect(() => {
+    if (typeof CSS !== "undefined" && CSS.supports?.("height", "100dvh")) return;
+    const apply = () =>
+      document.documentElement.style.setProperty("--yazz-vh", `${window.innerHeight}px`);
+    apply();
+    window.addEventListener("resize", apply);
+    window.addEventListener("orientationchange", apply);
+    return () => {
+      window.removeEventListener("resize", apply);
+      window.removeEventListener("orientationchange", apply);
+    };
+  }, []);
+
   // Show loading on route change
   useEffect(() => {
     showLoading("Chargement...");
@@ -22,7 +37,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   }, [pathname]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
-    <div className="flex h-screen w-full overflow-hidden bg-yazz-background">
+    <div className="flex h-[var(--yazz-vh)] w-full overflow-hidden bg-yazz-background">
       {/* Desktop sidebar */}
       <div className="hidden lg:block">
         <YazzSidebar
