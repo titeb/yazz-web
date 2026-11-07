@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useUserVehicles } from "@/hooks/use-user-vehicles";
 import { isSupabaseConfigured, createClientSafe } from "@/lib/supabase/client";
 import {
@@ -20,19 +20,25 @@ import { cn, formatDistance } from "@/lib/utils";
 import { motion } from "framer-motion";
 import { TripPolylineMap } from "@/components/yazz/mapbox/trip-polyline-map";
 import { computeDrivingTimeMin } from "@/lib/yazz/snap-polyline";
+import { detectTrips, refineTrips, type DetectedTrip, type GpsPoint } from "@/lib/yazz/trip-detector";
 
-type Trip = {
-  id: string;
-  deviceId: string;
-  startedAt: string;
-  endedAt: string | null;
-  distanceKm: number | null;
-  polyline: any[] | null;
-  summary: any;
-  stops?: any[];
-  startAddress?: string | null;
-  endAddress?: string | null;
-};
+type Trip = DetectedTrip;
+
+// FIX 2026-11-07 : historique en TEMPS RÉEL.
+// Aujourd'hui : trajets calculés dans le navigateur à partir des points GPS
+// (même découpage que l'app Flutter, coupé aux stationnements), mis à jour en
+// direct par la position live (last_known_positions). Avant : table `trips`
+// recalculée toutes les 30 min par le serveur, sans mise à jour de la page,
+// et sans coupure aux stationnements pour les boîtiers qui émettent à l'arrêt.
+const LIVE_CATCH_UP_MS = 60_000; // vérification si rien reçu depuis 90 s
+const CLOCK_TICK_MS = 30_000; // « Stationnement actuel » apparaît sans nouveau point
+const PAGE_SIZE = 1000;
+
+/** Ligne GPS (gps_points / last_known_positions) → point de trajet. */
+function toGpsPoint(r: any): GpsPoint | null {
+  if (!r || r.latitude == null || r.longitude == null || !r.timestamp) return null;
+  return { lat: Number(r.latitude), lng: Number(r.longitude), speed: r.speed == null ? null : Number(r.speed), timestamp: r.timestamp };
+}
 
 function formatDuration(min: number): string {
   if (min < 60) return `${Math.round(min)} min`;
@@ -195,7 +201,11 @@ export default function HistoryPage() {
 
   const [selectedDeviceId, setSelectedDeviceId] = useState<string>("");
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
-  const [trips, setTrips] = useState<Trip[]>([]);
+  // Jours passés : trajets du serveur. Aujourd'hui : points GPS bruts.
+  const [serverTrips, setServerTrips] = useState<Trip[]>([]);
+  const [points, setPoints] = useState<GpsPoint[]>([]);
+  const [, setClock] = useState(0);
+  const lastLiveAtRef = useRef(Date.now());
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedTrip, setSelectedTrip] = useState<Trip | null>(null);
@@ -244,6 +254,32 @@ export default function HistoryPage() {
     return () => { cancelled = true; };
   }, [vehicles, selectedDeviceId]);
 
+  const viewingToday = isSameDay(selectedDate, new Date());
+
+  // Points GPS valides d'un intervalle (toutes les pages).
+  const fetchPoints = useCallback(async (from: Date, to: Date): Promise<GpsPoint[]> => {
+    if (!supabase) return [];
+    const out: GpsPoint[] = [];
+    for (let offset = 0; ; offset += PAGE_SIZE) {
+      const { data, error: err } = await supabase
+        .from("gps_points")
+        .select("latitude, longitude, speed, timestamp")
+        .eq("device_id", selectedDeviceId)
+        .eq("is_valid", true)
+        .gt("timestamp", from.toISOString())
+        .lte("timestamp", to.toISOString())
+        .order("timestamp", { ascending: true })
+        .range(offset, offset + PAGE_SIZE - 1);
+      if (err) throw err;
+      for (const r of data ?? []) {
+        const p = toGpsPoint(r);
+        if (p) out.push(p);
+      }
+      if (!data || data.length < PAGE_SIZE) break;
+    }
+    return out;
+  }, [supabase, selectedDeviceId]);
+
   const fetchTrips = useCallback(async () => {
     if (!supabase || !isReady || !selectedDeviceId) return;
 
@@ -255,6 +291,14 @@ export default function HistoryPage() {
       startOfDay.setHours(0, 0, 0, 0);
       const endOfDay = new Date(selectedDate);
       endOfDay.setHours(23, 59, 59, 999);
+
+      if (viewingToday) {
+        const pts = await fetchPoints(new Date(startOfDay.getTime() - 1), endOfDay);
+        lastLiveAtRef.current = Date.now();
+        setPoints(pts);
+        setServerTrips([]);
+        return;
+      }
 
       const { data, error: tripsErr } = await supabase
         .from("trips")
@@ -279,18 +323,106 @@ export default function HistoryPage() {
         endAddress: t.end_address,
       }));
 
-      setTrips(tripsData);
+      setServerTrips(tripsData);
+      setPoints([]);
     } catch (err: any) {
       console.error("[history] erreur:", err);
       setError(err.message ?? "Erreur");
     } finally {
       setLoading(false);
     }
-  }, [supabase, isReady, selectedDeviceId, selectedDate]);
+  }, [supabase, isReady, selectedDeviceId, selectedDate, viewingToday, fetchPoints]);
 
   useEffect(() => {
+    // Changement de véhicule / jour : on repart de zéro (skeleton).
+    setPoints([]);
+    setServerTrips([]);
     fetchTrips();
   }, [fetchTrips]);
+
+  // Trajets affichés : calculés en direct aujourd'hui, recoupés aux
+  // stationnements pour les jours passés.
+  const trips = useMemo<Trip[]>(
+    () => (viewingToday ? detectTrips(selectedDeviceId, points) : refineTrips(selectedDeviceId, serverTrips)),
+    [viewingToday, selectedDeviceId, points, serverTrips],
+  );
+
+  // Ajoute les points plus récents que le dernier connu.
+  const appendPoints = useCallback((fresh: GpsPoint[]) => {
+    if (fresh.length === 0) return;
+    setPoints((prev) => {
+      const last = prev.length ? new Date(prev[prev.length - 1].timestamp).getTime() : -Infinity;
+      const added = fresh.filter((p) => new Date(p.timestamp).getTime() > last);
+      return added.length ? [...prev, ...added] : prev;
+    });
+  }, []);
+
+  // TEMPS RÉEL (aujourd'hui) : position live du véhicule, + rattrapage depuis
+  // gps_points si rien n'est arrivé depuis 90 s ou au retour sur l'onglet.
+  useEffect(() => {
+    if (!supabase || !isReady || !selectedDeviceId || !viewingToday) return;
+    let cancelled = false;
+
+    const catchUp = async () => {
+      try {
+        const from = await new Promise<Date>((resolve) =>
+          setPoints((prev) => {
+            const start = new Date();
+            start.setHours(0, 0, 0, 0);
+            resolve(prev.length ? new Date(prev[prev.length - 1].timestamp) : new Date(start.getTime() - 1));
+            return prev;
+          }),
+        );
+        const end = new Date();
+        end.setHours(23, 59, 59, 999);
+        const fresh = await fetchPoints(from, end);
+        if (cancelled || fresh.length === 0) return;
+        lastLiveAtRef.current = Date.now();
+        appendPoints(fresh);
+      } catch {
+        /* réseau : on réessaiera */
+      }
+    };
+
+    const channel = supabase
+      .channel(`history-live-${selectedDeviceId}-${Date.now()}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "last_known_positions", filter: `device_id=eq.${selectedDeviceId}` },
+        (payload: any) => {
+          const row = payload.new;
+          if (!row || row.is_valid === false) return;
+          const p = toGpsPoint(row);
+          if (!p) return;
+          lastLiveAtRef.current = Date.now();
+          appendPoints([p]);
+        },
+      )
+      .subscribe();
+
+    const poll = setInterval(() => {
+      if (Date.now() - lastLiveAtRef.current > 90_000) catchUp();
+    }, LIVE_CATCH_UP_MS);
+    const onVisible = () => {
+      if (document.visibilityState === "visible") catchUp();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+
+    return () => {
+      cancelled = true;
+      clearInterval(poll);
+      document.removeEventListener("visibilitychange", onVisible);
+      supabase.removeChannel(channel);
+    };
+  }, [supabase, isReady, selectedDeviceId, viewingToday, fetchPoints, appendPoints]);
+
+  // Horloge : les durées avancent et « Stationnement actuel » apparaît
+  // après 25 min, sans nouveau point GPS.
+  useEffect(() => {
+    if (!viewingToday) return;
+    const t = setInterval(() => setClock((c) => c + 1), CLOCK_TICK_MS);
+    return () => clearInterval(t);
+  }, [viewingToday]);
 
   // FIX 2026-11-02 : résoudre les adresses des trips via Nominatim.
   // Comme Flutter TripAddressResolver — prend le premier et dernier point
@@ -316,8 +448,14 @@ export default function HistoryPage() {
       // séquentiel. Avant : 6 appels × 800ms = 4.8s. Maintenant : ~0.8s.
       const promises: Promise<void>[] = [];
 
-      for (const trip of trips) {
+      for (const [index, trip] of trips.entries()) {
         if (cancelled) break;
+        // Trajet en cours (aujourd'hui) : son arrivée bouge à chaque point ;
+        // elle n'est affichée qu'une fois garé depuis 25 min.
+        const ongoing =
+          viewingToday &&
+          index === trips.length - 1 &&
+          (!trip.endedAt || Date.now() - new Date(trip.endedAt).getTime() <= 25 * 60000);
 
         // Skip si déjà résolu (trip a déjà ses adresses en DB)
         if (trip.startAddress && trip.endAddress) {
@@ -355,7 +493,7 @@ export default function HistoryPage() {
         promises.push(
           Promise.all([
             resolveOne(firstPoint?.lat, firstPoint?.lng, trip.startAddress),
-            resolveOne(lastPoint?.lat, lastPoint?.lng, trip.endAddress),
+            ongoing ? Promise.resolve(undefined) : resolveOne(lastPoint?.lat, lastPoint?.lng, trip.endAddress),
           ]).then(([startAddr, endAddr]) => {
             addresses.set(trip.id, { start: startAddr, end: endAddr });
           })
@@ -375,7 +513,7 @@ export default function HistoryPage() {
     setAddressesLoading(true);
 
     return () => { cancelled = true; };
-  }, [trips]);
+  }, [trips, viewingToday]);
 
   const navigateDay = (delta: number) => {
     const newDate = new Date(selectedDate);
@@ -844,7 +982,12 @@ function TripDetailModal({ trip, onClose }: { trip: Trip; onClose: () => void })
               <span className="font-normal text-yazz-text-caption">({trip.polyline.length} points)</span>
             </p>
             <div className="relative h-[300px] overflow-hidden rounded-yazz-md border border-yazz-border-light">
-              <TripPolylineMap polyline={trip.polyline} tripId={trip.id} />
+              {/* Clé de cache du tracé collé aux routes : change si le trajet
+                  s'allonge (trajet en cours) ou regroupe plusieurs trajets. */}
+              <TripPolylineMap
+                polyline={trip.polyline}
+                tripId={`${trip.id}:${trip.endedAt ?? ""}:${trip.polyline.length}`}
+              />
             </div>
             <p className="font-inter mt-1.5 flex items-center gap-3 text-[10px] text-yazz-text-caption">
               <span className="flex items-center gap-1">
