@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Conversation vocale en direct (bêta), plein écran, à la manière des
+ * L'assistant Yazz : conversation vocale en direct, plein écran, à la manière des
  * assistants vocaux grand public : une sphère qui réagit à la voix, un état
  * court et clair, trois boutons (micro, raccrocher, sous-titres).
  *
@@ -123,7 +123,6 @@ export function YazzLiveVoice({ onClose, autoStart = true }: { onClose: () => vo
       <div className={`relative z-10 flex shrink-0 items-center justify-between px-5 pt-[max(1rem,env(safe-area-inset-top))] [@media(max-height:520px)]:pt-[max(0.5rem,env(safe-area-inset-top))]`}>
         <div className="flex items-center gap-2">
           <span className="font-outfit text-base font-semibold tracking-wide">Yazz</span>
-          <span className="rounded-full bg-white/10 px-2 py-0.5 font-inter text-[10px] font-semibold uppercase tracking-wider text-white/70">Bêta</span>
         </div>
         <div className="flex items-center gap-3">
           {status === "live" && secondsLeft !== null && secondsLeft <= 60 && (
