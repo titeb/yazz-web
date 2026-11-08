@@ -97,6 +97,23 @@ async function authHeader(): Promise<string | null> {
   return data.session?.access_token ? `Bearer ${data.session.access_token}` : null;
 }
 
+/**
+ * Intonation (0 = grave, 1 = aigu) : centre de gravité du spectre de la voix
+ * (environ 150 Hz → 0, 2 500 Hz → 1). 0,5 quand il n'y a pas de voix.
+ */
+function readTone(analyser: AnalyserNode | null, buf: Uint8Array<ArrayBuffer> | null): number {
+  if (!analyser || !buf) return 0.5;
+  analyser.getByteFrequencyData(buf);
+  const hzPerBin = analyser.context.sampleRate / analyser.fftSize;
+  let sum = 0;
+  let weighted = 0;
+  const maxBin = Math.min(buf.length, Math.floor(5000 / hzPerBin));
+  for (let i = 1; i < maxBin; i++) { sum += buf[i]; weighted += buf[i] * i * hzPerBin; }
+  if (sum < maxBin * 8) return 0.5;
+  const centroid = weighted / sum;
+  return Math.max(0, Math.min(1, (centroid - 150) / 2350));
+}
+
 function readLevel(analyser: AnalyserNode | null, buf: Float32Array<ArrayBuffer> | null): number {
   if (!analyser || !buf) return 0;
   analyser.getFloatTimeDomainData(buf);
@@ -122,6 +139,7 @@ export function useYazzLive() {
   const agentAnalyserRef = useRef<AnalyserNode | null>(null);
   const userAnalyserRef = useRef<AnalyserNode | null>(null);
   const bufRef = useRef<Float32Array<ArrayBuffer> | null>(null);
+  const freqRef = useRef<Uint8Array<ArrayBuffer> | null>(null);
   const audioElsRef = useRef<HTMLMediaElement[]>([]);
   const agentTrackRef = useRef<RemoteAudioTrack | null>(null);
   const statsTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -199,6 +217,8 @@ export function useYazzLive() {
   const getLevels = useCallback(() => ({
     agent: readLevel(agentAnalyserRef.current, bufRef.current),
     user: readLevel(userAnalyserRef.current, bufRef.current),
+    agentTone: readTone(agentAnalyserRef.current, freqRef.current),
+    userTone: readTone(userAnalyserRef.current, freqRef.current),
   }), []);
 
   const start = useCallback(async () => {
@@ -219,6 +239,7 @@ export function useYazzLive() {
     ctxRef.current = ctx;
     void ctx.resume().catch(() => {});
     bufRef.current = new Float32Array(new ArrayBuffer(1024 * 4));
+    freqRef.current = new Uint8Array(new ArrayBuffer(512));
 
     try {
       // Jeton et micro en parallèle (gagne le temps de l'autorisation du micro)
