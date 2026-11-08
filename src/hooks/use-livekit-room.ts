@@ -182,16 +182,13 @@ export function useLiveKitRoom(options: UseLiveKitRoomOptions = {}): UseLiveKitR
         track.detach().forEach(el => el.remove());
       });
 
-      // Détection de la voix de l'utilisateur (barge-in natif LiveKit)
-      room.on(RoomEvent.LocalParticipantSpeakingChanged, (speaking) => {
-        console.log(`[useLiveKitRoom] RoomEvent.LocalParticipantSpeakingChanged — speaking=${speaking}`);
-        // L'agent backend reçoit cet event via LiveKit et arrête son TTS en cours
-      });
-
-      // Détection de l'agent qui parle
-      room.on(RoomEvent.ParticipantSpeakingChanged, (participantSpeaking) => {
-        console.log(`[useLiveKitRoom] RoomEvent.ParticipantSpeakingChanged — speaking=${!!participantSpeaking}`);
-        callbacksRef.current.onAgentSpeaking?.(!!participantSpeaking);
+      // Détection de qui parle (utilisateur / agent). ActiveSpeakersChanged
+      // existe dans toutes les versions de livekit-client (le site est fixé
+      // sur 2.15.16, compatible avec le serveur LiveKit 1.8.3).
+      room.on(RoomEvent.ActiveSpeakersChanged, (speakers) => {
+        const agentSpeaking = speakers.some((p) => p.identity !== room.localParticipant.identity);
+        console.log(`[useLiveKitRoom] RoomEvent.ActiveSpeakersChanged — agentSpeaking=${agentSpeaking}`);
+        callbacksRef.current.onAgentSpeaking?.(agentSpeaking);
       });
 
       // Connect
