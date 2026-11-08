@@ -2,7 +2,8 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Mic, Keyboard, X, Send } from "lucide-react";
+import Link from "next/link";
+import { Mic, Keyboard, X, Send, Phone } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { YazzAssistantOrb } from "./yazz-assistant-orb";
 import { createClientSafe } from "@/lib/supabase/client";
@@ -737,6 +738,16 @@ export function YazzAssistantModal({ onClose }: { onClose: () => void }) {
       <div className="flex-1 flex flex-col items-center justify-center">
         <YazzAssistantOrb state={state} size={200} />
         <p className="text-white/60 text-sm mt-4 tracking-wide">{stateLabel[state]}</p>
+        {/* Conversation vocale en direct (page dédiée, bêta) */}
+        <Link
+          href="/assistant-live"
+          onClick={onClose}
+          className="mt-5 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-4 py-2 text-[13px] font-medium text-white hover:bg-white/15 transition-colors"
+        >
+          <Phone className="h-4 w-4" />
+          Parler en direct
+          <span className="rounded-full bg-[#2b44ee] px-1.5 py-0.5 text-[10px] font-semibold">Bêta</span>
+        </Link>
       </div>
 
       {/* Transcript */}
