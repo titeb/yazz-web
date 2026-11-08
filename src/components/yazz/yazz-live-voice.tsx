@@ -16,12 +16,13 @@ import { useEffect, useRef, useState } from "react";
 import { Captions, Loader2, Mic, MicOff, PhoneOff, X } from "lucide-react";
 import { useYazzLive, type AgentState, type LiveStatus } from "@/hooks/use-yazz-live";
 
-type Mode = "connecting" | "listening" | "thinking" | "speaking" | "muted" | "error" | "idle";
+type Mode = "connecting" | "reconnecting" | "listening" | "thinking" | "speaking" | "muted" | "error" | "idle";
 
-function modeOf(status: LiveStatus, agent: AgentState, muted: boolean): Mode {
+function modeOf(status: LiveStatus, agent: AgentState, muted: boolean, reconnecting: boolean): Mode {
   if (status === "error") return "error";
   if (status === "idle" || status === "ended") return "idle";
   if (status === "connecting" || agent === "initializing") return "connecting";
+  if (reconnecting) return "reconnecting";
   if (agent === "speaking") return "speaking";
   if (agent === "thinking") return "thinking";
   return muted ? "muted" : "listening";
@@ -30,6 +31,7 @@ function modeOf(status: LiveStatus, agent: AgentState, muted: boolean): Mode {
 const LABEL: Record<Mode, string> = {
   idle: "Parle avec Yazz",
   connecting: "Connexion…",
+  reconnecting: "Connexion instable…",
   listening: "Je t'écoute",
   thinking: "Je cherche…",
   speaking: "",
@@ -58,7 +60,7 @@ function VoiceOrb({ mode, getLevels }: { mode: Mode; getLevels: () => { agent: n
       // Montée rapide, descente douce
       level += (target - level) * (target > level ? 0.45 : 0.12);
       // Respiration lente quand rien ne bouge
-      const breathe = m === "connecting" || m === "idle" ? Math.sin(t / 650) * 0.035
+      const breathe = m === "connecting" || m === "reconnecting" || m === "idle" ? Math.sin(t / 650) * 0.035
         : m === "thinking" ? Math.sin(t / 420) * 0.02 : Math.sin(t / 1400) * 0.012;
       const base = m === "thinking" ? 0.9 : m === "muted" ? 0.88 : 1;
       const amp = m === "speaking" ? 0.32 : 0.18;
@@ -74,7 +76,7 @@ function VoiceOrb({ mode, getLevels }: { mode: Mode; getLevels: () => { agent: n
     return () => cancelAnimationFrame(raf);
   }, [getLevels]);
 
-  const dim = mode === "muted" || mode === "error";
+  const dim = mode === "muted" || mode === "error" || mode === "reconnecting";
   return (
     <div className="relative flex h-[min(64vw,300px)] w-[min(64vw,300px)] items-center justify-center">
       {/* Halo */}
@@ -113,7 +115,7 @@ function VoiceOrb({ mode, getLevels }: { mode: Mode; getLevels: () => { agent: n
 
 export function YazzLiveVoice({ onClose, autoStart = true }: { onClose: () => void; autoStart?: boolean }) {
   const live = useYazzLive();
-  const { status, agentState, error, lines, cards, muted, secondsLeft, confirming } = live;
+  const { status, agentState, error, lines, cards, muted, secondsLeft, confirming, reconnecting } = live;
   const [captions, setCaptions] = useState(false);
   const startedRef = useRef(false);
   const wasLiveRef = useRef(false);
@@ -139,7 +141,7 @@ export function YazzLiveVoice({ onClose, autoStart = true }: { onClose: () => vo
     return () => { document.body.style.overflow = prev; };
   }, []);
 
-  const mode = modeOf(status, agentState, muted);
+  const mode = modeOf(status, agentState, muted, reconnecting);
   const pending = cards.filter((c) => !c.resolved);
   const last = [...lines].reverse().find((l) => l.text.trim());
   const active = status === "live" || status === "connecting";
@@ -200,7 +202,7 @@ export function YazzLiveVoice({ onClose, autoStart = true }: { onClose: () => vo
             </button>
           ) : (
             <p className="flex items-center gap-2 font-inter text-[15px] font-medium text-white/75" aria-live="polite">
-              {mode === "connecting" && <Loader2 className="h-4 w-4 animate-spin" />}
+              {(mode === "connecting" || mode === "reconnecting") && <Loader2 className="h-4 w-4 animate-spin" />}
               {LABEL[mode]}
             </p>
           )}

@@ -8,9 +8,16 @@
  *              → connexion LiveKit → micro publié → l'agent salue.
  *   stop()   → quitte le salon (l'agent s'arrête et enregistre la durée).
  *
- * Son de l'agent : joué par Web Audio avec un gain (+7 dB) et un limiteur.
- * Sur Android, le navigateur joue la voix comme un appel (volume d'appel,
- * souvent bas) : sans ce gain, on l'entend à peine.
+ * Son de l'agent : joué normalement par le navigateur (élément audio), pour
+ * garder l'anti-écho du téléphone. Le volume est monté côté serveur
+ * (yazz_backend/src/voice-live/liveAudio.js). Ne pas faire passer la voix
+ * par Web Audio : sur Chrome, l'anti-écho ne la voit plus et l'agent
+ * s'entend dans le haut-parleur (il se coupe lui-même).
+ *
+ * Liaison instable (réseau mobile) : LiveKit se reconnecte tout seul ;
+ * l'écran affiche « Connexion instable » pendant ce temps et l'agent attend.
+ * Mesures réseau (aller-retour, gigue, pertes) envoyées à l'agent toutes
+ * les 5 s pour le journal du serveur.
  *
  * Niveaux sonores (agent, utilisateur) : lus à la demande par getLevels()
  * pour animer l'orbe, sans re-rendu React.
@@ -58,8 +65,30 @@ export interface LiveCard {
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
 
-/** Gain appliqué à la voix de l'agent avant le limiteur (≈ +7 dB). */
-const VOICE_GAIN = 2.3;
+/** Mesures réseau de la liaison audio (pour le journal du serveur). */
+async function linkStats(track: RemoteAudioTrack | null, prev: { lost: number; recv: number }) {
+  const report = await track?.getRTCStatsReport().catch(() => undefined);
+  if (!report) return null;
+  let rtt: number | null = null;
+  let jitter: number | null = null;
+  let lost = prev.lost;
+  let recv = prev.recv;
+  report.forEach((s: Record<string, unknown>) => {
+    if (s.type === "candidate-pair" && s.nominated && typeof s.currentRoundTripTime === "number") {
+      rtt = Math.round(s.currentRoundTripTime * 1000);
+    } else if (s.type === "inbound-rtp" && s.kind === "audio") {
+      if (typeof s.jitter === "number") jitter = Math.round(s.jitter * 1000);
+      if (typeof s.packetsLost === "number") lost = s.packetsLost;
+      if (typeof s.packetsReceived === "number") recv = s.packetsReceived;
+    }
+  });
+  const dLost = Math.max(0, lost - prev.lost);
+  const dRecv = Math.max(0, recv - prev.recv);
+  const loss = dLost + dRecv > 0 ? Math.round((dLost / (dLost + dRecv)) * 1000) / 10 : 0;
+  prev.lost = lost;
+  prev.recv = recv;
+  return { rtt, jitter, loss };
+}
 
 async function authHeader(): Promise<string | null> {
   const supabase = createClientSafe();
@@ -84,6 +113,7 @@ export function useYazzLive() {
   const [muted, setMuted] = useState(false);
   const [secondsLeft, setSecondsLeft] = useState<number | null>(null);
   const [confirming, setConfirming] = useState<string | null>(null);
+  const [reconnecting, setReconnecting] = useState(false);
 
   const roomRef = useRef<Room | null>(null);
   const micRef = useRef<LocalAudioTrack | null>(null);
@@ -92,6 +122,9 @@ export function useYazzLive() {
   const userAnalyserRef = useRef<AnalyserNode | null>(null);
   const bufRef = useRef<Float32Array<ArrayBuffer> | null>(null);
   const audioElsRef = useRef<HTMLMediaElement[]>([]);
+  const agentTrackRef = useRef<RemoteAudioTrack | null>(null);
+  const statsTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const stopRef = useRef<() => Promise<void>>(async () => {});
   const deadlineRef = useRef<number | null>(null);
   const startingRef = useRef(false);
   // Numéro de tentative : un raccroché (ou la fermeture de l'écran) pendant
@@ -100,6 +133,9 @@ export function useYazzLive() {
   const aliveRef = useRef(true);
 
   const cleanup = useCallback(() => {
+    if (statsTimerRef.current) clearInterval(statsTimerRef.current);
+    statsTimerRef.current = null;
+    agentTrackRef.current = null;
     audioElsRef.current.forEach((el) => el.remove());
     audioElsRef.current = [];
     micRef.current?.stop();
@@ -116,7 +152,13 @@ export function useYazzLive() {
     attemptRef.current += 1;
     const room = roomRef.current;
     roomRef.current = null;
-    if (room) await room.disconnect().catch(() => {});
+    if (room) {
+      // Prévenir l'agent : raccroché volontaire (sinon il attend un retour)
+      await room.localParticipant
+        .publishData(encoder.encode(JSON.stringify({ type: "bye" })), { reliable: true, topic: "yazz" })
+        .catch(() => {});
+      await room.disconnect().catch(() => {});
+    }
     cleanup();
     setStatus((s) => (s === "error" ? s : "ended"));
   }, [cleanup]);
@@ -199,28 +241,22 @@ export function useYazzLive() {
       ctx.createMediaStreamSource(new MediaStream([mic.mediaStreamTrack])).connect(userAnalyser);
       userAnalyserRef.current = userAnalyser;
 
-      const room = new Room({ webAudioMix: { audioContext: ctx } });
+      const room = new Room();
       roomRef.current = room;
 
-      // Voix de l'agent : gain + limiteur + mesure du niveau
+      // Voix de l'agent : lecture normale (anti-écho conservé) ; une copie
+      // sert seulement à mesurer le niveau (non jouée).
       room.on(RoomEvent.TrackSubscribed, (track: RemoteTrack) => {
         if (track.kind !== Track.Kind.Audio || !(track instanceof RemoteAudioTrack)) return;
-        const gain = ctx.createGain();
-        gain.gain.value = VOICE_GAIN;
-        const limiter = ctx.createDynamicsCompressor();
-        limiter.threshold.value = -8;
-        limiter.knee.value = 6;
-        limiter.ratio.value = 12;
-        limiter.attack.value = 0.003;
-        limiter.release.value = 0.12;
-        const analyser = ctx.createAnalyser();
-        analyser.fftSize = 1024;
-        track.setWebAudioPlugins([gain, limiter, analyser]);
-        agentAnalyserRef.current = analyser;
         const el = track.attach();
         el.style.display = "none";
         document.body.appendChild(el);
         audioElsRef.current.push(el);
+        agentTrackRef.current = track;
+        const analyser = ctx.createAnalyser();
+        analyser.fftSize = 1024;
+        ctx.createMediaStreamSource(new MediaStream([track.mediaStreamTrack])).connect(analyser);
+        agentAnalyserRef.current = analyser;
       });
       room.on(RoomEvent.TrackUnsubscribed, (track: RemoteTrack) => {
         track.detach().forEach((el) => el.remove());
@@ -259,11 +295,35 @@ export function useYazzLive() {
         } catch { /* message ignoré */ }
       });
 
+      // Liaison instable : reconnexion automatique de LiveKit
+      let reconnects = 0;
+      room.on(RoomEvent.Reconnecting, () => { reconnects += 1; setReconnecting(true); });
+      room.on(RoomEvent.SignalReconnecting, () => setReconnecting(true));
+      room.on(RoomEvent.Reconnected, () => setReconnecting(false));
+
+      // L'agent est parti (fin de session côté serveur) → fin de l'appel
+      room.on(RoomEvent.ParticipantDisconnected, (p: RemoteParticipant) => {
+        const isAgent = p.isAgent || p.identity.startsWith("agent-");
+        if (isAgent && roomRef.current === room) void stopRef.current();
+      });
+
       room.on(RoomEvent.Disconnected, () => {
         roomRef.current = null;
+        setReconnecting(false);
         cleanup();
         setStatus((s) => (s === "error" ? s : "ended"));
       });
+
+      // Mesures réseau toutes les 5 s → agent (journal du serveur)
+      const counters = { lost: 0, recv: 0 };
+      statsTimerRef.current = setInterval(async () => {
+        if (roomRef.current !== room || room.state !== "connected") return;
+        const m = await linkStats(agentTrackRef.current, counters);
+        if (!m) return;
+        void room.localParticipant
+          .publishData(encoder.encode(JSON.stringify({ type: "stats", ...m, reconnects })), { reliable: false, topic: "yazz" })
+          .catch(() => {});
+      }, 5000);
 
       await room.connect(data.url, data.token);
       if (cancelled()) {
@@ -336,8 +396,10 @@ export function useYazzLive() {
     }
   }, [confirming]);
 
+  useEffect(() => { stopRef.current = stop; }, [stop]);
+
   return {
-    status, agentState, error, lines, cards, muted, secondsLeft, confirming,
+    status, agentState, error, lines, cards, muted, secondsLeft, confirming, reconnecting,
     start, stop, toggleMute, respondToCard, getLevels,
   };
 }
