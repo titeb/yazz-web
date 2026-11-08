@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import Link from "next/link";
+import dynamic from "next/dynamic";
 import { Mic, Keyboard, X, Send, Phone } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { YazzAssistantOrb } from "./yazz-assistant-orb";
@@ -63,7 +63,14 @@ declare global {
   }
 }
 
+// Conversation vocale en direct (livekit-client : navigateur uniquement)
+const YazzLiveVoice = dynamic(
+  () => import("./yazz-live-voice").then((m) => m.YazzLiveVoice),
+  { ssr: false },
+);
+
 export function YazzAssistantModal({ onClose }: { onClose: () => void }) {
+  const [liveOpen, setLiveOpen] = useState(false);
   const [state, setState] = useState<OrbState>("idle");
   const [messages, setMessages] = useState<Message[]>([]);
   // Carte en cours de confirmation (index du message) — évite le double clic
@@ -739,16 +746,17 @@ export function YazzAssistantModal({ onClose }: { onClose: () => void }) {
         <YazzAssistantOrb state={state} size={200} />
         <p className="text-white/60 text-sm mt-4 tracking-wide">{stateLabel[state]}</p>
         {/* Conversation vocale en direct (page dédiée, bêta) */}
-        <Link
-          href="/assistant-live"
-          onClick={onClose}
+        <button
+          type="button"
+          onClick={() => setLiveOpen(true)}
           className="mt-5 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-4 py-2 text-[13px] font-medium text-white hover:bg-white/15 transition-colors"
         >
           <Phone className="h-4 w-4" />
           Parler en direct
           <span className="rounded-full bg-[#2b44ee] px-1.5 py-0.5 text-[10px] font-semibold">Bêta</span>
-        </Link>
+        </button>
       </div>
+      {liveOpen && <YazzLiveVoice onClose={() => setLiveOpen(false)} />}
 
       {/* Transcript */}
       <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 sm:px-8 pb-4 max-h-[35vh] flex flex-col gap-3">
