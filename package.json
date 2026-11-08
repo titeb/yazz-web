@@ -83,7 +83,7 @@
     "z-ai-web-dev-sdk": "^0.0.18",
     "zod": "^4.0.2",
     "zustand": "^5.0.6",
-    "livekit-client": "^2.5.10"
+    "livekit-client": "2.15.16"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

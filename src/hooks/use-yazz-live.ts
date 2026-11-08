@@ -36,6 +36,7 @@ import {
   type RemoteParticipant,
   type RemoteTrack,
   RemoteAudioTrack,
+  ConnectionState,
   Room,
   RoomEvent,
   Track,
@@ -291,20 +292,24 @@ export function useYazzLive() {
             setCards((prev) => [...prev.filter((c) => c.card_id !== msg.card.card_id), msg.card]);
           } else if (msg.type === "session" && Number(msg.limitSeconds) > 0) {
             deadlineRef.current = Date.now() + Number(msg.limitSeconds) * 1000;
+          } else if (msg.type === "end") {
+            // L'agent termine la conversation (temps écoulé, etc.)
+            void stopRef.current();
           }
         } catch { /* message ignoré */ }
       });
 
-      // Liaison instable : reconnexion automatique de LiveKit
+      // Liaison instable : reconnexion automatique de LiveKit. L'état de
+      // connexion fait foi (« Connexion instable… » tant qu'il n'est pas
+      // revenu à « connecté »).
+      // Attention : pendant une reconnexion complète, LiveKit annonce le
+      // départ de tous les participants (dont l'agent) puis les rajoute. Le
+      // départ de l'agent ne veut donc PAS dire fin de l'appel.
       let reconnects = 0;
-      room.on(RoomEvent.Reconnecting, () => { reconnects += 1; setReconnecting(true); });
-      room.on(RoomEvent.SignalReconnecting, () => setReconnecting(true));
-      room.on(RoomEvent.Reconnected, () => setReconnecting(false));
-
-      // L'agent est parti (fin de session côté serveur) → fin de l'appel
-      room.on(RoomEvent.ParticipantDisconnected, (p: RemoteParticipant) => {
-        const isAgent = p.isAgent || p.identity.startsWith("agent-");
-        if (isAgent && roomRef.current === room) void stopRef.current();
+      room.on(RoomEvent.Reconnecting, () => { reconnects += 1; });
+      room.on(RoomEvent.ConnectionStateChanged, (state: ConnectionState) => {
+        setReconnecting(state === ConnectionState.Reconnecting || state === ConnectionState.SignalReconnecting);
+        if (state === ConnectionState.Connected) room.remoteParticipants.forEach((p) => readState(p));
       });
 
       room.on(RoomEvent.Disconnected, () => {
@@ -314,10 +319,16 @@ export function useYazzLive() {
         setStatus((s) => (s === "error" ? s : "ended"));
       });
 
-      // Mesures réseau toutes les 5 s → agent (journal du serveur)
+      // Toutes les 5 s : mesures réseau → agent (journal du serveur), et
+      // contrôle que l'agent est toujours là (sinon, après 30 s connecté
+      // sans agent, la conversation est terminée côté serveur).
       const counters = { lost: 0, recv: 0 };
+      let agentSeenAt = Date.now();
       statsTimerRef.current = setInterval(async () => {
-        if (roomRef.current !== room || room.state !== "connected") return;
+        if (roomRef.current !== room || room.state !== ConnectionState.Connected) return;
+        const agentHere = [...room.remoteParticipants.values()].some((p) => p.isAgent || p.identity.startsWith("agent-"));
+        if (agentHere) agentSeenAt = Date.now();
+        else if (Date.now() - agentSeenAt > 30000) { void stopRef.current(); return; }
         const m = await linkStats(agentTrackRef.current, counters);
         if (!m) return;
         void room.localParticipant
@@ -332,13 +343,14 @@ export function useYazzLive() {
         cleanup();
         return;
       }
-      // Déjà dans le salon (l'agent y attend l'utilisateur) : lire son état
+      // Connecté : l'écran passe en conversation tout de suite (le micro et le
+      // son se mettent en place ensuite, sans bloquer l'affichage).
       room.remoteParticipants.forEach((p) => readState(p));
-      await room.localParticipant.publishTrack(mic, { source: Track.Source.Microphone });
-      await room.startAudio().catch(() => {});
       deadlineRef.current = Date.now() + Number(data.limitSeconds || 600) * 1000;
       setSecondsLeft(Number(data.limitSeconds || 600));
       setStatus("live");
+      void room.startAudio().catch(() => {});
+      await room.localParticipant.publishTrack(mic, { source: Track.Source.Microphone });
     } catch (e) {
       if (cancelled()) { cleanup(); return; }
       setError(e instanceof Error ? e.message : "Connexion impossible.");
