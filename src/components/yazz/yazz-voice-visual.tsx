@@ -8,11 +8,13 @@
  * Rendu WebGL (carte graphique, 60 images/s, sans re-rendu React), à
  * résolution réduite pour économiser la batterie. Sans WebGL : dégradé fixe.
  *
- * La sphère est centrée à 42 % de la hauteur, rayon min(24 % largeur,
- * 14 % hauteur) : le texte de l'écran se place en dessous (BELOW_ORB dans
- * yazz-live-voice.tsx).
+ * Position et taille : la sphère se cale sur un emplacement de la page
+ * (anchorRef, un bloc carré placé par la mise en page CSS). Le bloc contient
+ * la sphère ET ses filaments (rayon = côté / 2 / ORB_AURA) : le texte placé
+ * en dessous ne touche jamais la sphère, sur tous les écrans. Si la mise en
+ * page bouge (rotation, clavier, fenêtre), la sphère glisse doucement.
  */
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, type RefObject } from "react";
 
 export type VisualMode = "idle" | "connecting" | "reconnecting" | "listening" | "thinking" | "speaking" | "muted" | "error";
 
@@ -23,9 +25,8 @@ export interface VoiceLevels {
   userTone: number;
 }
 
-export const ORB_CENTER_Y = 0.42; // fraction de la hauteur, depuis le haut
-export const ORB_RADIUS_W = 0.24; // fraction de la largeur
-export const ORB_RADIUS_H = 0.14; // fraction de la hauteur
+/** Demi-côté de l'emplacement / rayon de la sphère (place des filaments). */
+export const ORB_AURA = 1.6;
 
 const VERT = `
 attribute vec2 aPos;
@@ -144,7 +145,11 @@ function compile(gl: WebGLRenderingContext, type: number, src: string) {
   return s;
 }
 
-export function YazzVoiceVisual({ mode, getLevels }: { mode: VisualMode; getLevels: () => VoiceLevels }) {
+export function YazzVoiceVisual({ mode, getLevels, anchorRef }: {
+  mode: VisualMode;
+  getLevels: () => VoiceLevels;
+  anchorRef: RefObject<HTMLElement | null>;
+}) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const modeRef = useRef(mode);
   const levelsRef = useRef(getLevels);
@@ -198,6 +203,25 @@ export function YazzVoiceVisual({ mode, getLevels }: { mode: VisualMode; getLeve
     let raf = 0;
     let last = performance.now();
     let level = 0, tone = 0.5, flow = 0, spin = 0, dim = 0, time = 0;
+    // Centre (pixels du canevas, origine en bas) et rayon de base de la sphère
+    let cx = 0, cy = 0, baseR = 0, placed = false;
+    const place = (dt: number) => {
+      let tx = w / 2, ty = h * 0.6, tr = Math.min(w * 0.24, h * 0.14);
+      const a = anchorRef.current;
+      if (a) {
+        const cr = canvas.getBoundingClientRect();
+        const ar = a.getBoundingClientRect();
+        if (cr.width > 0 && cr.height > 0 && ar.width > 0 && ar.height > 0) {
+          const k = w / cr.width;
+          tx = (ar.left + ar.width / 2 - cr.left) * k;
+          ty = h - (ar.top + ar.height / 2 - cr.top) * (h / cr.height);
+          tr = (Math.min(ar.width, ar.height) / 2 / ORB_AURA) * k;
+        }
+      }
+      if (!placed) { cx = tx; cy = ty; baseR = tr; placed = true; return; }
+      const f = Math.min(1, dt * 10);
+      cx += (tx - cx) * f; cy += (ty - cy) * f; baseR += (tr - baseR) * f;
+    };
     const tick = (now: number) => {
       const dt = Math.min(0.05, (now - last) / 1000);
       last = now;
@@ -219,10 +243,10 @@ export function YazzVoiceVisual({ mode, getLevels }: { mode: VisualMode; getLeve
       const dimTarget = m === "muted" || m === "error" ? 1 : m === "reconnecting" ? 0.5 : 0;
       dim += (dimTarget - dim) * Math.min(1, dt * 4);
 
-      const radius = Math.min(w * ORB_RADIUS_W, h * ORB_RADIUS_H) * (1 + 0.08 * level);
+      place(dt);
       gl.uniform2f(uRes, w, h);
-      gl.uniform2f(uCenter, w / 2, h * (1 - ORB_CENTER_Y));
-      gl.uniform1f(uRadius, radius);
+      gl.uniform2f(uCenter, cx, cy);
+      gl.uniform1f(uRadius, Math.max(1, baseR * (1 + 0.06 * level)));
       gl.uniform1f(uTime, time);
       gl.uniform1f(uFlow, flow);
       gl.uniform1f(uLevel, level);
@@ -242,14 +266,14 @@ export function YazzVoiceVisual({ mode, getLevels }: { mode: VisualMode; getLeve
       gl.deleteShader(vs);
       gl.deleteShader(fs);
     };
-  }, []);
+  }, [anchorRef]);
 
   return (
     <canvas
       ref={canvasRef}
       aria-hidden="true"
       className="absolute inset-0 h-full w-full"
-      style={{ background: "radial-gradient(90% 60% at 50% 42%, #1c1660 0%, #070a24 45%, #02030b 100%)" }}
+      style={{ background: "radial-gradient(90% 60% at 50% 36%, #1c1660 0%, #070a24 45%, #02030b 100%)" }}
     />
   );
 }
