@@ -7,15 +7,21 @@
  *
  * - Sphère lumineuse et dégradés de fond animés par la voix (volume et
  *   intonation) : voir yazz-voice-visual.tsx (rendu WebGL).
+ * - Mise en page en colonne, sans chevauchement possible : emplacement de
+ *   la sphère (filaments compris) → état → zone des sous-titres (hauteur
+ *   fixe : un long texte défile vers la fin avec un fondu en haut, sans
+ *   rien pousser). L'ensemble est centré entre le haut et les boutons et
+ *   s'adapte à la hauteur (téléphone, petit téléphone, paysage, tablette,
+ *   ordinateur).
  * - Sous-titres affichés par défaut (bouton pour les masquer).
  * - Fin de l'appel → l'écran se ferme et on revient où l'on était.
  *
  * Logique de connexion et de son : src/hooks/use-yazz-live.ts.
  */
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Captions, Loader2, Mic, MicOff, PhoneOff, X } from "lucide-react";
 import { useYazzLive, type AgentState, type LiveStatus } from "@/hooks/use-yazz-live";
-import { ORB_CENTER_Y, ORB_RADIUS_H, ORB_RADIUS_W, YazzVoiceVisual } from "./yazz-voice-visual";
+import { YazzVoiceVisual } from "./yazz-voice-visual";
 
 type Mode = "connecting" | "reconnecting" | "listening" | "thinking" | "speaking" | "muted" | "error" | "idle";
 
@@ -42,8 +48,14 @@ const LABEL: Record<Mode, string> = {
 
 const mmss = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 
-// Texte sous la sphère et ses filaments : centre (42 %) + 1,45 × rayon + marge
-const BELOW_ORB = `calc(${ORB_CENTER_Y * 100}% + 1.45 * min(${ORB_RADIUS_W * 100}vw, ${ORB_RADIUS_H * 100}%) + 1rem)`;
+// Côté de l'emplacement de la sphère (filaments compris) : limité par la
+// largeur, par la hauteur visible de l'écran et par une taille maximale.
+const ORB_SLOT = "min(78vw, calc(var(--yazz-vh, 100vh) * 0.36), 25rem)";
+
+// Classes écrites en toutes lettres (Tailwind ne lit pas les variables).
+// [@media(max-height:520px)] = écran peu haut (paysage) : version compacte.
+// Zone des sous-titres : 4 lignes (3 si l'écran est peu haut, 2 en paysage)
+const CAPTION_ZONE = `text-[17px] leading-[1.4] md:text-[19px] h-[5.6em] [@media(min-height:521px)_and_(max-height:700px)]:h-[4.2em] [@media(max-height:520px)]:h-[2.8em]`;
 
 export function YazzLiveVoice({ onClose, autoStart = true }: { onClose: () => void; autoStart?: boolean }) {
   const live = useYazzLive();
@@ -77,6 +89,20 @@ export function YazzLiveVoice({ onClose, autoStart = true }: { onClose: () => vo
   const pending = cards.filter((c) => !c.resolved);
   const last = [...lines].reverse().find((l) => l.text.trim());
   const active = status === "live" || status === "connecting";
+  const orbRef = useRef<HTMLDivElement>(null);
+  const captionRef = useRef<HTMLDivElement>(null);
+  const caption = captions && status === "live" && last ? last : null;
+
+  // Sous-titre long : on montre toujours la fin, avec un fondu en haut
+  useLayoutEffect(() => {
+    const el = captionRef.current;
+    if (!el) return;
+    const overflowing = el.scrollHeight > el.clientHeight + 2;
+    const mask = overflowing ? "linear-gradient(to bottom, transparent 0, #000 1.4em)" : "none";
+    el.style.setProperty("mask-image", mask);
+    el.style.setProperty("-webkit-mask-image", mask);
+    el.scrollTo({ top: el.scrollHeight, behavior: overflowing ? "smooth" : "auto" });
+  }, [caption?.text]);
 
   const hangUp = async () => {
     await live.stop();
@@ -85,16 +111,16 @@ export function YazzLiveVoice({ onClose, autoStart = true }: { onClose: () => vo
 
   return (
     <div
-      className="fixed inset-0 z-[60] flex h-[var(--yazz-vh,100vh)] flex-col overflow-hidden bg-[#03040e] text-white"
+      className="fixed inset-0 z-[60] flex h-[var(--yazz-vh,100vh)] flex-col overflow-hidden bg-[#03040e] pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)] text-white"
       role="dialog"
       aria-modal="true"
       aria-label="Conversation en direct avec Yazz"
     >
       {/* Fond animé (sphère + dégradés), derrière tout le reste */}
-      <YazzVoiceVisual mode={mode} getLevels={live.getLevels} />
+      <YazzVoiceVisual mode={mode} getLevels={live.getLevels} anchorRef={orbRef} />
 
       {/* Haut : titre + fermer */}
-      <div className="relative z-10 flex items-center justify-between px-5 pt-[max(1rem,env(safe-area-inset-top))]">
+      <div className={`relative z-10 flex shrink-0 items-center justify-between px-5 pt-[max(1rem,env(safe-area-inset-top))] [@media(max-height:520px)]:pt-[max(0.5rem,env(safe-area-inset-top))]`}>
         <div className="flex items-center gap-2">
           <span className="font-outfit text-base font-semibold tracking-wide">Yazz</span>
           <span className="rounded-full bg-white/10 px-2 py-0.5 font-inter text-[10px] font-semibold uppercase tracking-wider text-white/70">Bêta</span>
@@ -113,83 +139,78 @@ export function YazzLiveVoice({ onClose, autoStart = true }: { onClose: () => vo
         </div>
       </div>
 
-      {/* Centre : la sphère est dessinée par le fond animé ; l'état juste dessous */}
-      <div className="relative flex-1">
-        <div
-          className="absolute inset-x-0 z-10 flex min-h-[3.5rem] flex-col items-center gap-3 px-6 text-center"
-          style={{ top: BELOW_ORB }}
-        >
+      {/* Centre : emplacement de la sphère → état → sous-titres (rien ne se chevauche) */}
+      <div className="relative z-10 flex min-h-0 flex-1 flex-col items-center justify-center px-6 py-2">
+        <div ref={orbRef} aria-hidden="true" className="shrink-0" style={{ width: ORB_SLOT, height: ORB_SLOT }} />
+
+        <div className="flex min-h-[1.75rem] shrink-0 items-center justify-center text-center" aria-live="polite">
           {status === "error" ? (
-            <>
-              <p className="max-w-xs font-inter text-[15px] text-white/85">{error || "Connexion impossible."}</p>
-              <button
-                onClick={() => void live.start()}
-                className="rounded-full bg-white px-5 py-2 font-inter text-sm font-semibold text-[#0a0f33]"
-              >
-                Réessayer
-              </button>
-            </>
-          ) : status === "idle" ? (
-            <button
-              onClick={() => void live.start()}
-              className="rounded-full bg-white px-6 py-3 font-inter text-sm font-semibold text-[#0a0f33] shadow-lg"
-            >
-              Démarrer la conversation
-            </button>
+            <p className="max-w-xs font-inter text-[15px] text-white/85">{error || "Connexion impossible."}</p>
           ) : (
-            <p className="flex items-center gap-2 font-inter text-[15px] font-medium text-white/75" aria-live="polite">
+            <p className="flex items-center gap-2 font-inter text-[15px] font-medium text-white/75">
               {(mode === "connecting" || mode === "reconnecting") && <Loader2 className="h-4 w-4 animate-spin" />}
               {LABEL[mode]}
             </p>
           )}
         </div>
-      </div>
 
-      {/* Sous-titres (affichés par défaut) */}
-      {captions && last && status === "live" && (
-        <div className="relative z-10 mx-auto mb-4 w-full max-w-md px-6 text-center">
-          <p className={`font-inter text-[17px] leading-snug ${last.role === "user" ? "text-white/55 italic" : "text-white"}`}>
-            {last.text.length > 160 ? `…${last.text.slice(-160)}` : last.text}
-          </p>
+        {/* Zone de hauteur fixe : sous-titres en direct, ou bouton d'action */}
+        <div className={`mt-3 w-full max-w-md shrink-0 text-center md:max-w-xl ${CAPTION_ZONE}`}>
+          {status === "error" || status === "idle" ? (
+            <button
+              onClick={() => void live.start()}
+              className="rounded-full bg-white px-6 py-2.5 font-inter text-sm font-semibold text-[#0a0f33] shadow-lg"
+            >
+              {status === "error" ? "Réessayer" : "Démarrer la conversation"}
+            </button>
+          ) : (
+            <div ref={captionRef} className="h-full overflow-hidden">
+              {caption && (
+                <p className={`font-inter ${caption.role === "user" ? "italic text-white/55" : "text-white"}`}>
+                  {caption.text}
+                </p>
+              )}
+            </div>
+          )}
         </div>
-      )}
+      </div>
 
       {/* Bas : contrôles */}
       {active && (
-        <div className="relative z-10 flex items-end justify-center gap-8 px-6 pb-[max(2rem,env(safe-area-inset-bottom))] pt-2">
+        <div className={`relative z-10 flex shrink-0 items-end justify-center gap-8 px-6 pb-[max(2rem,env(safe-area-inset-bottom))] pt-2 [@media(max-height:520px)]:gap-6 [@media(max-height:520px)]:pb-[max(0.75rem,env(safe-area-inset-bottom))] [@media(max-height:520px)]:pt-0`}>
           <div className="flex flex-col items-center gap-2">
             <button
               onClick={() => void live.toggleMute()}
               disabled={status !== "live"}
               aria-label={muted ? "Réactiver le micro" : "Couper le micro"}
-              className={`grid h-16 w-16 place-items-center rounded-full transition-colors disabled:opacity-40 ${muted ? "bg-white text-[#0a0f33]" : "bg-white/12 text-white hover:bg-white/20"}`}
+              className={`grid h-16 w-16 place-items-center rounded-full transition-colors disabled:opacity-40 [@media(max-height:520px)]:h-12 [@media(max-height:520px)]:w-12 ${muted ? "bg-white text-[#0a0f33]" : "bg-white/12 text-white hover:bg-white/20"}`}
               style={muted ? undefined : { backgroundColor: "rgba(255,255,255,0.12)" }}
             >
               {muted ? <MicOff className="h-6 w-6" /> : <Mic className="h-6 w-6" />}
             </button>
-            <span className="font-inter text-[11px] text-white/50">{muted ? "Micro coupé" : "Micro"}</span>
+            <span className={`font-inter text-[11px] text-white/50 [@media(max-height:520px)]:hidden`}>{muted ? "Micro coupé" : "Micro"}</span>
           </div>
           <div className="flex flex-col items-center gap-2">
             <button
               onClick={() => void hangUp()}
               aria-label="Raccrocher"
-              className="grid h-[72px] w-[72px] place-items-center rounded-full bg-[#e5383b] text-white shadow-lg shadow-red-900/40 hover:bg-[#d62f32]"
+              className={`grid h-[72px] w-[72px] place-items-center rounded-full bg-[#e5383b] text-white shadow-lg shadow-red-900/40 hover:bg-[#d62f32] [@media(max-height:520px)]:h-14 [@media(max-height:520px)]:w-14`}
             >
               <PhoneOff className="h-7 w-7" />
             </button>
-            <span className="font-inter text-[11px] text-white/50">Raccrocher</span>
+            <span className={`font-inter text-[11px] text-white/50 [@media(max-height:520px)]:hidden`}>Raccrocher</span>
           </div>
           <div className="flex flex-col items-center gap-2">
             <button
               onClick={() => setCaptions((c) => !c)}
               aria-label={captions ? "Masquer les sous-titres" : "Afficher les sous-titres"}
               aria-pressed={captions}
-              className={`grid h-16 w-16 place-items-center rounded-full transition-colors ${captions ? "bg-white text-[#0a0f33]" : "text-white hover:bg-white/20"}`}
+              className={`grid h-16 w-16 place-items-center rounded-full transition-colors [@media(max-height:520px)]:h-12 [@media(max-height:520px)]:w-12 ${captions ? "bg-white text-[#0a0f33]" : "text-white hover:bg-white/20"}`}
               style={captions ? undefined : { backgroundColor: "rgba(255,255,255,0.12)" }}
             >
               <Captions className="h-6 w-6" />
             </button>
-            <span className="font-inter text-[11px] text-white/50">Sous-titres</span>
+            <span className={`font-inter text-[11px] text-white/50 [@media(max-height:520px)]:hidden`}>Sous-titres</span>
           </div>
         </div>
       )}
