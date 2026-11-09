@@ -81,7 +81,7 @@ export default function DashboardPage() {
 
       {/* Carte flottante "Mes véhicules" en haut à droite */}
       {!selectedVehicle && (
-        <div className="absolute right-4 top-4 z-20 md:right-6">
+        <div className="yazz-enter absolute right-4 top-4 z-20 md:right-6">
           <YazzVehicleCard
             vehicles={vehicles}
             selectedId={selectedVehicleId}

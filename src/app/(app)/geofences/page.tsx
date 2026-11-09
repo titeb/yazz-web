@@ -204,7 +204,7 @@ export default function GeofencesPage() {
 
   return (
     <div className="h-full overflow-y-auto">
-      <div className="mx-auto max-w-5xl px-4 py-6 md:px-6 md:py-8">
+      <div className="yazz-stagger mx-auto max-w-5xl px-4 py-6 md:px-6 md:py-8">
         {/* Header */}
         <div className="mb-6 flex items-start justify-between gap-4">
           <div>
@@ -263,7 +263,7 @@ export default function GeofencesPage() {
 
         {/* Liste des géofences */}
         {isReady && geofences.length > 0 && (
-          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+          <div className="yazz-stagger-group grid gap-3 md:grid-cols-2 xl:grid-cols-3">
             {geofences.map((gf) => (
               <div
                 key={gf.id}

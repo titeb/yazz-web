@@ -59,7 +59,7 @@ export default function HelpPage() {
 
   return (
     <div className="h-full overflow-y-auto">
-      <div className="mx-auto max-w-3xl px-4 py-6 md:px-6 md:py-8">
+      <div className="yazz-stagger mx-auto max-w-3xl px-4 py-6 md:px-6 md:py-8">
         {/* Header */}
         <div className="mb-6 flex items-center gap-3">
           <div className="grid h-12 w-12 place-items-center rounded-yazz-lg yazz-gradient-primary text-white shadow-yazz-medium">
@@ -76,7 +76,7 @@ export default function HelpPage() {
         </div>
 
         {/* Quick contacts */}
-        <div className="mb-6 grid grid-cols-1 gap-3 md:grid-cols-3">
+        <div className="yazz-stagger-group mb-6 grid grid-cols-1 gap-3 md:grid-cols-3">
           <ContactCard
             icon={MessageCircle}
             label="WhatsApp"
@@ -112,7 +112,7 @@ export default function HelpPage() {
             </h2>
           </div>
 
-          <ul className="space-y-2">
+          <ul className="yazz-stagger-group space-y-2">
             {FAQ.map((item, idx) => {
               const isOpen = openIdx === idx;
               return (
@@ -156,7 +156,7 @@ export default function HelpPage() {
               Documents légaux
             </h2>
           </div>
-          <ul className="space-y-2">
+          <ul className="yazz-stagger-group space-y-2">
             <LegalLink icon={Shield} label="Politique de confidentialité" />
             <LegalLink icon={FileText} label="Conditions générales d'utilisation" />
             <LegalLink icon={FileText} label="Mentions légales" />

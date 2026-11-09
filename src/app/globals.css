@@ -510,3 +510,108 @@
     --yazz-vh: 100dvh;
   }
 }
+
+/* ── Animations d'arrivée sur une page ──────────────────────────────────
+ * Les éléments apparaissent un par un, de haut en bas, dans l'ordre de la
+ * mise en page : léger fondu + montée de quelques pixels. Rapide (une page
+ * entière est en place en moins d'une seconde), jamais tout d'un coup.
+ *
+ *   .yazz-stagger        → ses enfants directs arrivent l'un après l'autre
+ *                          (en-tête, bannières, sections…), pas de 45 ms.
+ *   .yazz-stagger-group  → les éléments d'une liste ou d'une grille arrivent
+ *                          l'un après l'autre (pas de 35 ms), juste après le
+ *                          bloc qui les contient.
+ *   .yazz-enter / .yazz-enter-pop → un élément seul (fondu-montée / zoom léger).
+ *
+ * Seul l'arrivée est animée : un élément déjà affiché ne bouge plus. Une
+ * liste qui arrive plus tard (réseau lent) s'anime à son arrivée.
+ * « backwards » : avant son tour l'élément est invisible, puis l'animation
+ * ne laisse aucune trace (pas de transform résiduel qui gênerait les
+ * fenêtres et menus en position fixe).
+ * Réduire les animations (réglage du système) : tout s'affiche directement. */
+:root {
+  --yazz-enter-duration: 420ms;
+  --yazz-enter-ease: cubic-bezier(0.16, 1, 0.3, 1);
+  --yazz-enter-step: 45ms;
+  --yazz-enter-step-item: 35ms;
+}
+
+@keyframes yazz-enter-rise {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 12px, 0);
+  }
+}
+
+@keyframes yazz-enter-item {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 14px, 0) scale(0.98);
+  }
+}
+
+@keyframes yazz-enter-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+}
+
+/* Couche « components » : les classes utilitaires (animate-spin,
+ * animate-pulse…) et les animations existantes gardent la priorité. */
+@layer components {
+  .yazz-enter,
+  .yazz-stagger > :not(.fixed, .absolute) {
+    animation: yazz-enter-rise var(--yazz-enter-duration) var(--yazz-enter-ease) backwards;
+    animation-delay: calc(var(--yazz-i, 0) * var(--yazz-enter-step));
+  }
+
+  .yazz-enter-pop {
+    animation: yazz-enter-pop var(--yazz-enter-duration) var(--yazz-enter-ease) backwards;
+    animation-delay: calc(var(--yazz-i, 0) * var(--yazz-enter-step) + var(--yazz-enter-step));
+  }
+
+  /* Rang de chaque bloc (au-delà du 8e : même moment que le 8e) */
+  .yazz-stagger > * { --yazz-i: 0; }
+  .yazz-stagger > :nth-child(2) { --yazz-i: 1; }
+  .yazz-stagger > :nth-child(3) { --yazz-i: 2; }
+  .yazz-stagger > :nth-child(4) { --yazz-i: 3; }
+  .yazz-stagger > :nth-child(5) { --yazz-i: 4; }
+  .yazz-stagger > :nth-child(6) { --yazz-i: 5; }
+  .yazz-stagger > :nth-child(7) { --yazz-i: 6; }
+  .yazz-stagger > :nth-child(n + 8) { --yazz-i: 7; }
+
+  /* Liste / grille : chaque élément après le bloc qui la contient. Une
+   * grille posée directement dans la page ne s'anime pas elle-même (elle
+   * n'a pas de fond) : ses éléments partent à son rang. */
+  .yazz-stagger-group > * {
+    --yazz-j: 0;
+    animation: yazz-enter-item var(--yazz-enter-duration) var(--yazz-enter-ease) backwards;
+    animation-delay: calc(
+      (var(--yazz-i, 0) + var(--yazz-group-offset, 1)) * var(--yazz-enter-step) +
+        var(--yazz-j) * var(--yazz-enter-step-item)
+    );
+  }
+  .yazz-stagger > .yazz-stagger-group {
+    --yazz-group-offset: 0;
+    animation: none;
+  }
+  .yazz-stagger-group > :nth-child(2) { --yazz-j: 1; }
+  .yazz-stagger-group > :nth-child(3) { --yazz-j: 2; }
+  .yazz-stagger-group > :nth-child(4) { --yazz-j: 3; }
+  .yazz-stagger-group > :nth-child(5) { --yazz-j: 4; }
+  .yazz-stagger-group > :nth-child(6) { --yazz-j: 5; }
+  .yazz-stagger-group > :nth-child(7) { --yazz-j: 6; }
+  .yazz-stagger-group > :nth-child(8) { --yazz-j: 7; }
+  .yazz-stagger-group > :nth-child(9) { --yazz-j: 8; }
+  .yazz-stagger-group > :nth-child(n + 10) { --yazz-j: 9; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .yazz-enter,
+    .yazz-enter-pop,
+    .yazz-stagger > :not(.fixed, .absolute),
+    .yazz-stagger-group > * {
+      animation: none;
+    }
+  }
+}

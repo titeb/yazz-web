@@ -224,7 +224,7 @@ export default function PaymentsPage() {
 
   return (
     <div className="h-full overflow-y-auto">
-      <div className="mx-auto max-w-4xl px-4 py-6 md:px-6 md:py-8">
+      <div className="yazz-stagger mx-auto max-w-4xl px-4 py-6 md:px-6 md:py-8">
         {/* Header */}
         <div className="mb-6">
           <h1 className="font-outfit text-[24px] font-bold tracking-[-0.02em] text-yazz-text-dark">
@@ -271,7 +271,7 @@ export default function PaymentsPage() {
             <label className="font-inter mb-2 block text-[11px] font-medium text-yazz-text-body">
               Montant
             </label>
-            <div className="grid grid-cols-3 gap-2 md:grid-cols-5">
+            <div className="yazz-stagger-group grid grid-cols-3 gap-2 md:grid-cols-5">
               {PRESET_AMOUNTS.map((amt) => (
                 <button
                   key={amt}
@@ -407,7 +407,7 @@ export default function PaymentsPage() {
           )}
 
           {payments.length > 0 && (
-            <ul className="space-y-2">
+            <ul className="yazz-stagger-group space-y-2">
               {payments.map((p) => {
                 const cfg = statusConfig[p.status] || statusConfig.PENDING;
                 const Icon = cfg.icon;

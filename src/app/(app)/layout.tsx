@@ -4,15 +4,21 @@ import { useState, useEffect } from "react";
 import { usePathname } from "next/navigation";
 import { YazzSidebar } from "@/components/yazz/yazz-sidebar";
 import { YazzTopbar } from "@/components/yazz/yazz-topbar";
-import { GlobalLoading, useGlobalLoading } from "@/components/yazz/yazz-global-loading";
 import { YazzSosVigileListener } from "@/components/yazz/yazz-sos-vigile-listener";
 import { X } from "lucide-react";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+
+  // Téléphone / tablette : le menu se referme dès qu'une page est ouverte
+  // (sinon il restait par-dessus la nouvelle page).
   const pathname = usePathname();
-  const { loading, showLoading, hideLoading } = useGlobalLoading();
+  const [menuPath, setMenuPath] = useState(pathname);
+  if (pathname !== menuPath) {
+    setMenuPath(pathname);
+    setMobileSidebarOpen(false);
+  }
 
   // Navigateurs sans 100dvh : hauteur visible mesurée en JS (sinon le bas de
   // l'app, dont le bouton de l'assistant, passe sous la barre du navigateur).
@@ -28,13 +34,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       window.removeEventListener("orientationchange", apply);
     };
   }, []);
-
-  // Show loading on route change
-  useEffect(() => {
-    showLoading("Chargement...");
-    const timer = setTimeout(() => hideLoading(), 500);
-    return () => clearTimeout(timer);
-  }, [pathname]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div className="flex h-[var(--yazz-vh)] w-full overflow-hidden bg-yazz-background">
@@ -76,9 +75,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         <YazzTopbar onMobileMenu={() => setMobileSidebarOpen(true)} />
         <main className="relative flex-1 overflow-y-auto">{children}</main>
       </div>
-
-      {/* Global loading overlay */}
-      <GlobalLoading state={loading} />
 
       {/* SOS vigile listener — affiche un toast quand une alerte SOS arrive */}
       <YazzSosVigileListener />

@@ -63,7 +63,7 @@ function VehiclesContent() {
 
   return (
     <div className="h-full overflow-y-auto">
-      <div className="mx-auto max-w-6xl px-4 py-6 md:px-6 md:py-8">
+      <div className="yazz-stagger mx-auto max-w-6xl px-4 py-6 md:px-6 md:py-8">
         {/* Header */}
         <div className="mb-6 flex items-start justify-between gap-4">
           <div>
@@ -123,7 +123,7 @@ function VehiclesContent() {
 
         {/* Devices grid — nouvelles cartes redessinées (style dashboard detail) */}
         {isReady && devices.length > 0 && (
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          <div className="yazz-stagger-group grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             {devices.map((d) => (
               <YazzVehicleGridCard key={d.id} device={d} />
             ))}

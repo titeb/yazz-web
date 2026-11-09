@@ -544,7 +544,7 @@ export default function HistoryPage() {
 
   return (
     <div className="h-full overflow-y-auto">
-      <div className="mx-auto max-w-5xl px-4 py-6 md:px-6 md:py-8">
+      <div className="yazz-stagger mx-auto max-w-5xl px-4 py-6 md:px-6 md:py-8">
         {/* Header */}
         <div className="mb-6">
           <h1 className="font-outfit text-[24px] font-bold tracking-[-0.02em] text-yazz-text-dark">
@@ -628,7 +628,7 @@ export default function HistoryPage() {
 
             {/* Stats du jour — skeleton pendant chargement, contenu si trips, rien sinon */}
             {trips.length > 0 ? (
-              <div className="mb-6 grid grid-cols-2 gap-3 md:grid-cols-4">
+              <div className="yazz-stagger-group mb-6 grid grid-cols-2 gap-3 md:grid-cols-4">
                 <StatBox icon={Clock} label="Temps de conduite" value={formatDuration(totalDriveMin)} color="text-yazz-info" bg="bg-yazz-info/10" />
                 <StatBox icon={MapPin} label="Distance parcourue" value={formatDistance(totalDistance)} color="text-yazz-success" bg="bg-yazz-success/10" />
                 <StatBox icon={Gauge} label="Vitesse maximale" value={`${maxSpeed} km/h`} color="text-yazz-crawling" bg="bg-yazz-crawling/10" />
@@ -639,7 +639,7 @@ export default function HistoryPage() {
               // (avant : rien ne s'affichait → impression de "page vide")
               // Inclut vehiclesLoading pour couvrir la phase initiale où les
               // véhicules chargent mais selectedDeviceId n'est pas encore set.
-              <div className="mb-6 grid grid-cols-2 gap-3 md:grid-cols-4">
+              <div className="yazz-stagger-group mb-6 grid grid-cols-2 gap-3 md:grid-cols-4">
                 <StatBoxSkeleton />
                 <StatBoxSkeleton />
                 <StatBoxSkeleton />
@@ -695,7 +695,7 @@ export default function HistoryPage() {
                   {/* Ligne verticale */}
                   <div className="absolute left-[19px] top-3 bottom-3 w-0.5 bg-yazz-border-light" />
 
-                  <div className="space-y-1">
+                  <div className="yazz-stagger-group space-y-1">
                     {events.map((event, idx) => {
                       const cfg = eventConfig[event.type];
                       const Icon = cfg.icon;

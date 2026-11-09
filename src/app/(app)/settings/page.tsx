@@ -158,7 +158,7 @@ export default function SettingsPage() {
 
   return (
     <div className="h-full overflow-y-auto">
-      <div className="mx-auto max-w-2xl px-4 py-6 md:px-6 md:py-8">
+      <div className="yazz-stagger mx-auto max-w-2xl px-4 py-6 md:px-6 md:py-8">
         <h1 className="font-outfit mb-6 text-[24px] font-bold tracking-[-0.02em] text-yazz-text-dark">
           Paramètres
         </h1>

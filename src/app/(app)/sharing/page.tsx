@@ -321,7 +321,7 @@ export default function SharingPage() {
 
   return (
     <div className="h-full overflow-y-auto">
-      <div className="mx-auto max-w-4xl px-4 py-6 md:px-6 md:py-8">
+      <div className="yazz-stagger mx-auto max-w-4xl px-4 py-6 md:px-6 md:py-8">
         {/* Header */}
         <div className="mb-6 flex items-start justify-between gap-4">
           <div>
@@ -367,7 +367,7 @@ export default function SharingPage() {
                     {invitations.length}
                   </span>
                 </h2>
-                <ul className="space-y-2">
+                <ul className="yazz-stagger-group space-y-2">
                   {invitations.map((inv) => (
                     <li key={inv.id} className="rounded-yazz-xl border border-yazz-primary/30 bg-yazz-primary/5 p-4 yazz-shadow-soft">
                       <div className="flex items-start justify-between gap-3">
@@ -437,7 +437,7 @@ export default function SharingPage() {
                   </p>
                 </div>
               ) : (
-                <ul className="space-y-2">
+                <ul className="yazz-stagger-group space-y-2">
                   {sharedOut.map((share) => (
                     <li key={share.id} className="rounded-yazz-xl border border-yazz-border-light bg-yazz-surface p-4 yazz-shadow-soft">
                       <div className="flex items-start justify-between gap-3">
@@ -498,7 +498,7 @@ export default function SharingPage() {
                     ({sharedIn.length})
                   </span>
                 </h2>
-                <ul className="space-y-2">
+                <ul className="yazz-stagger-group space-y-2">
                   {sharedIn.map((share) => (
                     <li key={share.id} className="rounded-yazz-xl border border-yazz-border-light bg-yazz-surface p-4 yazz-shadow-soft">
                       <div className="flex items-start gap-3">

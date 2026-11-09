@@ -104,7 +104,7 @@ export function YazzVehicleCard({ vehicles, selectedId, onSelect }: YazzVehicleC
 
       {/* Liste des véhicules */}
       {!collapsed && (
-        <ul className="flex-1 overflow-y-auto p-1.5">
+        <ul className="yazz-stagger-group flex-1 overflow-y-auto p-1.5">
           {vehicles.length === 0 && (
             <li className="py-6 text-center">
               <p className="font-inter text-[11px] text-yazz-text-caption">Aucun véhicule</p>

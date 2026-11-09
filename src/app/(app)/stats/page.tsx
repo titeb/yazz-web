@@ -69,7 +69,7 @@ export default function StatsPage() {
 
   return (
     <div className="h-full overflow-y-auto">
-      <div className="mx-auto max-w-5xl px-4 py-6 md:px-6 md:py-8">
+      <div className="yazz-stagger mx-auto max-w-5xl px-4 py-6 md:px-6 md:py-8">
         {/* Header */}
         <div className="mb-6">
           <h1 className="font-outfit text-[24px] font-bold tracking-[-0.02em] text-yazz-text-dark">
@@ -96,7 +96,7 @@ export default function StatsPage() {
         )}
 
         {/* Stats cards */}
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-4">
+        <div className="yazz-stagger-group grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-4">
           {stats.map((s) => (
             <YazzStatCard key={s.id} {...s} />
           ))}
@@ -130,7 +130,7 @@ export default function StatsPage() {
           )}
 
           {isReady && alerts.length > 0 && (
-            <ul className="space-y-2">
+            <ul className="yazz-stagger-group space-y-2">
               {alerts.map((a) => (
                 <li
                   key={a.id}

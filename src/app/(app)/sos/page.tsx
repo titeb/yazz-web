@@ -315,7 +315,7 @@ export default function SOSPage() {
       </div>
 
       {/* Content */}
-      <div className="relative z-10 flex flex-1 flex-col items-center justify-center px-6">
+      <div className="yazz-stagger relative z-10 flex flex-1 flex-col items-center justify-center px-6">
         {state === "idle" && (
           <>
             <div className="mb-8 grid h-32 w-32 place-items-center rounded-full bg-yazz-error/20">
