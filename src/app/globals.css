@@ -513,8 +513,10 @@
 
 /* ── Animations d'arrivée sur une page ──────────────────────────────────
  * Les éléments apparaissent un par un, de haut en bas, dans l'ordre de la
- * mise en page : léger fondu + montée de quelques pixels. Rapide (une page
- * entière est en place en moins d'une seconde), jamais tout d'un coup.
+ * mise en page : léger fondu + montée de quelques pixels, puis un petit
+ * rebond en fin de course (comme un ressort : dépasse de ~4 px et se pose).
+ * Rapide : chaque élément est à sa place en 140 ms, le rebond est la
+ * finition ; jamais tout d'un coup.
  *
  *   .yazz-stagger        → ses enfants directs arrivent l'un après l'autre
  *                          (en-tête, bannières, sections…), pas de 45 ms.
@@ -530,30 +532,42 @@
  * fenêtres et menus en position fixe).
  * Réduire les animations (réglage du système) : tout s'affiche directement. */
 :root {
-  --yazz-enter-duration: 420ms;
-  --yazz-enter-ease: cubic-bezier(0.16, 1, 0.3, 1);
+  --yazz-enter-fade: 260ms;
+  --yazz-enter-duration: 700ms;
   --yazz-enter-step: 45ms;
   --yazz-enter-step-item: 35ms;
+  /* Navigateurs anciens : léger dépassement sans ressort */
+  --yazz-enter-spring: cubic-bezier(0.34, 1.45, 0.64, 1);
+}
+/* Ressort amorti (rebond de ~25 % de la montée, puis ~6 %, puis posé) */
+@supports (animation-timing-function: linear(0, 1)) {
+  :root {
+    --yazz-enter-spring: linear(0, 0.038, 0.139, 0.282, 0.449, 0.621, 0.786, 0.933, 1.055, 1.147, 1.21, 1.244, 1.254, 1.243, 1.216, 1.179, 1.137, 1.093, 1.051, 1.014, 0.984, 0.961, 0.946, 0.938, 0.936, 0.939, 0.946, 0.955, 0.966, 0.977, 0.988, 0.997, 1.005, 1.01, 1.014, 1.016, 1.016, 1.015, 1.014, 1.011, 1);
+  }
+}
+
+/* Le fondu (rapide, sans rebond) et le mouvement (ressort) sont séparés */
+@keyframes yazz-enter-fade {
+  from {
+    opacity: 0;
+  }
 }
 
 @keyframes yazz-enter-rise {
   from {
-    opacity: 0;
-    transform: translate3d(0, 12px, 0);
+    transform: translate3d(0, 16px, 0);
   }
 }
 
 @keyframes yazz-enter-item {
   from {
-    opacity: 0;
-    transform: translate3d(0, 14px, 0) scale(0.98);
+    transform: translate3d(0, 20px, 0) scale(0.97);
   }
 }
 
 @keyframes yazz-enter-pop {
   from {
-    opacity: 0;
-    transform: scale(0.92);
+    transform: scale(0.9);
   }
 }
 
@@ -562,12 +576,16 @@
 @layer components {
   .yazz-enter,
   .yazz-stagger > :not(.fixed, .absolute) {
-    animation: yazz-enter-rise var(--yazz-enter-duration) var(--yazz-enter-ease) backwards;
+    animation:
+      yazz-enter-fade var(--yazz-enter-fade) ease-out backwards,
+      yazz-enter-rise var(--yazz-enter-duration) var(--yazz-enter-spring) backwards;
     animation-delay: calc(var(--yazz-i, 0) * var(--yazz-enter-step));
   }
 
   .yazz-enter-pop {
-    animation: yazz-enter-pop var(--yazz-enter-duration) var(--yazz-enter-ease) backwards;
+    animation:
+      yazz-enter-fade var(--yazz-enter-fade) ease-out backwards,
+      yazz-enter-pop var(--yazz-enter-duration) var(--yazz-enter-spring) backwards;
     animation-delay: calc(var(--yazz-i, 0) * var(--yazz-enter-step) + var(--yazz-enter-step));
   }
 
@@ -586,7 +604,9 @@
    * n'a pas de fond) : ses éléments partent à son rang. */
   .yazz-stagger-group > * {
     --yazz-j: 0;
-    animation: yazz-enter-item var(--yazz-enter-duration) var(--yazz-enter-ease) backwards;
+    animation:
+      yazz-enter-fade var(--yazz-enter-fade) ease-out backwards,
+      yazz-enter-item var(--yazz-enter-duration) var(--yazz-enter-spring) backwards;
     animation-delay: calc(
       (var(--yazz-i, 0) + var(--yazz-group-offset, 1)) * var(--yazz-enter-step) +
         var(--yazz-j) * var(--yazz-enter-step-item)
