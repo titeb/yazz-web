@@ -115,7 +115,7 @@ export function YazzSidebar({ collapsed, onToggle, active }: YazzSidebarProps) {
             Navigation
           </p>
         )}
-        <ul className="space-y-1">
+        <ul className="yazz-stagger-group space-y-1">
           {navItems.map((item) => {
             const isActive = getIsActive(item.href);
             const Icon = item.icon;

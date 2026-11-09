@@ -278,7 +278,7 @@ function LoginContent() {
           </svg>
         </div>
 
-        <div className="relative flex flex-col items-center text-center">
+        <div className="yazz-stagger relative flex flex-col items-center text-center">
           {/* Logo agrandi */}
           <YazzLogo variant="mark" size={120} />
 
@@ -293,7 +293,7 @@ function LoginContent() {
 
       {/* Form panel (droite) */}
       <div className="flex items-center justify-center p-6 md:p-12">
-        <div className="w-full max-w-md">
+        <div className="yazz-stagger w-full max-w-md">
           {/* Logo mobile */}
           <div className="mb-8 flex justify-center lg:hidden">
             <YazzLogo />

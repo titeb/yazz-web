@@ -25,7 +25,7 @@ export function YazzAssistantFab({ enabled }: { enabled: boolean }) {
     <>
       <button
         onClick={() => setOpen(true)}
-        className="absolute bottom-4 left-4 sm:bottom-6 sm:left-6 z-40 w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-[#2b44ee] shadow-lg flex items-center justify-center hover:bg-[#1d34d4] transition-colors"
+        className="yazz-enter-pop absolute bottom-4 left-4 sm:bottom-6 sm:left-6 z-40 w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-[#2b44ee] shadow-lg flex items-center justify-center hover:bg-[#1d34d4] transition-colors"
         aria-label="Parler à l'assistant Yazz"
       >
         {/* Sound wave animée (3 barres pulsantes) */}
