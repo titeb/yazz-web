@@ -37,6 +37,16 @@ export type SavePlaceInput = {
 
 type Result = { ok: true; message?: string } | { ok: false; error: string };
 
+/** « C'est ta maison ? » proposé par le serveur (où un véhicule passe ses nuits). */
+export type PlaceSuggestion = {
+  id: string;
+  deviceId: string;
+  lat: number;
+  lng: number;
+  address: string | null;
+  nights: number;
+};
+
 /** Distance sous laquelle une zone est « au même endroit » qu'un lieu (comme l'assistant). */
 const SAME_SPOT_M = 100;
 
@@ -51,19 +61,20 @@ export function useUserPlaces() {
   const supabase = createClientSafe() as unknown as SupabaseClient | null;
   const [places, setPlaces] = useState<UserPlace[]>([]);
   const [zones, setZones] = useState<PlaceZone[]>([]);
+  const [suggestion, setSuggestion] = useState<PlaceSuggestion | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   /** Lit les lieux et les zones (sans toucher à l'état). */
   const load = useCallback(async (): Promise<
-    { places: UserPlace[]; zones: PlaceZone[]; error: string | null } | null
+    { places: UserPlace[]; zones: PlaceZone[]; suggestion: PlaceSuggestion | null; error: string | null } | null
   > => {
     if (!supabase) return null;
     try {
       const {
         data: { user },
       } = await supabase.auth.getUser();
-      if (!user) return { places: [], zones: [], error: "Session expirée : reconnecte-toi." };
+      if (!user) return { places: [], zones: [], suggestion: null, error: "Session expirée : reconnecte-toi." };
       const [{ data: rows, error: pErr }, { data: gf }] = await Promise.all([
         supabase
           .from("user_locations")
@@ -76,7 +87,28 @@ export function useUserPlaces() {
           .eq("user_id", user.id),
       ]);
       if (pErr) throw pErr;
+      // Suggestion en attente (table absente ou erreur : simplement aucune)
+      let suggestion: PlaceSuggestion | null = null;
+      const { data: sug } = await supabase
+        .from("place_suggestions")
+        .select("id, device_id, lat, lng, address, nights")
+        .eq("user_id", user.id)
+        .eq("status", "pending")
+        .order("created_at", { ascending: false })
+        .limit(1);
+      const s0 = sug?.[0];
+      if (s0 && Number.isFinite(Number(s0.lat)) && Number.isFinite(Number(s0.lng))) {
+        suggestion = {
+          id: s0.id,
+          deviceId: s0.device_id,
+          lat: Number(s0.lat),
+          lng: Number(s0.lng),
+          address: s0.address ?? null,
+          nights: Number(s0.nights) || 0,
+        };
+      }
       return {
+        suggestion,
         places: (rows ?? []).map(rowToPlace).filter((p): p is UserPlace => p !== null),
         zones: (gf ?? [])
           .map((z: any) => ({
@@ -103,6 +135,7 @@ export function useUserPlaces() {
       if (r) {
         setPlaces(r.places);
         setZones(r.zones);
+        setSuggestion(r.suggestion);
         setError(r.error);
       } else if (supabase) {
         setError("Impossible de charger tes lieux. Vérifie ta connexion.");
@@ -254,10 +287,49 @@ export function useUserPlaces() {
     [supabase, refresh],
   );
 
+  /** Réponse à « C'est ta maison ? » : Oui → lieu « Maison » ; Non → plus jamais ici. */
+  const answerSuggestion = useCallback(
+    async (s: PlaceSuggestion, yes: boolean): Promise<Result> => {
+      if (!supabase) return { ok: false, error: "Service indisponible." };
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) return { ok: false, error: "Session expirée : reconnecte-toi." };
+      if (yes) {
+        const home = findSameName(places, "maison");
+        if (home) return { ok: false, error: "Tu as déjà une « Maison ». Modifie-la si elle a changé." };
+        const { error: err } = await supabase.from("user_locations").insert({
+          user_id: user.id,
+          name: "maison",
+          type: "home",
+          lat: s.lat,
+          lng: s.lng,
+          address: s.address,
+          radius_m: 150,
+          created_via: "manual",
+        });
+        if (err) return { ok: false, error: "Enregistrement impossible. Réessaie." };
+      }
+      await supabase
+        .from("place_suggestions")
+        .update({ status: yes ? "accepted" : "dismissed", decided_at: new Date().toISOString() })
+        .eq("id", s.id)
+        .eq("user_id", user.id);
+      await refresh();
+      return {
+        ok: true,
+        message: yes ? "« Maison » est enregistrée." : "D'accord, on ne te le demandera plus pour cet endroit.",
+      };
+    },
+    [supabase, places, refresh],
+  );
+
   return {
     isReady,
     places,
     zones,
+    suggestion,
+    answerSuggestion,
     loading,
     error,
     refresh,
