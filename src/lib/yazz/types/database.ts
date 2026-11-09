@@ -229,6 +229,10 @@ export type Database = {
           device_id: string;
           name: string;
           type: "circle" | "polygon" | null;
+          // Colonnes réelles du cercle (lues par le moteur d'alertes du serveur)
+          center_lat?: number | null;
+          center_lng?: number | null;
+          radius_m?: number | null;
           coordinates: Json | null;
           radius: number | null;
           color: string | null;
@@ -244,6 +248,9 @@ export type Database = {
           device_id: string;
           name: string;
           type?: "circle" | "polygon" | null;
+          center_lat?: number | null;
+          center_lng?: number | null;
+          radius_m?: number | null;
           coordinates?: Json | null;
           radius?: number | null;
           color?: string | null;
@@ -252,6 +259,34 @@ export type Database = {
           alert_on_exit?: boolean | null;
         };
         Update: Partial<Database["public"]["Tables"]["geofences"]["Insert"]>;
+      };
+
+      // ─── Lieux personnels (Maison, École…) — partagés avec l'assistant ──
+      user_locations: {
+        Row: {
+          id: string;
+          user_id: string;
+          name: string;
+          type: "home" | "work" | "school" | "church" | "garage" | "custom";
+          lat: number;
+          lng: number;
+          address: string | null;
+          radius_m: number;
+          created_via: "manual" | "voice" | "map_pick";
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          name: string;
+          type?: "home" | "work" | "school" | "church" | "garage" | "custom";
+          lat: number;
+          lng: number;
+          address?: string | null;
+          radius_m?: number;
+          created_via?: "manual" | "voice" | "map_pick";
+        };
+        Update: Partial<Database["public"]["Tables"]["user_locations"]["Insert"]>;
       };
 
       // ─── Notifications ──────────────────────────────────────────

@@ -20,6 +20,7 @@ import {
   AlertTriangle,
   ShieldAlert,
   type LucideIcon,
+  MapPinned,
 } from "lucide-react";
 import { YazzLogo } from "./yazz-logo";
 import { cn } from "@/lib/utils";
@@ -39,6 +40,7 @@ const navItems: NavItem[] = [
   { id: "stats", label: "Statistiques", icon: BarChart3, href: "/stats" },
   { id: "history", label: "Historique trajets", icon: Route, href: "/history" },
   { id: "geofences", label: "Géofences", icon: MapPin, href: "/geofences" },
+  { id: "places", label: "Mes lieux", icon: MapPinned, href: "/places" },
   { id: "alerts", label: "Alertes", icon: Bell, href: "/alerts" },
   { id: "sos-vigile", label: "Mode vigile", icon: ShieldAlert, href: "/sos/vigile" },
   { id: "payments", label: "Paiements", icon: Wallet, href: "/payments" },
