@@ -53,7 +53,10 @@ export default function PlacesPage() {
     alertsAt,
     addArrivalAlert,
     removeArrivalAlert,
+    suggestion,
+    answerSuggestion,
   } = useUserPlaces();
+  const [answering, setAnswering] = useState<"yes" | "no" | null>(null);
   const { vehicles } = useUserVehicles();
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -125,6 +128,52 @@ export default function PlacesPage() {
             >
               {feedback.message}
             </p>
+          </div>
+        )}
+
+        {/* « C'est ta maison ? » (endroit où un véhicule passe ses nuits) */}
+        {isReady && suggestion && (
+          <div className="mb-6 flex flex-col gap-4 rounded-yazz-xl border border-yazz-primary/25 bg-yazz-primary/5 p-4 sm:flex-row sm:items-center">
+            <div className="flex flex-1 items-start gap-3">
+              <div className="grid h-11 w-11 shrink-0 place-items-center rounded-yazz-lg bg-yazz-surface text-[22px] yazz-shadow-soft">
+                🏠
+              </div>
+              <div className="min-w-0">
+                <p className="font-outfit text-[15px] font-bold text-yazz-text-dark">C&apos;est ta maison ?</p>
+                <p className="font-inter mt-0.5 text-[13px] text-yazz-text-muted">
+                  {vehicleName(suggestion.deviceId)} passe ses nuits ici
+                  {suggestion.address ? ` : ${suggestion.address}` : ""}.
+                </p>
+              </div>
+            </div>
+            <div className="flex shrink-0 gap-2">
+              <button
+                disabled={answering !== null}
+                onClick={async () => {
+                  setAnswering("no");
+                  const r = await answerSuggestion(suggestion, false);
+                  setAnswering(null);
+                  setFeedback(r.ok ? { type: "success", message: r.message ?? "" } : { type: "error", message: r.error });
+                }}
+                className="font-inter h-10 flex-1 rounded-yazz-sm border border-yazz-border-light bg-yazz-surface px-4 text-[13px] font-semibold text-yazz-text-body hover:bg-yazz-accent disabled:opacity-50 sm:flex-none"
+              >
+                {answering === "no" ? <Loader2 className="mx-auto h-4 w-4 animate-spin" /> : "Non"}
+              </button>
+              <button
+                disabled={answering !== null}
+                onClick={async () => {
+                  setAnswering("yes");
+                  const r = await answerSuggestion(suggestion, true);
+                  setAnswering(null);
+                  setFeedback(r.ok ? { type: "success", message: r.message ?? "" } : { type: "error", message: r.error });
+                }}
+                className="font-inter flex h-10 flex-1 items-center justify-center gap-2 rounded-yazz-sm yazz-gradient-primary px-4 text-[13px] font-semibold text-white shadow-yazz-medium disabled:opacity-50 sm:flex-none"
+              >
+                {answering === "yes" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+                <span className="sm:hidden">Oui</span>
+                <span className="hidden sm:inline">Oui, c&apos;est ma maison</span>
+              </button>
+            </div>
           </div>
         )}
 
