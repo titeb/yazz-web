@@ -21,6 +21,28 @@ export function isMoving(speed: number | null | undefined): boolean {
   return (Number(speed) || 0) > STOPPED_MAX_KMH;
 }
 
+/** Au-delà, la position GPS est trop ancienne pour dire si le véhicule roule. */
+export const FIX_STALE_AFTER_MS = 3 * 60 * 1000;
+
+/**
+ * « Signal GPS faible » (même règle que l'application mobile,
+ * LastPositionModel.hasStaleMovingFix) : le capteur est connecté, mais sa
+ * dernière position GPS — prise en roulant — date de plus de 3 min (tunnel,
+ * parking couvert, points reçus en retard). On ne sait pas s'il roule
+ * encore : on n'affiche pas un faux « En mouvement ».
+ * `fixTime` = heure GPS du point (colonne `timestamp`), à vérifier après le
+ * contrôle « hors ligne » (réception, `last_update`).
+ */
+export function hasStaleMovingFix(
+  speed: number | null | undefined,
+  fixTime: string | null | undefined,
+  now: number = Date.now()
+): boolean {
+  if (!isMoving(speed) || !fixTime) return false;
+  const t = new Date(fixTime).getTime();
+  return Number.isFinite(t) && now - t > FIX_STALE_AFTER_MS;
+}
+
 /** Roule lentement (3 – 10 km/h) : « Ralentissement ». */
 export function isCrawling(speed: number | null | undefined): boolean {
   const s = Number(speed) || 0;

@@ -44,6 +44,13 @@ const statusConfig: Record<VehicleStatus, {
     bg: "bg-yazz-text-caption",
     label: "Hors-ligne",
   },
+  // Connecté, mais pas de position GPS récente alors qu'il roulait
+  weak_gps: {
+    color: "#888CA8",
+    ring: "shadow-[0_0_0_2px_rgba(136,140,168,0.15)]",
+    bg: "bg-yazz-text-caption",
+    label: "Signal GPS faible",
+  },
   alert: {
     color: "#E53E3E",
     ring: "shadow-[0_0_0_4px_rgba(229,62,62,0.25)]",

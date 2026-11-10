@@ -20,6 +20,8 @@ const statusConfig: Record<VehicleStatus, { color: string; label: string }> = {
   moving: { color: "#2B44EE", label: "En mouvement" },
   idle: { color: "#2B44EE", label: "À l'arrêt" },
   offline: { color: "#2B44EE", label: "Hors-ligne" },
+  // Connecté, mais pas de position GPS récente alors qu'il roulait
+  weak_gps: { color: "#2B44EE", label: "Signal GPS faible" },
   alert: { color: "#F44336", label: "Alerte" },
 };
 
@@ -289,7 +291,7 @@ export function YazzMapbox({ vehicles, selectedId, onSelect }: YazzMapboxProps) 
           </div>
           <p style="font-size:10px;color:#5a5f8a;margin:2px 0 0 0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(v.address || "—")}</p>
           <div style="display:flex;justify-content:space-between;margin-top:6px;font-size:10px">
-            <span style="font-family:var(--font-outfit),sans-serif;font-weight:600;color:#2b44ee">${isMoving(v.speed) ? `${v.speed} km/h` : "À l'arrêt"}</span>
+            <span style="font-family:var(--font-outfit),sans-serif;font-weight:600;color:#2b44ee">${v.status === "weak_gps" ? "Signal GPS faible" : isMoving(v.speed) ? `${v.speed} km/h` : "À l'arrêt"}</span>
             <span style="color:#888ca8">Batt: ${v.battery ?? "—"}%</span>
           </div>
         </div>

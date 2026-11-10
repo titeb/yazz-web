@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { createClientSafe, isSupabaseConfigured } from "@/lib/supabase/client";
 import type { Database } from "@/lib/yazz/types/database";
-import { isMoving } from "@/lib/yazz/motion";
+import { hasStaleMovingFix, isMoving } from "@/lib/yazz/motion";
 
 type UserDevice = Database["public"]["Tables"]["user_devices"]["Row"];
 type LastKnownPosition = Database["public"]["Tables"]["last_known_positions"]["Row"];
@@ -14,7 +14,7 @@ export type VehicleWithPosition = {
   deviceId: string; // device IMEI
   name: string;
   plate: string | null;
-  status: "moving" | "idle" | "offline" | "alert";
+  status: "moving" | "idle" | "offline" | "alert" | "weak_gps";
   speed: number;
   battery: number | null;
   lastUpdate: string;
@@ -69,6 +69,7 @@ export function useUserVehicles() {
     if (lastUpdate < tenMinAgo) return "offline";
     if (device?.engine_cut_state) return "alert";
     if (pos.battery_percent !== null && pos.battery_percent < 20) return "alert";
+    if (hasStaleMovingFix(pos.speed, pos.timestamp)) return "weak_gps";
     if (isMoving(pos.speed)) return "moving";
     return "idle";
   };
@@ -285,6 +286,7 @@ export function useUserVehicles() {
               if (lastUpdateMs < tenMinAgo) status = "offline";
               else if (v.engineCutState) status = "alert";
               else if (newPos.battery_percent !== null && newPos.battery_percent < 20) status = "alert";
+              else if (hasStaleMovingFix(newPos.speed, newPos.timestamp)) status = "weak_gps";
               else if (isMoving(newPos.speed)) status = "moving";
 
               return {

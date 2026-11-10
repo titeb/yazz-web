@@ -3,7 +3,7 @@
 // À remplacer par les vrais appels Supabase en production.
 // ============================================================
 
-export type VehicleStatus = "moving" | "idle" | "offline" | "alert";
+export type VehicleStatus = "moving" | "idle" | "offline" | "alert" | "weak_gps";
 
 export type Vehicle = {
   id: string;

@@ -24,7 +24,7 @@ import { YazzEngineCutModal } from "./yazz-engine-cut-modal";
 import { OptionsModal } from "./yazz-options-modal";
 import { createClientSafe } from "@/lib/supabase/client";
 import { useYazzToast, YazzToastContainer } from "./yazz-toast";
-import { isCrawling, isMoving } from "@/lib/yazz/motion";
+import { hasStaleMovingFix, isCrawling, isMoving } from "@/lib/yazz/motion";
 
 // ============================================================
 // Helpers — mêmes règles que le dashboard (cohérence visuelle)
@@ -93,6 +93,16 @@ function deriveStatus(d: UserDevice): StatusInfo {
       color: "text-yazz-crawling",
       dot: "bg-yazz-crawling",
       bg: "bg-yazz-crawling/15 border border-yazz-crawling/40",
+    };
+  }
+  if (hasStaleMovingFix(d.speed, d.fixTime)) {
+    // Connecté, mais pas de position GPS récente alors qu'il roulait :
+    // on ne sait pas s'il roule encore (même règle que l'app mobile).
+    return {
+      label: "Signal GPS faible",
+      color: "text-yazz-text-caption",
+      dot: "bg-yazz-text-caption",
+      bg: "bg-yazz-text-caption/15 border border-yazz-text-caption/40",
     };
   }
   if (isMoving(d.speed)) {

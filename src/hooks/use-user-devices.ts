@@ -25,6 +25,8 @@ export type UserDevice = {
   engineCutState: boolean | null;
   // Position actuelle (depuis last_known_positions)
   speed: number | null;
+  /** Heure GPS de la position (colonne `timestamp`) ; `lastUpdate` = réception. */
+  fixTime: string | null;
   batteryPercent: number | null;
   lastUpdate: string | null;
   isConnected: boolean | null;
@@ -187,6 +189,7 @@ export function useUserDevices(): UseUserDevicesResult {
           vehiclePhoto: ud.vehicle_photo ?? null,
           engineCutState: ud.engine_cut_state ?? null,
           speed: pos?.speed ?? null,
+          fixTime: pos?.timestamp ?? null,
           batteryPercent: pos?.battery_percent ?? null,
           lastUpdate: pos?.last_update ?? null,
           isConnected: pos?.is_connected ?? null,
@@ -238,6 +241,7 @@ export function useUserDevices(): UseUserDevicesResult {
       engineCutState: ud.engine_cut_state ?? null,
       // Position : conservée depuis l'état existant (les updates user_devices ne touchent pas les positions)
       speed: existingPos?.speed ?? null,
+      fixTime: existingPos?.fixTime ?? null,
       batteryPercent: existingPos?.batteryPercent ?? null,
       lastUpdate: existingPos?.lastUpdate ?? null,
       isConnected: existingPos?.isConnected ?? null,
@@ -313,6 +317,7 @@ export function useUserDevices(): UseUserDevicesResult {
               updated[idx] = {
                 ...updated[idx],
                 speed: newRow.speed !== undefined ? newRow.speed : updated[idx].speed,
+                fixTime: newRow.timestamp !== undefined ? newRow.timestamp : updated[idx].fixTime,
                 batteryPercent: newRow.battery_percent !== undefined ? newRow.battery_percent : updated[idx].batteryPercent,
                 lastUpdate: newRow.last_update !== undefined ? newRow.last_update : updated[idx].lastUpdate,
                 isConnected: newRow.is_connected !== undefined ? newRow.is_connected : updated[idx].isConnected,
