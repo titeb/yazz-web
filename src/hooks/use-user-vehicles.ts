@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { createClientSafe, isSupabaseConfigured } from "@/lib/supabase/client";
 import type { Database } from "@/lib/yazz/types/database";
+import { isMoving } from "@/lib/yazz/motion";
 
 type UserDevice = Database["public"]["Tables"]["user_devices"]["Row"];
 type LastKnownPosition = Database["public"]["Tables"]["last_known_positions"]["Row"];
@@ -68,7 +69,7 @@ export function useUserVehicles() {
     if (lastUpdate < tenMinAgo) return "offline";
     if (device?.engine_cut_state) return "alert";
     if (pos.battery_percent !== null && pos.battery_percent < 20) return "alert";
-    if ((pos.speed ?? 0) > 0) return "moving";
+    if (isMoving(pos.speed)) return "moving";
     return "idle";
   };
 
@@ -284,7 +285,7 @@ export function useUserVehicles() {
               if (lastUpdateMs < tenMinAgo) status = "offline";
               else if (v.engineCutState) status = "alert";
               else if (newPos.battery_percent !== null && newPos.battery_percent < 20) status = "alert";
-              else if ((newPos.speed ?? 0) > 0) status = "moving";
+              else if (isMoving(newPos.speed)) status = "moving";
 
               return {
                 ...v,

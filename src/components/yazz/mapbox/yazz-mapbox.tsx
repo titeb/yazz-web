@@ -5,6 +5,7 @@ import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { cn } from "@/lib/utils";
 import type { Vehicle, VehicleStatus } from "@/lib/yazz/mock-data";
+import { isMoving } from "@/lib/yazz/motion";
 
 type YazzMapboxProps = {
   vehicles: Vehicle[];
@@ -288,7 +289,7 @@ export function YazzMapbox({ vehicles, selectedId, onSelect }: YazzMapboxProps) 
           </div>
           <p style="font-size:10px;color:#5a5f8a;margin:2px 0 0 0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(v.address || "—")}</p>
           <div style="display:flex;justify-content:space-between;margin-top:6px;font-size:10px">
-            <span style="font-family:var(--font-outfit),sans-serif;font-weight:600;color:#2b44ee">${v.speed > 0 ? `${v.speed} km/h` : "À l'arrêt"}</span>
+            <span style="font-family:var(--font-outfit),sans-serif;font-weight:600;color:#2b44ee">${isMoving(v.speed) ? `${v.speed} km/h` : "À l'arrêt"}</span>
             <span style="color:#888ca8">Batt: ${v.battery ?? "—"}%</span>
           </div>
         </div>

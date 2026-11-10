@@ -23,6 +23,7 @@ import { YazzEngineCutModal } from "./yazz-engine-cut-modal";
 import { OptionsModal } from "./yazz-options-modal";
 import { createClientSafe } from "@/lib/supabase/client";
 import { useYazzToast, YazzToastContainer } from "./yazz-toast";
+import { isCrawling } from "@/lib/yazz/motion";
 
 type YazzVehicleDetailProps = {
   vehicle: Vehicle;
@@ -202,7 +203,11 @@ export function YazzVehicleDetail({ vehicle, onClose }: YazzVehicleDetailProps) 
     router.push("/sos");
   };
 
-  const badge = getStatusBadge(vehicle.status);
+  // 3 – 10 km/h : « Ralentissement », comme l'app mobile
+  const badge =
+    vehicle.status === "moving" && isCrawling(vehicle.speed)
+      ? { color: "text-yazz-crawling", bg: "bg-yazz-crawling/15 border-yazz-crawling/40", label: "Ralentissement" }
+      : getStatusBadge(vehicle.status);
   const battColor = getBatteryColor(vehicle.battery);
   const firstLetter = (vehicle.name || "?")[0]?.toUpperCase() || "?";
 
