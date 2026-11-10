@@ -279,7 +279,7 @@ export function YazzMapPanel({ vehicles, selectedId, onSelect }: YazzMapPanelPro
                 <p className="font-inter mt-0.5 truncate text-[10px] text-yazz-text-muted">{v.address}</p>
                 <div className="font-inter mt-1.5 flex items-center justify-between text-[10px]">
                   <span className="font-outfit font-semibold text-yazz-primary">
-                    {v.speed > 0 ? `${v.speed} km/h` : "À l'arrêt"}
+                    {isMoving ? `${v.speed} km/h` : "À l'arrêt"}
                   </span>
                   <span className="text-yazz-text-caption">Batt: {v.battery}%</span>
                 </div>

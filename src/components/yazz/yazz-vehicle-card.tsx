@@ -13,6 +13,7 @@ import {
   Car,
 } from "lucide-react";
 import type { Vehicle, VehicleStatus } from "@/lib/yazz/mock-data";
+import { isMoving } from "@/lib/yazz/motion";
 
 type YazzVehicleCardProps = {
   vehicles: Vehicle[];
@@ -159,7 +160,7 @@ export function YazzVehicleCard({ vehicles, selectedId, onSelect }: YazzVehicleC
                         <span className="font-outfit text-[10px] font-semibold text-yazz-text-caption">
                           Hors-ligne
                         </span>
-                      ) : v.speed > 0 ? (
+                      ) : isMoving(v.speed) ? (
                         <span className="font-outfit flex items-center gap-0.5 text-[10px] font-bold text-yazz-primary">
                           <Zap className="h-2.5 w-2.5" />
                           {v.speed} km/h

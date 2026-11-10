@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef } from "react";
 import { createClientSafe, isSupabaseConfigured } from "@/lib/supabase/client";
+import { isMoving } from "@/lib/yazz/motion";
 
 export type UserStats = {
   totalVehicles: number;
@@ -35,7 +36,7 @@ let statsChannelCounter = 0;
 /**
  * Hook qui récupère les statistiques utilisateur en temps réel.
  * - Total véhicules (user_devices)
- * - Véhicules en mouvement (last_known_positions.speed > 0 + connecté < 10 min)
+ * - Véhicules en mouvement (last_known_positions.speed > 3 km/h + connecté < 10 min)
  * - Alertes actives (notifications non lues)
  * - Solde crédit (user_credits)
  *
@@ -106,7 +107,7 @@ export function useUserStats() {
       const movingVehicles = (positionsData ?? []).filter(
         (p: any) =>
           deviceIds.has(p.device_id) &&
-          (p.speed ?? 0) > 0 &&
+          isMoving(p.speed) &&
           p.last_update &&
           new Date(p.last_update).getTime() > tenMinAgo
       ).length;
