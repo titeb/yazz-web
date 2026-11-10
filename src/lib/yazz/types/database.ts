@@ -12,7 +12,7 @@ export type Json =
   | { [key: string]: Json | undefined }
   | Json[];
 
-export type VehicleStatus = "moving" | "idle" | "offline" | "alert";
+export type VehicleStatus = "moving" | "idle" | "offline" | "alert" | "weak_gps";
 
 export type AlertType =
   | "geofence"

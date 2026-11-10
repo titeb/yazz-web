@@ -47,6 +47,13 @@ const statusConfig: Record<VehicleStatus, {
     badgeLabel: "Hors-ligne",
     badgeClass: "bg-yazz-text-caption/10 text-yazz-text-caption",
   },
+  // Connecté, mais pas de position GPS récente alors qu'il roulait
+  weak_gps: {
+    dot: "bg-yazz-primary opacity-60",
+    bg: "bg-yazz-primary/5",
+    badgeLabel: "GPS faible",
+    badgeClass: "bg-yazz-text-caption/10 text-yazz-text-caption",
+  },
   alert: {
     dot: "bg-yazz-error yazz-blink",
     bg: "bg-yazz-error/10",
@@ -159,6 +166,10 @@ export function YazzVehicleCard({ vehicles, selectedId, onSelect }: YazzVehicleC
                       {v.status === "offline" ? (
                         <span className="font-outfit text-[10px] font-semibold text-yazz-text-caption">
                           Hors-ligne
+                        </span>
+                      ) : v.status === "weak_gps" ? (
+                        <span className="font-outfit text-[10px] font-semibold text-yazz-text-caption">
+                          Signal GPS faible
                         </span>
                       ) : isMoving(v.speed) ? (
                         <span className="font-outfit flex items-center gap-0.5 text-[10px] font-bold text-yazz-primary">

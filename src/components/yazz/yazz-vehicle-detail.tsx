@@ -47,6 +47,9 @@ function getStatusBadge(status: string): { color: string; bg: string; label: str
       return { color: "text-yazz-error", bg: "bg-yazz-error/15 border-yazz-error/40", label: "Hors ligne" };
     case "alert":
       return { color: "text-yazz-error", bg: "bg-yazz-error/15 border-yazz-error/40", label: "Alerte" };
+    case "weak_gps":
+      // Connecté, mais pas de position GPS récente alors qu'il roulait
+      return { color: "text-yazz-text-caption", bg: "bg-yazz-text-caption/15 border-yazz-text-caption/40", label: "Signal GPS faible" };
     default:
       return { color: "text-yazz-text-caption", bg: "bg-yazz-text-caption/15 border-yazz-text-caption/40", label: "Inconnu" };
   }
