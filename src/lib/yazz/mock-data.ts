@@ -15,6 +15,8 @@ export type Vehicle = {
   speed: number; // km/h
   battery: number; // %
   lastUpdate: string; // ISO
+  /** Heure GPS de la position (ISO) — durée du glissement du marqueur */
+  fixTime?: string | null;
   position: { x: number; y: number }; // % position on map
   heading: number; // deg
   address: string;

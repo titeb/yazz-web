@@ -6,6 +6,10 @@ import "mapbox-gl/dist/mapbox-gl.css";
 import { cn } from "@/lib/utils";
 import type { Vehicle, VehicleStatus } from "@/lib/yazz/mock-data";
 import { isMoving } from "@/lib/yazz/motion";
+import { distanceM, ease, glideDurationMs, lerpHeading, lerpLngLat, shouldGlide, type LngLat } from "@/lib/yazz/glide";
+
+// Glissement en cours d'un marqueur (voir lib/yazz/glide.ts)
+type Glide = { from: LngLat; to: LngLat; fromHeading: number; toHeading: number; heading: number; start: number; dur: number };
 
 type YazzMapboxProps = {
   vehicles: Vehicle[];
@@ -40,6 +44,11 @@ export function YazzMapbox({ vehicles, selectedId, onSelect }: YazzMapboxProps) 
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
   const markersRef = useRef<Map<string, mapboxgl.Marker>>(new Map());
+  // Glissement des marqueurs vers leur nouvelle position
+  const glidesRef = useRef<Map<string, Glide>>(new Map());
+  const headingsRef = useRef<Map<string, number>>(new Map()); // angle affiché de la flèche
+  const fixTimesRef = useRef<Map<string, string | null>>(new Map()); // heure GPS affichée
+  const rafRef = useRef<number | null>(null);
   const [mapReady, setMapReady] = useState(false);
   const [filter, setFilter] = useState<VehicleStatus | "all">("all");
 
@@ -125,6 +134,9 @@ export function YazzMapbox({ vehicles, selectedId, onSelect }: YazzMapboxProps) 
     window.addEventListener("resize", handleResize);
     return () => {
       window.removeEventListener("resize", handleResize);
+      if (rafRef.current != null) cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
+      glidesRef.current.clear();
       markersRef.current.forEach((m) => m.remove());
       markersRef.current.clear();
       map.current?.remove();
@@ -132,14 +144,22 @@ export function YazzMapbox({ vehicles, selectedId, onSelect }: YazzMapboxProps) 
     };
   }, []);
 
-  // Re-fit bounds quand les véhicules changent (au premier chargement)
+  // Re-fit bounds au chargement, quand la liste des véhicules ou le filtre
+  // change, ou quand on désélectionne un véhicule — PAS à chaque nouvelle
+  // position (avant, la carte se recadrait toute seule toutes les quelques
+  // secondes et annulait le zoom / déplacement de l'utilisateur).
   // ⚠️ Ne pas fit si un véhicule est sélectionné (sinon reset pitch/zoom)
+  const vehicleIdsKey = useMemo(() => vehicles.map((v) => v.id).join(","), [vehicles]);
+  const fitRef = useRef(fitAllMarkers);
   useEffect(() => {
-    if (!mapReady || !map.current || vehicles.length === 0 || selectedId) return;
+    fitRef.current = fitAllMarkers;
+  }, [fitAllMarkers]);
+  useEffect(() => {
+    if (!mapReady || !map.current || !vehicleIdsKey || selectedId) return;
     // Petit délai pour que les markers soient créés
-    const t = setTimeout(() => fitAllMarkers(), 300);
+    const t = setTimeout(() => fitRef.current(), 300);
     return () => clearTimeout(t);
-  }, [mapReady, vehicles, fitAllMarkers, selectedId]);
+  }, [mapReady, vehicleIdsKey, filter, selectedId]);
 
   // Convert vehicle position to [lng, lat]
   // FIX 2026-10-31 : snap-to-road retiré — utilise directement la position GPS brute.
@@ -159,17 +179,40 @@ export function YazzMapbox({ vehicles, selectedId, onSelect }: YazzMapboxProps) 
 
   // FIX 2026-10-31 : snap-to-road useEffect retiré — on utilise la position GPS brute.
 
+  // Une image de glissement : avance chaque marqueur en mouvement.
+  const stepGlides = useCallback(function step() {
+    const now = performance.now();
+    glidesRef.current.forEach((g, id) => {
+      const t = Math.min(1, (now - g.start) / g.dur);
+      const e = ease(t);
+      const pos = t >= 1 ? g.to : lerpLngLat(g.from, g.to, e);
+      g.heading = t >= 1 ? g.toHeading : lerpHeading(g.fromHeading, g.toHeading, e);
+      headingsRef.current.set(id, g.heading);
+      const m = markersRef.current.get(id);
+      if (m) {
+        m.setLngLat(pos);
+        const arrow = m.getElement().querySelector<SVGElement>("[data-yazz-arrow]");
+        if (arrow) arrow.style.transform = `rotate(${g.heading}deg)`;
+      }
+      if (t >= 1) glidesRef.current.delete(id);
+    });
+    rafRef.current = glidesRef.current.size > 0 ? requestAnimationFrame(step) : null;
+  }, []);
+
   // Update markers
   useEffect(() => {
     if (!mapReady || !map.current) return;
 
     const filtered = filter === "all" ? vehicles : vehicles.filter((v) => v.status === filter);
+    const reduceMotion =
+      typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 
     // Remove markers not in filtered list
     markersRef.current.forEach((marker, id) => {
       if (!filtered.find((v) => v.id === id)) {
         marker.remove();
         markersRef.current.delete(id);
+        glidesRef.current.delete(id);
       }
     });
 
@@ -245,7 +288,7 @@ export function YazzMapbox({ vehicles, selectedId, onSelect }: YazzMapboxProps) 
       const iconHtml =
         v.status === "alert"
           ? `<svg width="${iconSize}" height="${iconSize}" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="position:relative;z-index:1"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>`
-          : `<svg width="${iconSize}" height="${iconSize}" viewBox="0 0 24 24" fill="white" stroke="white" stroke-width="0.5" style="position:relative;z-index:1;transform:rotate(${v.heading || 0}deg)"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg>`;
+          : `<svg width="${iconSize}" height="${iconSize}" viewBox="0 0 24 24" fill="white" stroke="white" stroke-width="0.5" data-yazz-arrow="1" style="position:relative;z-index:1;transform:rotate(${v.heading || 0}deg)"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg>`;
       circle.insertAdjacentHTML("beforeend", iconHtml);
       inner.appendChild(circle);
       el.appendChild(inner);
@@ -297,24 +340,60 @@ export function YazzMapbox({ vehicles, selectedId, onSelect }: YazzMapboxProps) 
         </div>
       `);
 
-      let marker = markersRef.current.get(v.id);
-      if (marker) {
-        marker.setLngLat(lngLat).setPopup(popup);
-        marker.getElement().replaceWith(el);
-        marker = new mapboxgl.Marker(el)
-          .setLngLat(lngLat)
-          .setPopup(popup)
-          .addTo(map.current);
-        markersRef.current.set(v.id, marker);
-      } else {
-        marker = new mapboxgl.Marker(el)
-          .setLngLat(lngLat)
-          .setPopup(popup)
-          .addTo(map.current);
-        markersRef.current.set(v.id, marker);
+      // Le marqueur GLISSE depuis l'endroit où il est affiché jusqu'à la
+      // nouvelle position exacte (même règle que l'app mobile).
+      const old = markersRef.current.get(v.id);
+      const targetHeading = v.heading || 0;
+      const fixTime = v.fixTime ?? null;
+      let start: LngLat = lngLat;
+      let startHeading = targetHeading;
+      if (old) {
+        const shown = old.getLngLat();
+        const here: LngLat = [shown.lng, shown.lat];
+        const current = glidesRef.current.get(v.id);
+        const sameTarget = current && current.to[0] === lngLat[0] && current.to[1] === lngLat[1];
+        if (sameTarget) {
+          // Simple rafraîchissement (sélection, filtre) : le glissement continue
+          start = here;
+          startHeading = current.heading;
+        } else {
+          const d = distanceM(here, lngLat);
+          if (!reduceMotion && shouldGlide(d)) {
+            start = here;
+            startHeading = current ? current.heading : headingsRef.current.get(v.id) ?? targetHeading;
+            glidesRef.current.set(v.id, {
+              from: here,
+              to: lngLat,
+              fromHeading: startHeading,
+              toHeading: targetHeading,
+              heading: startHeading,
+              start: performance.now(),
+              dur: glideDurationMs(fixTimesRef.current.get(v.id), fixTime),
+            });
+          } else {
+            glidesRef.current.delete(v.id);
+          }
+        }
+        // Retirer vraiment l'ancien marqueur (avant, il restait attaché à la
+        // carte, caché : ils s'accumulaient et ralentissaient la carte).
+        old.remove();
       }
+      fixTimesRef.current.set(v.id, fixTime);
+      if (!glidesRef.current.has(v.id)) headingsRef.current.set(v.id, targetHeading);
+      const arrow = el.querySelector<SVGElement>("[data-yazz-arrow]");
+      if (arrow) arrow.style.transform = `rotate(${startHeading}deg)`;
+
+      const marker = new mapboxgl.Marker(el)
+        .setLngLat(start)
+        .setPopup(popup)
+        .addTo(map.current);
+      markersRef.current.set(v.id, marker);
     });
-  }, [vehicles, filter, selectedId, mapReady, onSelect]);
+
+    if (glidesRef.current.size > 0 && rafRef.current == null) {
+      rafRef.current = requestAnimationFrame(stepGlides);
+    }
+  }, [vehicles, filter, selectedId, mapReady, onSelect, stepGlides]);
 
   // Throttle pour le follow Realtime (Flutter: 1500ms)
   const lastFollowRef = useRef<number>(0);
@@ -395,9 +474,12 @@ export function YazzMapbox({ vehicles, selectedId, onSelect }: YazzMapboxProps) 
       const now = Date.now();
       if (now - lastFollowRef.current >= 1500) {
         lastFollowRef.current = now;
+        // Pendant un glissement, la caméra suit au même rythme que le marqueur
+        const g = glidesRef.current.get(selectedId);
+        const followMs = g ? Math.max(300, Math.round(g.start + g.dur - performance.now())) : 800;
         map.current.easeTo({
           center: lngLat,
-          duration: 800,
+          duration: followMs,
           essential: true,
         });
       }

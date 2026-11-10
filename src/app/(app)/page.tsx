@@ -23,6 +23,8 @@ function toMockVehicle(v: VehicleWithPosition) {
     speed: v.speed,
     battery: v.battery ?? 0,
     lastUpdate: v.lastUpdate,
+    // Heure GPS de la position : durée du glissement du marqueur
+    fixTime: v.fixTime,
     position: v.position,
     lat: v.lat,
     lng: v.lng,

@@ -18,6 +18,8 @@ export type VehicleWithPosition = {
   speed: number;
   battery: number | null;
   lastUpdate: string;
+  /** Heure GPS de la position (colonne `timestamp`) ; `lastUpdate` = réception. */
+  fixTime: string | null;
   position: { x: number; y: number };
   lat: number;
   lng: number;
@@ -218,6 +220,7 @@ export function useUserVehicles() {
           speed: pos?.speed ?? 0,
           battery: pos?.battery_percent ?? null,
           lastUpdate: pos?.last_update ?? new Date().toISOString(),
+          fixTime: pos?.timestamp ?? null,
           position: { x, y },
           lat,
           lng,
@@ -297,6 +300,7 @@ export function useUserVehicles() {
                 speed: newPos.speed ?? v.speed,
                 battery: newPos.battery_percent ?? v.battery,
                 lastUpdate: newPos.last_update ?? v.lastUpdate,
+                fixTime: newPos.timestamp ?? v.fixTime,
                 heading: newPos.heading ?? v.heading,
                 accOn: newPos.acc_status ?? v.accOn,
                 // FIX 2026-10-28 : Realtime update de contact_input_state
