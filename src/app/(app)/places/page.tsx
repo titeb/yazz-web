@@ -20,11 +20,11 @@ import { cn } from "@/lib/utils";
 import { useUserPlaces, type PlaceZone } from "@/hooks/use-user-places";
 import { useUserVehicles, type VehicleWithPosition } from "@/hooks/use-user-vehicles";
 import { PlacesMap, PlacePickerMap } from "@/components/yazz/mapbox/places-map";
+import { PlaceTypeIcon } from "@/components/yazz/place-type-icon";
 import {
   addressAt,
   findSameName,
   PLACE_SUGGESTIONS,
-  PLACE_TYPE_EMOJI,
   PLACE_TYPE_LABEL,
   placeLabel,
   searchAddress,
@@ -135,8 +135,8 @@ export default function PlacesPage() {
         {isReady && suggestion && (
           <div className="mb-6 flex flex-col gap-4 rounded-yazz-xl border border-yazz-primary/25 bg-yazz-primary/5 p-4 sm:flex-row sm:items-center">
             <div className="flex flex-1 items-start gap-3">
-              <div className="grid h-11 w-11 shrink-0 place-items-center rounded-yazz-lg bg-yazz-surface text-[22px] yazz-shadow-soft">
-                🏠
+              <div className="grid h-11 w-11 shrink-0 place-items-center rounded-yazz-lg bg-yazz-surface text-yazz-primary yazz-shadow-soft">
+                <PlaceTypeIcon type="home" className="h-5 w-5" />
               </div>
               <div className="min-w-0">
                 <p className="font-outfit text-[15px] font-bold text-yazz-text-dark">C&apos;est ta maison ?</p>
@@ -231,8 +231,8 @@ export default function PlacesPage() {
                   )}
                 >
                   <div className="flex items-start gap-3">
-                    <div className="grid h-11 w-11 shrink-0 place-items-center rounded-yazz-lg bg-yazz-primary/10 text-[20px]">
-                      {PLACE_TYPE_EMOJI[p.type]}
+                    <div className="grid h-11 w-11 shrink-0 place-items-center rounded-yazz-lg bg-yazz-primary/10 text-yazz-primary">
+                      <PlaceTypeIcon type={p.type} className="h-5 w-5" />
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
@@ -505,7 +505,9 @@ function PlaceEditorModal({
               Nom du lieu
             </label>
             <div className="relative">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[16px]">{PLACE_TYPE_EMOJI[type]}</span>
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-yazz-primary">
+                <PlaceTypeIcon type={type} className="h-4 w-4" />
+              </span>
               <input
                 id="place-name"
                 type="text"
@@ -527,13 +529,14 @@ function PlaceEditorModal({
                     type="button"
                     onClick={() => setName(s.name)}
                     className={cn(
-                      "font-inter rounded-full border px-2.5 py-1 text-[11px] font-semibold transition-colors",
+                      "font-inter inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold transition-colors",
                       name === s.name
                         ? "border-yazz-primary bg-yazz-primary/10 text-yazz-primary"
                         : "border-yazz-border-light text-yazz-text-body hover:border-yazz-primary/40",
                     )}
                   >
-                    {PLACE_TYPE_EMOJI[s.type]} {s.name}
+                    <PlaceTypeIcon type={s.type} className="h-3.5 w-3.5" />
+                    {s.name}
                   </button>
                 ))}
               </div>
@@ -615,7 +618,7 @@ function PlaceEditorModal({
 
             {/* Carte */}
             <div className="mt-3 h-[220px] overflow-hidden rounded-yazz-md border border-yazz-border-light bg-yazz-accent">
-              <PlacePickerMap value={point} center={near} emoji={PLACE_TYPE_EMOJI[type]} onChange={placeAt} />
+              <PlacePickerMap value={point} center={near} type={type} onChange={placeAt} />
             </div>
             <p className="font-inter mt-1.5 text-[11px] text-yazz-text-caption">
               Touche la carte pour placer l&apos;épingle, ou fais-la glisser.
@@ -755,8 +758,8 @@ function ArrivalAlertModal({
         >
           <X className="h-4 w-4" />
         </button>
-        <div className="mb-3 grid h-11 w-11 place-items-center rounded-full bg-yazz-primary/10 text-[20px]">
-          {PLACE_TYPE_EMOJI[place.type]}
+        <div className="mb-3 grid h-11 w-11 place-items-center rounded-full bg-yazz-primary/10 text-yazz-primary">
+          <PlaceTypeIcon type={place.type} className="h-5 w-5" />
         </div>
         <h2 className="font-outfit pr-8 text-[16px] font-bold text-yazz-text-dark">
           Me prévenir à l&apos;arrivée à « {placeLabel(place.name)} »

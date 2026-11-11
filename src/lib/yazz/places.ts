@@ -33,14 +33,46 @@ export const PLACE_TYPE_LABEL: Record<PlaceType, string> = {
   custom: "Lieu",
 };
 
-export const PLACE_TYPE_EMOJI: Record<PlaceType, string> = {
-  home: "🏠",
-  work: "💼",
-  school: "🎒",
-  church: "⛪",
-  garage: "🔧",
-  custom: "📍",
+/**
+ * Dessins des icônes de lieux pour les épingles de la carte (famille Lucide,
+ * grille 24 × 24) — mêmes icônes que la liste (place-type-icon.tsx) et que
+ * l'app téléphone.
+ */
+const PLACE_ICON_PATHS: Record<PlaceType, string[]> = {
+  home: [
+    "M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8",
+    "M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z",
+  ],
+  work: [
+    "M16 20V4a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16",
+    "M4 6h16a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2z",
+  ],
+  school: [
+    "M21.42 10.922a1 1 0 0 0-.019-1.838L12.83 5.18a2 2 0 0 0-1.66 0L2.6 9.08a1 1 0 0 0 0 1.832l8.57 3.908a2 2 0 0 0 1.66 0z",
+    "M22 10v6",
+    "M6 12.5V16a6 3 0 0 0 12 0v-3.5",
+  ],
+  church: [
+    "M10 9h4",
+    "M12 7v5",
+    "M14 22v-4a2 2 0 0 0-4 0v4",
+    "M18 22V5.618a1 1 0 0 0-.553-.894l-4.553-2.277a2 2 0 0 0-1.788 0L6.553 4.724A1 1 0 0 0 6 5.618V22",
+    "m18 7 3.447 1.724a1 1 0 0 1 .553.894V20a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V9.618a1 1 0 0 1 .553-.894L6 7",
+  ],
+  garage: [
+    "M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z",
+  ],
+  custom: [
+    "M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0",
+    "M15 10a3 3 0 1 1-6 0a3 3 0 1 1 6 0z",
+  ],
 };
+
+/** Icône d'un lieu en SVG (couleur : celle du texte autour). */
+export function placeIconSvg(type: PlaceType, size = 18): string {
+  const paths = (PLACE_ICON_PATHS[type] ?? PLACE_ICON_PATHS.custom).map((d) => `<path d="${d}"/>`).join("");
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths}</svg>`;
+}
 
 /** Noms proposés en un clic. */
 export const PLACE_SUGGESTIONS: { name: string; type: PlaceType }[] = [
