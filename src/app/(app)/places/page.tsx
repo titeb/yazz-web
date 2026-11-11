@@ -21,6 +21,7 @@ import { useUserPlaces, type PlaceZone } from "@/hooks/use-user-places";
 import { useUserVehicles, type VehicleWithPosition } from "@/hooks/use-user-vehicles";
 import { PlacesMap, PlacePickerMap } from "@/components/yazz/mapbox/places-map";
 import { PlaceTypeIcon } from "@/components/yazz/place-type-icon";
+import { useAssistantVisible } from "@/hooks/use-assistant-visible";
 import {
   addressAt,
   findSameName,
@@ -58,6 +59,8 @@ export default function PlacesPage() {
   } = useUserPlaces();
   const [answering, setAnswering] = useState<"yes" | "no" | null>(null);
   const { vehicles } = useUserVehicles();
+  // Mentions de l'assistant seulement s'il est visible pour ce compte
+  const assistant = useAssistantVisible().visible;
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [editing, setEditing] = useState<UserPlace | "new" | null>(null);
@@ -82,7 +85,7 @@ export default function PlacesPage() {
           <div>
             <h1 className="font-outfit text-[24px] font-bold tracking-[-0.02em] text-yazz-text-dark">Mes lieux</h1>
             <p className="font-inter mt-1 text-[13px] text-yazz-text-muted">
-              Maison, école, garage… Tes lieux, connus aussi de l&apos;assistant Yazz.
+              {assistant ? "Maison, école, garage… Tes lieux, connus aussi de l'assistant Yazz." : "Maison, école, garage… Tes lieux."}
             </p>
           </div>
           {isReady && (
@@ -301,7 +304,7 @@ export default function PlacesPage() {
         )}
 
         {/* Astuce assistant */}
-        {isReady && (
+        {isReady && assistant && (
           <div className="mt-6 flex items-start gap-3 rounded-yazz-md bg-yazz-primary/5 p-3">
             <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-yazz-primary" />
             <p className="font-inter text-[12px] text-yazz-text-muted">
@@ -335,6 +338,7 @@ export default function PlacesPage() {
       {deleting && (
         <DeletePlaceModal
           place={deleting}
+          assistant={assistant}
           alerts={alertsAt(deleting)}
           onClose={() => setDeleting(null)}
           onConfirm={async (alsoAlerts) => {
@@ -666,11 +670,13 @@ function PlaceEditorModal({
 
 function DeletePlaceModal({
   place,
+  assistant,
   alerts,
   onClose,
   onConfirm,
 }: {
   place: UserPlace;
+  assistant: boolean;
   alerts: PlaceZone[];
   onClose: () => void;
   onConfirm: (alsoAlerts: boolean) => Promise<void>;
@@ -689,7 +695,7 @@ function DeletePlaceModal({
         </div>
         <h2 className="font-outfit text-[16px] font-bold text-yazz-text-dark">Supprimer « {placeLabel(place.name)} » ?</h2>
         <p className="font-inter mt-1 text-[12px] text-yazz-text-muted">
-          L&apos;assistant ne connaîtra plus ce lieu. Tu pourras le rajouter quand tu veux.
+          {assistant ? "L'assistant ne connaîtra plus ce lieu. " : ""}Tu pourras le rajouter quand tu veux.
         </p>
         {alerts.length > 0 && (
           <label className="font-inter mt-3 flex cursor-pointer items-start gap-2 rounded-yazz-sm bg-yazz-accent p-2.5 text-[12px] text-yazz-text-dark">
