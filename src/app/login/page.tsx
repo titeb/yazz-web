@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, Suspense, useEffect, useRef } from "react";
+import { useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClientSafe, isSupabaseConfigured } from "@/lib/supabase/client";
 import { YazzLogo } from "@/components/yazz/yazz-logo";
@@ -13,28 +13,9 @@ import {
   ChevronLeft,
   CheckCircle2,
   AlertTriangle,
-  Sparkles,
 } from "lucide-react";
 
 type Mode = "phone" | "email";
-
-// ═══════════════════════════════════════════════════════════════
-// TEST ACCOUNTS — OTP auto-fetch (reproduction exacte du Flutter)
-// ═══════════════════════════════════════════════════════════════
-// Ces 13 numéros sont des comptes test. Quand un testeur demande un OTP,
-// le backend stocke le code en mémoire au lieu d'envoyer un SMS.
-// L'app récupère automatiquement le code via /api/auth/test-code
-// et l'auto-saisit pour l'utilisateur.
-// ⚠️ TEMPORAIRE — à retirer après tests (cf. audit P0-2)
-const TEST_PHONES = new Set<string>([
-  "243810000001", "243810000002", "243810000003", "243810000004",
-  "243810000005", "243810000006", "243810000007", "243810000008",
-  "243810000009", "243810000010", "243810000011", "243810000012",
-  "243986842924", // Henock Titebe (owner)
-]);
-const TEST_CODE_KEY = "yazz-test-2026";
-const BACKEND_URL = process.env.NEXT_PUBLIC_YAZZ_BACKEND_URL || "https://api.zipbox.online";
-// ═══════════════════════════════════════════════════════════════
 
 export default function LoginPage() {
   return (
@@ -74,14 +55,6 @@ function LoginContent() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // ─── TEST ACCOUNTS state ───────────────────────────────
-  const [testOtpCode, setTestOtpCode] = useState<string | null>(null);
-  const [isFetchingTestCode, setIsFetchingTestCode] = useState(false);
-  const [testFetchAttempts, setTestFetchAttempts] = useState(0);
-  const [isTestPhone, setIsTestPhone] = useState(false);
-  const fetchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  // ──────────────────────────────────────────────────────
-
   const formatPhone = (raw: string) => {
     // Normaliser le phone RDC : +243XXXXXXXXX
     let p = raw.replace(/\s+/g, "");
@@ -90,59 +63,6 @@ function LoginContent() {
     return p;
   };
 
-  // Vérifie si le phone est un numéro test
-  const checkIsTestPhone = (raw: string): boolean => {
-    const digits = raw.replace(/\D/g, "");
-    return TEST_PHONES.has(digits);
-  };
-
-  // Pour les numéros test, le backend stocke le code en mémoire (pas de SMS envoyé).
-  // On récupère le code via /api/auth/test-code (proxy → backend).
-  // Le code change à chaque demande (aléatoire, pas de code fixe 123456).
-  const fetchTestOtpCode = async (phoneDigits: string) => {
-    if (isFetchingTestCode || testOtpCode) return;
-    setIsFetchingTestCode(true);
-    try {
-      const res = await fetch(`/api/auth/test-code?phone=${phoneDigits}&key=${TEST_CODE_KEY}`);
-      const data = await res.json();
-      if (data.code && data.code.length === 6) {
-        // Code trouvé → auto-remplir + auto-valider
-        setTestOtpCode(data.code);
-        setOtp(data.code);
-        setTimeout(() => {
-          verifyOtpWithCode(data.code, phoneDigits);
-        }, 500);
-      } else {
-        // Pas encore de code (le webhook n'a pas encore été traité)
-        // → retry dans 3s, max 10 tentatives (30s total)
-        setIsFetchingTestCode(false);
-        setTestFetchAttempts((prev) => {
-          const next = prev + 1;
-          if (next < 10) {
-            fetchTimerRef.current = setTimeout(() => fetchTestOtpCode(phoneDigits), 3000);
-          }
-          return next;
-        });
-      }
-    } catch {
-      setIsFetchingTestCode(false);
-      setTestFetchAttempts((prev) => {
-        const next = prev + 1;
-        if (next < 10) {
-          fetchTimerRef.current = setTimeout(() => fetchTestOtpCode(phoneDigits), 3000);
-        }
-        return next;
-      });
-    }
-  };
-
-  // Cleanup du timer quand on quitte la page
-  useEffect(() => {
-    return () => {
-      if (fetchTimerRef.current) clearTimeout(fetchTimerRef.current);
-    };
-  }, []);
-
   const sendOtp = async () => {
     setError(null);
     if (!supabaseReady) {
@@ -150,25 +70,13 @@ function LoginContent() {
       return;
     }
     setLoading(true);
-    // Reset test OTP state
-    setTestOtpCode(null);
-    setTestFetchAttempts(0);
     try {
       const formattedPhone = formatPhone(phone);
-      const phoneDigits = formattedPhone.replace(/\D/g, "");
-      const isTest = TEST_PHONES.has(phoneDigits);
-      setIsTestPhone(isTest);
-
       const { error } = await supabase!.auth.signInWithOtp({
         phone: formattedPhone,
       });
       if (error) throw error;
       setStep("otp");
-
-      // TEST ACCOUNTS : auto-fetch le code après 3s (comme le Flutter)
-      if (isTest) {
-        fetchTimerRef.current = setTimeout(() => fetchTestOtpCode(phoneDigits), 3000);
-      }
     } catch (err: any) {
       setError(err.message || "Erreur lors de l'envoi du code OTP");
     } finally {
@@ -185,30 +93,6 @@ function LoginContent() {
     if (token) {
       // Set cookie for middleware to read
       document.cookie = `${storageKey}=${encodeURIComponent(token)}; path=/; max-age=3600; SameSite=Lax`;
-    }
-  };
-
-  // Verify avec code fourni explicitement (pour auto-validation test)
-  const verifyOtpWithCode = async (code: string, phoneDigitsParam?: string) => {
-    setError(null);
-    if (!supabaseReady) return;
-    setLoading(true);
-    try {
-      const formattedPhone = formatPhone(phone);
-      const { error } = await supabase!.auth.verifyOtp({
-        phone: formattedPhone,
-        token: code,
-        type: "sms",
-      });
-      if (error) throw error;
-      // Sync session to cookies for middleware
-      await syncSessionToCookies();
-      router.push(redirectTo);
-      router.refresh();
-    } catch (err: any) {
-      setError(err.message || "Code OTP invalide");
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -387,53 +271,12 @@ function LoginContent() {
                       setStep("input");
                       setOtp("");
                       setError(null);
-                      setTestOtpCode(null);
-                      setTestFetchAttempts(0);
-                      if (fetchTimerRef.current) clearTimeout(fetchTimerRef.current);
                     }}
                     className="font-inter flex items-center gap-1 text-[12px] font-medium text-yazz-text-muted hover:text-yazz-primary"
                   >
                     <ChevronLeft className="h-3.5 w-3.5" />
                     Modifier le numéro
                   </button>
-
-                  {/* Bannière Mode Test (comme le Flutter) */}
-                  {isTestPhone && (
-                    <div className={cn(
-                      "rounded-yazz-sm border-l-2 p-3 yazz-animate-fade-in-up",
-                      testOtpCode
-                        ? "border-l-yazz-success bg-yazz-success/10"
-                        : "border-l-yazz-info bg-yazz-info/10"
-                    )}>
-                      <div className="flex items-start gap-2.5">
-                        {testOtpCode ? (
-                          <CheckCircle2 className="h-4 w-4 shrink-0 mt-0.5 text-yazz-success" />
-                        ) : isFetchingTestCode ? (
-                          <Loader2 className="h-4 w-4 shrink-0 mt-0.5 animate-spin text-yazz-info" />
-                        ) : (
-                          <Sparkles className="h-4 w-4 shrink-0 mt-0.5 text-yazz-info" />
-                        )}
-                        <div className="flex-1 min-w-0">
-                          <p className="font-outfit text-[12px] font-bold text-yazz-text-dark">
-                            {testOtpCode ? "Code OTP test récupéré" : "Mode test (sans SMS)"}
-                          </p>
-                          <p className="font-inter mt-0.5 text-[11px] text-yazz-text-muted leading-relaxed">
-                            {testOtpCode ? (
-                              <>
-                                Code <span className="font-mono font-bold text-yazz-success">{testOtpCode}</span> appliqué. Validation automatique…
-                              </>
-                            ) : isFetchingTestCode ? (
-                              <>Récupération du code en cours…</>
-                            ) : testFetchAttempts >= 5 ? (
-                              <>Impossible de récupérer le code. Saisis-le manuellement si tu l'as reçu par ailleurs.</>
-                            ) : (
-                              <>Backend stocke le code en mémoire. Récupération dans 3s…</>
-                            )}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  )}
 
                   <div>
                     <label className="font-inter mb-1.5 block text-[12px] font-medium text-yazz-text-body">
@@ -449,9 +292,7 @@ function LoginContent() {
                       className="font-outfit h-14 w-full rounded-yazz-sm border border-yazz-border-light bg-yazz-background px-4 text-center text-[24px] font-bold tracking-[0.4em] text-yazz-text-dark transition-all placeholder:text-yazz-text-caption focus:border-yazz-primary focus:outline-none focus:ring-2 focus:ring-yazz-primary/20"
                     />
                     <p className="font-inter mt-1.5 text-[11px] text-yazz-text-caption">
-                      {isTestPhone
-                        ? "Code test — pas de SMS envoyé (économise les crédits)"
-                        : `Code envoyé au ${formatPhone(phone)}`}
+                      {`Code envoyé au ${formatPhone(phone)}`}
                     </p>
                   </div>
 
