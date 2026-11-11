@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
-import { PLACE_TYPE_EMOJI, placeLabel, type UserPlace } from "@/lib/yazz/places";
+import { placeIconSvg, placeLabel, type PlaceType, type UserPlace } from "@/lib/yazz/places";
 
 /** Kinshasa (Gombe) : centre par défaut quand il n'y a encore rien à montrer. */
 const KINSHASA: [number, number] = [15.3136, -4.3105];
@@ -36,10 +36,10 @@ function circle(lng: number, lat: number, r: number): [number, number][] {
   return pts;
 }
 
-function pinElement(emoji: string, selected: boolean): HTMLDivElement {
+function pinElement(type: PlaceType, selected: boolean): HTMLDivElement {
   const el = document.createElement("div");
   el.className = "yazz-place-pin" + (selected ? " is-selected" : "");
-  el.innerHTML = `<span>${emoji}</span>`;
+  el.innerHTML = `<span>${placeIconSvg(type)}</span>`;
   return el;
 }
 
@@ -47,8 +47,9 @@ const PIN_CSS = `
 .yazz-place-pin{width:38px;height:38px;border-radius:50% 50% 50% 4px;transform:rotate(-45deg);
   background:#fff;border:2px solid #2B44EE;display:grid;place-items:center;cursor:pointer;
   box-shadow:0 6px 16px rgba(26,31,54,.25);transition:transform .2s cubic-bezier(.16,1,.3,1),background .2s}
-.yazz-place-pin span{transform:rotate(45deg);font-size:17px;line-height:1}
+.yazz-place-pin span{transform:rotate(45deg);line-height:0;color:#2B44EE}
 .yazz-place-pin.is-selected{background:#2B44EE;transform:rotate(-45deg) scale(1.15)}
+.yazz-place-pin.is-selected span{color:#fff}
 .yazz-place-pin:hover{transform:rotate(-45deg) scale(1.08)}
 `;
 
@@ -154,11 +155,11 @@ export function PlacesMap({ places, selectedId, onSelect, fallbackCenter }: Plac
         if (old) {
           old.setLngLat([p.lng, p.lat]);
           old.getElement().classList.toggle("is-selected", selected);
-          old.getElement().innerHTML = `<span>${PLACE_TYPE_EMOJI[p.type]}</span>`;
+          old.getElement().innerHTML = `<span>${placeIconSvg(p.type)}</span>`;
           old.getElement().title = placeLabel(p.name);
           continue;
         }
-        const el = pinElement(PLACE_TYPE_EMOJI[p.type], selected);
+        const el = pinElement(p.type, selected);
         el.title = placeLabel(p.name);
         el.addEventListener("click", (e) => {
           e.stopPropagation();
@@ -196,12 +197,12 @@ type PlacePickerMapProps = {
   value: { lat: number; lng: number } | null;
   /** Centre de départ si aucun point n'est encore choisi. */
   center?: { lat: number; lng: number } | null;
-  emoji: string;
+  type: PlaceType;
   onChange: (p: { lat: number; lng: number }) => void;
 };
 
 /** Petite carte pour poser ou déplacer l'épingle d'un lieu (toucher / glisser). */
-export function PlacePickerMap({ value, center, emoji, onChange }: PlacePickerMapProps) {
+export function PlacePickerMap({ value, center, type, onChange }: PlacePickerMapProps) {
   useInjectPinCss();
   const container = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
@@ -249,7 +250,7 @@ export function PlacePickerMap({ value, center, emoji, onChange }: PlacePickerMa
       return;
     }
     if (!marker.current) {
-      const el = pinElement(emoji, true);
+      const el = pinElement(type, true);
       marker.current = new mapboxgl.Marker({ element: el, anchor: "bottom", draggable: true })
         .setLngLat([value.lng, value.lat])
         .addTo(m);
@@ -259,12 +260,12 @@ export function PlacePickerMap({ value, center, emoji, onChange }: PlacePickerMa
       });
     } else {
       marker.current.setLngLat([value.lng, value.lat]);
-      marker.current.getElement().innerHTML = `<span>${emoji}</span>`;
+      marker.current.getElement().innerHTML = `<span>${placeIconSvg(type)}</span>`;
     }
     const c = m.getCenter();
     const far = Math.abs(c.lat - value.lat) > 0.002 || Math.abs(c.lng - value.lng) > 0.002;
     if (far) m.flyTo({ center: [value.lng, value.lat], zoom: Math.max(m.getZoom(), 15.5), duration: 700 });
-  }, [value, emoji]);
+  }, [value, type]);
 
   return <div ref={container} className="h-full w-full" />;
 }
