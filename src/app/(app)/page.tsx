@@ -8,6 +8,7 @@ import { useUserVehicles, type VehicleWithPosition } from "@/hooks/use-user-vehi
 import { isSupabaseConfigured } from "@/lib/supabase/client";
 import { Database } from "lucide-react";
 import { YazzAssistantFab } from "@/components/yazz/yazz-assistant-fab";
+import { useAssistantVisible } from "@/hooks/use-assistant-visible";
 
 // Véhicules mockés — utilisés en fallback si Supabase n'est pas configuré
 import { vehicles as mockVehicles } from "@/lib/yazz/mock-data";
@@ -44,6 +45,8 @@ function toMockVehicle(v: VehicleWithPosition) {
 
 export default function DashboardPage() {
   const [selectedVehicleId, setSelectedVehicleId] = useState<string | undefined>(undefined);
+  // Bouton de l'assistant : visible selon yazz-admin (Assistant IA)
+  const assistant = useAssistantVisible();
 
   const isSupabaseReady = isSupabaseConfigured();
   const { vehicles: realVehicles } = useUserVehicles();
@@ -103,7 +106,7 @@ export default function DashboardPage() {
       )}
 
       {/* AI Assistant FAB — superposé sur la carte, en bas à gauche (téléphone, tablette, ordinateur) */}
-      <YazzAssistantFab enabled={true} />
+      <YazzAssistantFab enabled={assistant.visible} />
     </div>
   );
 }
