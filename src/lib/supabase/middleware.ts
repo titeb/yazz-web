@@ -60,6 +60,9 @@ export async function updateSession(request: NextRequest) {
   // Routes publiques
   const isPublicRoute =
     pathname === "/login" ||
+    // Pages légales publiques (liens Google Play) : sans connexion
+    pathname === "/conditions" ||
+    pathname === "/confidentialite" ||
     pathname.startsWith("/api/") ||  // toutes les routes API gèrent leur propre auth
     pathname.startsWith("/_next") ||
     pathname === "/favicon.ico" ||
