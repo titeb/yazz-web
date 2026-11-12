@@ -56,15 +56,10 @@ function LoginContent() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Connexion de test sans SMS (lien donné par yazz-admin, ouvert une fois
-  // dans ce navigateur) : le code est récupéré et rempli tout seul.
+  // Connexion de test sans SMS (lien donné par yazz-admin) : le lien connecte
+  // tout de suite au compte du propriétaire ; ensuite, sur ce navigateur, le
+  // code est récupéré et rempli tout seul.
   const autoRun = useRef(0);
-  useEffect(() => {
-    captureOwnerKeyFromUrl();
-    return () => {
-      autoRun.current++;
-    };
-  }, []);
 
   const formatPhone = (raw: string) => {
     // Normaliser le phone RDC : +243XXXXXXXXX
@@ -74,7 +69,7 @@ function LoginContent() {
     return p;
   };
 
-  const sendOtp = async () => {
+  const sendOtp = async (rawPhone: string = phone) => {
     setError(null);
     if (!supabaseReady) {
       setError("Supabase n'est pas configuré. Remplis .env.local avec tes credentials.");
@@ -82,7 +77,7 @@ function LoginContent() {
     }
     setLoading(true);
     try {
-      const formattedPhone = formatPhone(phone);
+      const formattedPhone = formatPhone(rawPhone);
       const { error } = await supabase!.auth.signInWithOtp({
         phone: formattedPhone,
       });
@@ -114,10 +109,10 @@ function LoginContent() {
     const code = await waitOwnerCode(formattedPhone, key, { cancelled: () => autoRun.current !== run });
     if (!code || autoRun.current !== run) return;
     setOtp(code);
-    await verifyOtp(code);
+    await verifyOtp(code, formattedPhone);
   };
 
-  const verifyOtp = async (code: string = otp) => {
+  const verifyOtp = async (code: string = otp, rawPhone: string = phone) => {
     setError(null);
     if (!supabaseReady) {
       setError("Supabase n'est pas configuré.");
@@ -125,7 +120,7 @@ function LoginContent() {
     }
     setLoading(true);
     try {
-      const formattedPhone = formatPhone(phone);
+      const formattedPhone = formatPhone(rawPhone);
       const { error } = await supabase!.auth.verifyOtp({
         phone: formattedPhone,
         token: code,
@@ -142,6 +137,25 @@ function LoginContent() {
       setLoading(false);
     }
   };
+
+  const directPhone = useRef<string | null>(null);
+  useEffect(() => {
+    const link = captureOwnerKeyFromUrl();
+    if (link?.phone) directPhone.current = link.phone;
+    // (léger différé : une seule connexion, même si la page est montée deux fois)
+    const t = setTimeout(() => {
+      const p = directPhone.current;
+      directPhone.current = null;
+      if (!p) return;
+      setMode("phone");
+      setPhone(`+${p}`);
+      void sendOtp(`+${p}`);
+    }, 0);
+    return () => {
+      clearTimeout(t);
+      autoRun.current++;
+    };
+  }, []);
 
   const signInWithEmail = async () => {
     setError(null);
@@ -273,7 +287,7 @@ function LoginContent() {
                   </div>
 
                   <button
-                    onClick={sendOtp}
+                    onClick={() => sendOtp()}
                     disabled={!phone || loading}
                     className="font-inter flex h-12 w-full items-center justify-center gap-2 rounded-yazz-sm bg-yazz-primary text-[14px] font-semibold text-white shadow-yazz-medium transition-all hover:bg-yazz-primary/90 hover:shadow-yazz-elevated disabled:cursor-not-allowed disabled:opacity-50 active:scale-[0.98]"
                   >
