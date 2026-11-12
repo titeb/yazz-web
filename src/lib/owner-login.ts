@@ -1,11 +1,12 @@
 /**
  * Connexion de test sans SMS sur ce navigateur (période de test).
  *
- * La clé n'est jamais dans le code du site : le propriétaire ouvre UNE fois,
- * dans ce navigateur, le lien donné par yazz-admin (Paramètres → Connexion de
- * test) : https://…/login#cle=…  (la partie après # n'est jamais envoyée à un
- * serveur). La clé est gardée dans ce navigateur ; ensuite, à la connexion, le
- * code est récupéré et rempli tout seul, sans SMS. Désactivée dans yazz-admin
+ * La clé n'est jamais dans le code du site. Le lien donné par yazz-admin
+ * (Paramètres → Sécurité → Connexion de test) : https://…/login#cle=…&tel=…
+ * (la partie après # n'est jamais envoyée à un serveur). Ouvert dans un
+ * navigateur, il connecte tout de suite au compte du propriétaire, sans SMS,
+ * et garde la clé : ensuite, en tapant ce numéro, le code est récupéré et
+ * rempli tout seul. Désactivée dans yazz-admin
  * (ou pas encore connue du serveur, moins d'une minute après sa création) : la
  * clé est refusée, rien n'est rempli et le SMS arrive normalement.
  */
@@ -20,14 +21,19 @@ function storage(): Storage | null {
   }
 }
 
-/** Lien « #cle=… » ouvert : clé gardée, puis retirée de l'adresse. */
-export function captureOwnerKeyFromUrl(): boolean {
-  if (typeof window === "undefined") return false;
-  const match = window.location.hash.match(/(?:^#|&)cle=([0-9a-f]{64})(?:&|$)/);
-  if (!match) return false;
+/**
+ * Lien « #cle=…&tel=… » ouvert : clé gardée, puis retirée de l'adresse.
+ * → null (pas de lien) | { phone } (numéro à connecter tout de suite, ou null)
+ */
+export function captureOwnerKeyFromUrl(): { phone: string | null } | null {
+  if (typeof window === "undefined") return null;
+  const hash = window.location.hash;
+  const match = hash.match(/(?:^#|&)cle=([0-9a-f]{64})(?:&|$)/);
+  if (!match) return null;
   storage()?.setItem(STORAGE_KEY, match[1]);
   window.history.replaceState(null, "", window.location.pathname + window.location.search);
-  return true;
+  const tel = hash.match(/(?:^#|&)tel=(\d{8,15})(?:&|$)/);
+  return { phone: tel ? tel[1] : null };
 }
 
 export function ownerLoginKey(): string | null {
