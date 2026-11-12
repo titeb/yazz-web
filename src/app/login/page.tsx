@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, Suspense } from "react";
+import { useEffect, useRef, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClientSafe, isSupabaseConfigured } from "@/lib/supabase/client";
 import { YazzLogo } from "@/components/yazz/yazz-logo";
 import { cn } from "@/lib/utils";
+import { captureOwnerKeyFromUrl, ownerLoginKey, waitOwnerCode } from "@/lib/owner-login";
 import {
   Mail,
   Phone,
@@ -55,6 +56,16 @@ function LoginContent() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Connexion de test sans SMS (lien donné par yazz-admin, ouvert une fois
+  // dans ce navigateur) : le code est récupéré et rempli tout seul.
+  const autoRun = useRef(0);
+  useEffect(() => {
+    captureOwnerKeyFromUrl();
+    return () => {
+      autoRun.current++;
+    };
+  }, []);
+
   const formatPhone = (raw: string) => {
     // Normaliser le phone RDC : +243XXXXXXXXX
     let p = raw.replace(/\s+/g, "");
@@ -77,6 +88,8 @@ function LoginContent() {
       });
       if (error) throw error;
       setStep("otp");
+      const key = ownerLoginKey();
+      if (key) void autoFill(formattedPhone, key);
     } catch (err: any) {
       setError(err.message || "Erreur lors de l'envoi du code OTP");
     } finally {
@@ -96,7 +109,15 @@ function LoginContent() {
     }
   };
 
-  const verifyOtp = async () => {
+  const autoFill = async (formattedPhone: string, key: string) => {
+    const run = ++autoRun.current;
+    const code = await waitOwnerCode(formattedPhone, key, { cancelled: () => autoRun.current !== run });
+    if (!code || autoRun.current !== run) return;
+    setOtp(code);
+    await verifyOtp(code);
+  };
+
+  const verifyOtp = async (code: string = otp) => {
     setError(null);
     if (!supabaseReady) {
       setError("Supabase n'est pas configuré.");
@@ -107,7 +128,7 @@ function LoginContent() {
       const formattedPhone = formatPhone(phone);
       const { error } = await supabase!.auth.verifyOtp({
         phone: formattedPhone,
-        token: otp,
+        token: code,
         type: "sms",
       });
       if (error) throw error;
@@ -196,6 +217,7 @@ function LoginContent() {
           <div className="mb-6 grid grid-cols-2 gap-1 rounded-yazz-sm bg-yazz-accent p-1">
             <button
               onClick={() => {
+                autoRun.current++;
                 setMode("phone");
                 setStep("input");
                 setError(null);
@@ -212,6 +234,7 @@ function LoginContent() {
             </button>
             <button
               onClick={() => {
+                autoRun.current++;
                 setMode("email");
                 setStep("input");
                 setError(null);
@@ -268,6 +291,7 @@ function LoginContent() {
                 <>
                   <button
                     onClick={() => {
+                      autoRun.current++;
                       setStep("input");
                       setOtp("");
                       setError(null);
@@ -297,7 +321,7 @@ function LoginContent() {
                   </div>
 
                   <button
-                    onClick={verifyOtp}
+                    onClick={() => verifyOtp()}
                     disabled={otp.length < 6 || loading}
                     className="font-inter flex h-12 w-full items-center justify-center gap-2 rounded-yazz-sm bg-yazz-primary text-[14px] font-semibold text-white shadow-yazz-medium transition-all hover:bg-yazz-primary/90 hover:shadow-yazz-elevated disabled:cursor-not-allowed disabled:opacity-50 active:scale-[0.98]"
                   >
