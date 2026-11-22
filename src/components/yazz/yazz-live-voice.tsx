@@ -259,7 +259,7 @@ export function YazzLiveVoice({ onClose, autoStart = true }: { onClose: () => vo
   );
 }
 
-type CardAction = { label: string; action: string; value?: string };
+type CardAction = { label: string; action: string; value?: string; text?: string };
 
 /** Bouton lien de dépannage (appel, WhatsApp, itinéraire) avec sa valeur. */
 function isLinkAction(a: CardAction): boolean {
@@ -269,6 +269,6 @@ function isLinkAction(a: CardAction): boolean {
 function linkHref(a: CardAction): string {
   const v = (a.value || "").trim();
   if (a.action === "call") return `tel:${v}`;
-  if (a.action === "whatsapp") return `https://wa.me/${v.replace(/[^0-9]/g, "")}`;
+  if (a.action === "whatsapp") return `https://wa.me/${v.replace(/[^0-9]/g, "")}${a.text ? `?text=${encodeURIComponent(a.text)}` : ""}`;
   return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(v)}`;
 }
