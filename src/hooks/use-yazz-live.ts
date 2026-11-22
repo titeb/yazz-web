@@ -59,7 +59,8 @@ export interface LiveCard {
   title: string;
   summary?: string;
   details?: Record<string, unknown>;
-  actions?: { label: string; action: string }[];
+  /** action « call » / « whatsapp » / « directions » : bouton lien (value = numéro ou « lat,lng »). */
+  actions?: { label: string; action: string; value?: string }[];
   resolved?: boolean;
 }
 
