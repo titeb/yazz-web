@@ -60,7 +60,7 @@ export interface LiveCard {
   summary?: string;
   details?: Record<string, unknown>;
   /** action « call » / « whatsapp » / « directions » : bouton lien (value = numéro ou « lat,lng »). */
-  actions?: { label: string; action: string; value?: string }[];
+  actions?: { label: string; action: string; value?: string; text?: string }[];
   resolved?: boolean;
 }
 
