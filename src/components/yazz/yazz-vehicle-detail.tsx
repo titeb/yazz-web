@@ -40,18 +40,18 @@ function getBatteryColor(percent: number | null): string {
 function getStatusBadge(status: string): { color: string; bg: string; label: string } {
   switch (status) {
     case "moving":
-      return { color: "text-yazz-success", bg: "bg-yazz-success/10", label: "En mouvement" };
+      return { color: "text-yazz-success", bg: "bg-yazz-success/15 border-yazz-success/40", label: "En mouvement" };
     case "idle":
-      return { color: "text-yazz-text-body", bg: "bg-yazz-accent", label: "À l'arrêt" };
+      return { color: "text-yazz-warning", bg: "bg-yazz-warning/15 border-yazz-warning/40", label: "À l'arrêt" };
     case "offline":
-      return { color: "text-yazz-text-muted", bg: "bg-yazz-accent", label: "Hors ligne" };
+      return { color: "text-yazz-error", bg: "bg-yazz-error/15 border-yazz-error/40", label: "Hors ligne" };
     case "alert":
-      return { color: "text-yazz-error", bg: "bg-yazz-error/10", label: "Alerte" };
+      return { color: "text-yazz-error", bg: "bg-yazz-error/15 border-yazz-error/40", label: "Alerte" };
     case "weak_gps":
       // Connecté, mais pas de position GPS récente alors qu'il roulait
-      return { color: "text-yazz-text-muted", bg: "bg-yazz-accent", label: "Signal GPS faible" };
+      return { color: "text-yazz-text-caption", bg: "bg-yazz-text-caption/15 border-yazz-text-caption/40", label: "Signal GPS faible" };
     default:
-      return { color: "text-yazz-text-muted", bg: "bg-yazz-accent", label: "Inconnu" };
+      return { color: "text-yazz-text-caption", bg: "bg-yazz-text-caption/15 border-yazz-text-caption/40", label: "Inconnu" };
   }
 }
 
@@ -209,7 +209,7 @@ export function YazzVehicleDetail({ vehicle, onClose }: YazzVehicleDetailProps) 
   // 3 – 10 km/h : « Ralentissement », comme l'app mobile
   const badge =
     vehicle.status === "moving" && isCrawling(vehicle.speed)
-      ? { color: "text-yazz-crawling", bg: "bg-yazz-crawling/10", label: "Ralentissement" }
+      ? { color: "text-yazz-crawling", bg: "bg-yazz-crawling/15 border-yazz-crawling/40", label: "Ralentissement" }
       : getStatusBadge(vehicle.status);
   const battColor = getBatteryColor(vehicle.battery);
   const firstLetter = (vehicle.name || "?")[0]?.toUpperCase() || "?";
@@ -305,7 +305,7 @@ export function YazzVehicleDetail({ vehicle, onClose }: YazzVehicleDetailProps) 
             </div>
             {/* Badge statut — sous la ligne contact, pas à droite */}
             <div className="mt-2 flex items-center gap-1.5">
-              <span className={cn("inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px] font-semibold", badge.bg, badge.color)}>
+              <span className={cn("inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[10px] font-semibold", badge.bg, badge.color)}>
                 <span className={cn("h-1.5 w-1.5 rounded-full", badge.color.replace("text-", "bg-"))} />
                 {badge.label}
               </span>
@@ -337,7 +337,7 @@ export function YazzVehicleDetail({ vehicle, onClose }: YazzVehicleDetailProps) 
           className={cn(
             "font-inter flex flex-col items-center gap-1.5 rounded-yazz-sm py-2.5 transition-all duration-150 active:scale-95",
             isCut
-              ? "bg-yazz-error text-white"
+              ? "bg-yazz-error text-white yazz-blink"
               : "bg-yazz-accent text-yazz-text-body hover:bg-[#e8eaf0]"
           )}
         >
@@ -360,7 +360,7 @@ export function YazzVehicleDetail({ vehicle, onClose }: YazzVehicleDetailProps) 
           className={cn(
             "font-inter flex flex-col items-center gap-1.5 rounded-yazz-sm py-2.5 transition-all duration-150 active:scale-95",
             parkingActive
-              ? "bg-yazz-primary text-white"
+              ? "yazz-gradient-primary text-white yazz-blink"
               : "bg-yazz-accent text-yazz-text-body hover:bg-[#e8eaf0]"
           )}
         >
@@ -458,7 +458,7 @@ export function YazzVehicleDetail({ vehicle, onClose }: YazzVehicleDetailProps) 
                   key={idx}
                   className="flex items-center gap-2 rounded-yazz-md bg-yazz-error/[0.06] p-2.5"
                 >
-                  <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-yazz-error" />
+                  <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-yazz-error yazz-blink" />
                   <p className="font-inter flex-1 text-[11px] font-medium text-yazz-text-body">
                     {alert.label}
                   </p>

@@ -614,7 +614,7 @@ export function YazzMapbox({ vehicles, selectedId, onSelect }: YazzMapboxProps) 
           display: none !important;
         }
         .mapboxgl-ctrl-group {
-          border-radius: 12px !important;
+          border-radius: 9px !important;
           box-shadow: 0 4px 14px rgba(16, 24, 40, 0.1), 0 1px 3px rgba(16, 24, 40, 0.06) !important;
           overflow: hidden;
           border: none !important;

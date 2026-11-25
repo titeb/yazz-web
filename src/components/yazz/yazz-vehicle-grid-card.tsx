@@ -60,7 +60,7 @@ type StatusInfo = {
 // Dérive le statut depuis les données réelles (vitesse, batterie, parking, engineCut, lastUpdate)
 // Couleurs sémantiques alignées sur le panneau de détail du dashboard (getStatusBadge),
 // avec une couleur distincte par statut pour rester lisible d'un coup d'œil :
-//   - Hors-ligne    → gris — signal perdu (pas une alerte en soi)
+//   - Hors-ligne    → rouge (error) — signal perdu, problème
 //   - Moteur coupé  → rouge clignotant (error + yazz-blink) — alerte critique
 //   - Batterie faible → orange (crawling) — attention, distinct du jaune "à l'arrêt"
 //   - En mouvement  → vert (success) — véhicule actif
@@ -74,17 +74,17 @@ function deriveStatus(d: UserDevice): StatusInfo {
   if (isOffline) {
     return {
       label: "Hors-ligne",
-      color: "text-yazz-text-muted",
-      dot: "bg-yazz-text-caption",
-      bg: "bg-yazz-accent",
+      color: "text-yazz-error",
+      dot: "bg-yazz-error",
+      bg: "bg-yazz-error/15 border border-yazz-error/40",
     };
   }
   if (d.engineCutState) {
     return {
       label: "Moteur coupé",
       color: "text-yazz-error",
-      dot: "bg-yazz-error",
-      bg: "bg-yazz-error/10",
+      dot: "bg-yazz-error yazz-blink",
+      bg: "bg-yazz-error/15 border border-yazz-error/40",
     };
   }
   if ((d.batteryPercent ?? 100) < 20) {
@@ -92,7 +92,7 @@ function deriveStatus(d: UserDevice): StatusInfo {
       label: "Batterie faible",
       color: "text-yazz-crawling",
       dot: "bg-yazz-crawling",
-      bg: "bg-yazz-crawling/10",
+      bg: "bg-yazz-crawling/15 border border-yazz-crawling/40",
     };
   }
   if (hasStaleMovingFix(d.speed, d.fixTime)) {
@@ -102,7 +102,7 @@ function deriveStatus(d: UserDevice): StatusInfo {
       label: "Signal GPS faible",
       color: "text-yazz-text-caption",
       dot: "bg-yazz-text-caption",
-      bg: "bg-yazz-accent",
+      bg: "bg-yazz-text-caption/15 border border-yazz-text-caption/40",
     };
   }
   if (isMoving(d.speed)) {
@@ -112,14 +112,14 @@ function deriveStatus(d: UserDevice): StatusInfo {
         label: "Ralentissement",
         color: "text-yazz-crawling",
         dot: "bg-yazz-crawling",
-        bg: "bg-yazz-crawling/10",
+        bg: "bg-yazz-crawling/15 border border-yazz-crawling/40",
       };
     }
     return {
       label: "En mouvement",
       color: "text-yazz-success",
       dot: "bg-yazz-success",
-      bg: "bg-yazz-success/10",
+      bg: "bg-yazz-success/15 border border-yazz-success/40",
     };
   }
   if (d.parkingMode) {
@@ -127,14 +127,14 @@ function deriveStatus(d: UserDevice): StatusInfo {
       label: "Mode parking",
       color: "text-yazz-info",
       dot: "bg-yazz-info",
-      bg: "bg-yazz-info/10",
+      bg: "bg-yazz-info/15 border border-yazz-info/40",
     };
   }
   return {
     label: "À l'arrêt",
     color: "text-yazz-warning",
     dot: "bg-yazz-warning",
-    bg: "bg-yazz-warning/10",
+    bg: "bg-yazz-warning/15 border border-yazz-warning/40",
   };
 }
 
@@ -479,7 +479,7 @@ export function YazzVehicleGridCard({ device }: { device: UserDevice }) {
             className={cn(
               "font-inter flex flex-col items-center gap-1 rounded-yazz-sm py-2 transition-all active:scale-95",
               isCut
-                ? "bg-yazz-error text-white"
+                ? "bg-yazz-error text-white yazz-blink"
                 : "bg-yazz-accent text-yazz-text-body hover:bg-[#e8eaf0]"
             )}
             title={isCut ? "Restaurer le moteur" : "Couper le moteur"}
@@ -504,7 +504,7 @@ export function YazzVehicleGridCard({ device }: { device: UserDevice }) {
             className={cn(
               "font-inter flex flex-col items-center gap-1 rounded-yazz-sm py-2 transition-all active:scale-95",
               parkingActive
-                ? "bg-yazz-primary text-white"
+                ? "yazz-gradient-primary text-white yazz-blink"
                 : "bg-yazz-accent text-yazz-text-body hover:bg-[#e8eaf0]"
             )}
             title={parkingActive ? "Désactiver le mode parking" : "Activer le mode parking"}

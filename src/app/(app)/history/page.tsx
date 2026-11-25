@@ -684,17 +684,17 @@ export default function HistoryPage() {
               const events = buildTimelineEvents(trips, tripAddresses, currentAddress, isToday);
               if (events.length === 0) return null;
               const eventConfig = {
-                departure: { icon: Play, label: 'Départ', color: 'text-yazz-primary', node: 'bg-yazz-primary text-white', bg: 'bg-yazz-primary/10' },
-                stop: { icon: MapPin, label: 'Arrêt détecté', color: 'text-yazz-text-body', node: 'bg-[#eef0f5] text-yazz-text-body', bg: 'bg-yazz-accent' },
-                resume: { icon: Play, label: 'Reprise', color: 'text-yazz-primary', node: 'bg-yazz-primary/10 text-yazz-primary', bg: 'bg-yazz-primary/10' },
-                parking: { icon: MapPin, label: 'Stationnement actuel', color: 'text-yazz-text-dark', node: 'bg-yazz-text-dark text-white', bg: 'bg-yazz-accent' },
-                parking_past: { icon: MapPin, label: 'Stationnement', color: 'text-yazz-text-muted', node: 'bg-[#eef0f5] text-yazz-text-caption', bg: 'bg-yazz-accent' },
+                departure: { icon: Play, label: 'Départ', color: 'text-yazz-success', border: 'border-yazz-success', bg: 'bg-yazz-success/10' },
+                stop: { icon: MapPin, label: 'Arrêt détecté', color: 'text-yazz-warning', border: 'border-yazz-warning', bg: 'bg-yazz-warning/10' },
+                resume: { icon: Play, label: 'Reprise', color: 'text-yazz-primary', border: 'border-yazz-primary', bg: 'bg-yazz-primary/10' },
+                parking: { icon: MapPin, label: 'Stationnement actuel', color: 'text-yazz-error', border: 'border-yazz-error', bg: 'bg-yazz-error/10' },
+                parking_past: { icon: MapPin, label: 'Stationnement', color: 'text-yazz-text-muted', border: 'border-yazz-border-medium', bg: 'bg-yazz-accent' },
               };
 
               return (
                 <div className="relative">
                   {/* Ligne verticale */}
-                  <div className="absolute left-[29px] top-6 bottom-6 w-0.5 rounded-full bg-[#e4e7ef]" />
+                  <div className="absolute left-[19px] top-3 bottom-3 w-0.5 bg-yazz-border-light" />
 
                   <div className="yazz-stagger-group space-y-1">
                     {events.map((event, idx) => {
@@ -706,10 +706,10 @@ export default function HistoryPage() {
                         <>
                           {/* Dot + icône */}
                           <div className={cn(
-                            "relative z-10 grid h-9 w-9 shrink-0 place-items-center rounded-full ring-4 ring-yazz-surface",
-                            cfg.node
+                            "relative z-10 grid h-10 w-10 shrink-0 place-items-center rounded-full bg-yazz-surface border-2 yazz-shadow-soft",
+                            cfg.border
                           )}>
-                            <Icon className="h-4 w-4" />
+                            <Icon className={cn("h-4 w-4", cfg.color)} />
                           </div>
 
                           {/* Contenu de l'événement — format comme la référence */}
