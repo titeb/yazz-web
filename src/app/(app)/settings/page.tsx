@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useUserProfile } from "@/hooks/use-user-profile";
+import { useSupportContacts, whatsappLink } from "@/lib/yazz/support-contacts";
 import { isSupabaseConfigured, createClientSafe } from "@/lib/supabase/client";
 import {
   User as UserIcon,
@@ -27,6 +28,8 @@ export default function SettingsPage() {
   const isReady = isSupabaseConfigured();
   const supabase = createClientSafe();
   const { profile, loading, error, updateProfile } = useUserProfile();
+  // Contacts du service client réglés dans yazz-admin, à jour en direct.
+  const supportContacts = useSupportContacts();
 
   const [fullName, setFullName] = useState("");
   const [creditNotifs, setCreditNotifs] = useState(true);
@@ -421,7 +424,7 @@ export default function SettingsPage() {
                 Annuler
               </button>
               <a
-                href="https://wa.me/243986842924?text=Bonjour%2C%20je%20souhaite%20supprimer%20mon%20compte%20YAZZ"
+                href={whatsappLink(supportContacts, "Bonjour, je souhaite supprimer mon compte YAZZ")}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="font-inter flex flex-1 items-center justify-center gap-2 rounded-yazz-sm bg-yazz-error py-2.5 text-[12px] font-semibold text-white shadow-yazz-medium transition-all hover:bg-yazz-error/90 active:scale-95"
