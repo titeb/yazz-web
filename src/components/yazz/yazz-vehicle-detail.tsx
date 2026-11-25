@@ -397,9 +397,7 @@ export function YazzVehicleDetail({ vehicle, onClose }: YazzVehicleDetailProps) 
       <div className="flex-1 overflow-y-auto p-4">
         {/* Vitesse */}
         <div className="flex items-start gap-3">
-          <div className="grid h-9 w-9 shrink-0 place-items-center rounded-yazz-sm bg-yazz-accent">
-            <Gauge className="h-[18px] w-[18px] text-yazz-text-body" />
-          </div>
+          <Gauge className="mt-0.5 h-[18px] w-[18px] shrink-0 text-yazz-text-muted" />
           <div className="flex-1 min-w-0">
             <p className="font-inter text-[11px] text-yazz-text-muted">
               {isOffline ? "Dernière vitesse enregistrée" : "Vitesse actuelle"}
@@ -414,9 +412,7 @@ export function YazzVehicleDetail({ vehicle, onClose }: YazzVehicleDetailProps) 
 
         {/* Position */}
         <div className="flex items-start gap-3">
-          <div className="grid h-9 w-9 shrink-0 place-items-center rounded-yazz-sm bg-yazz-accent">
-            <MapPin className="h-[18px] w-[18px] text-yazz-text-body" />
-          </div>
+          <MapPin className="mt-0.5 h-[18px] w-[18px] shrink-0 text-yazz-text-muted" />
           <div className="flex-1 min-w-0">
             <p className="font-inter text-[11px] text-yazz-text-muted">
               {isOffline ? "Dernière position connue" : "Position actuelle"}
@@ -435,12 +431,12 @@ export function YazzVehicleDetail({ vehicle, onClose }: YazzVehicleDetailProps) 
         </div>
 
         {/* Stats compactes */}
-        <div className="mt-4 grid grid-cols-2 gap-2">
-          <div className="rounded-yazz-md bg-yazz-accent p-3">
+        <div className="mt-3 grid grid-cols-2 border-t border-yazz-border-light pt-3">
+          <div className="pl-[30px]">
             <p className="font-inter text-[11px] text-yazz-text-muted">Cap</p>
             <p className="font-outfit text-[14px] font-bold text-yazz-text-dark">{vehicle.heading}°</p>
           </div>
-          <div className="rounded-yazz-md bg-yazz-accent p-3">
+          <div>
             <p className="font-inter text-[11px] text-yazz-text-muted">Distance du jour</p>
             <p className="font-outfit text-[14px] font-bold text-yazz-text-dark">{vehicle.todayDistanceKm} km</p>
           </div>

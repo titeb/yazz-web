@@ -382,8 +382,8 @@ export function YazzVehicleGridCard({ device }: { device: UserDevice }) {
         </div>
 
         {/* ─── Stats compactes (3 cols) ────────────────────────────────── */}
-        <div className="grid grid-cols-3 gap-2 px-4 pb-3">
-          <div className="rounded-yazz-md bg-yazz-accent p-3">
+        <div className="grid grid-cols-3 divide-x divide-yazz-border-light px-4 pb-3">
+          <div className="px-3 py-1 first:pl-0">
             <div className="flex items-center gap-1">
               <Gauge className="h-3 w-3 text-yazz-primary" />
               <p className="font-inter text-[11px] text-yazz-text-muted">
@@ -395,7 +395,7 @@ export function YazzVehicleGridCard({ device }: { device: UserDevice }) {
               <span className="ml-0.5 text-[10px] font-normal text-yazz-text-caption">km/h</span>
             </p>
           </div>
-          <div className="rounded-yazz-md bg-yazz-accent p-3">
+          <div className="px-3 py-1 first:pl-0">
             <div className="flex items-center gap-1">
               <Battery className="h-3 w-3 text-yazz-primary" />
               <p className="font-inter text-[11px] text-yazz-text-muted">
@@ -418,7 +418,7 @@ export function YazzVehicleGridCard({ device }: { device: UserDevice }) {
               )}
             </p>
           </div>
-          <div className="rounded-yazz-md bg-yazz-accent p-3">
+          <div className="px-3 py-1 first:pl-0">
             <div className="flex items-center gap-1">
               <MapPin className="h-3 w-3 text-yazz-primary" />
               <p className="font-inter text-[11px] text-yazz-text-muted">
