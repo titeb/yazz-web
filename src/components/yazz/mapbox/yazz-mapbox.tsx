@@ -50,6 +50,10 @@ export function YazzMapbox({ vehicles, selectedId, onSelect }: YazzMapboxProps) 
   const fixTimesRef = useRef<Map<string, string | null>>(new Map()); // heure GPS affichée
   const rafRef = useRef<number | null>(null);
   const [mapReady, setMapReady] = useState(false);
+  // Carte qui ne charge pas : raison affichée + bouton « Réessayer »
+  // (avant, l'écran restait sur « Chargement de la carte… » sans fin).
+  const [mapError, setMapError] = useState<string | null>(null);
+  const [mapAttempt, setMapAttempt] = useState(0);
   const [filter, setFilter] = useState<VehicleStatus | "all">("all");
 
   // FIX 2026-10-31 : snap-to-road retiré — on utilise la position GPS brute.
@@ -92,6 +96,9 @@ export function YazzMapbox({ vehicles, selectedId, onSelect }: YazzMapboxProps) 
 
     mapboxgl.accessToken = token;
 
+    let loaded = false;
+    let failed = false;
+    try {
     map.current = new mapboxgl.Map({
       container: mapContainer.current,
       // Style Mapbox — fallback sur streets-v12 si le custom style est inaccessible
@@ -110,10 +117,30 @@ export function YazzMapbox({ vehicles, selectedId, onSelect }: YazzMapboxProps) 
       touchPitch: true,
       pitchWithRotate: true,
     });
+    } catch (e) {
+      // WebGL indisponible (navigateur, mode économie d'énergie…)
+      console.error("[carte] création impossible", e);
+      setMapError(mapErrorText(e));
+      return;
+    }
     // Expose map instance for debugging
     (window as any).__yazzMap = map.current;
 
+    // Pas de réponse au bout de 15 s : on le dit au lieu d'attendre sans fin
+    const slowTimer = window.setTimeout(() => {
+      if (!loaded && !failed) setMapError("La carte met trop de temps à charger. La connexion internet est peut-être trop faible.");
+    }, 15000);
+    map.current.on("error", (ev: { error?: unknown }) => {
+      if (loaded) return; // une tuile ratée plus tard ne bloque pas la carte
+      failed = true;
+      console.error("[carte] erreur de chargement", ev?.error);
+      setMapError(mapErrorText(ev?.error));
+    });
+
     map.current.on("load", () => {
+      loaded = true;
+      window.clearTimeout(slowTimer);
+      setMapError(null);
       setMapReady(true);
       // Force resize after load — sometimes Mapbox needs a kick
       setTimeout(() => {
@@ -133,6 +160,7 @@ export function YazzMapbox({ vehicles, selectedId, onSelect }: YazzMapboxProps) 
     const handleResize = () => map.current?.resize();
     window.addEventListener("resize", handleResize);
     return () => {
+      window.clearTimeout(slowTimer);
       window.removeEventListener("resize", handleResize);
       if (rafRef.current != null) cancelAnimationFrame(rafRef.current);
       rafRef.current = null;
@@ -142,7 +170,7 @@ export function YazzMapbox({ vehicles, selectedId, onSelect }: YazzMapboxProps) 
       map.current?.remove();
       map.current = null;
     };
-  }, []);
+  }, [mapAttempt]);
 
   // Re-fit bounds au chargement, quand la liste des véhicules ou le filtre
   // change, ou quand on désélectionne un véhicule — PAS à chaque nouvelle
@@ -506,15 +534,33 @@ export function YazzMapbox({ vehicles, selectedId, onSelect }: YazzMapboxProps) 
         style={{ width: "100%", height: "100%" }}
       />
 
-      {/* Loading state */}
+      {/* Loading state / carte qui ne charge pas */}
       {!mapReady && (
         <div className="absolute inset-0 z-30 grid place-items-center bg-yazz-background">
-          <div className="text-center">
-            <div className="mx-auto mb-3 h-8 w-8 animate-spin rounded-full border-2 border-yazz-border-light border-t-yazz-primary" />
-            <p className="font-inter text-[12px] font-medium text-yazz-text-muted">
-              Chargement de la carte…
-            </p>
-          </div>
+          {mapError ? (
+            <div className="max-w-[280px] px-4 text-center">
+              <p className="font-inter text-[13px] font-semibold text-yazz-text-dark">La carte ne s’affiche pas</p>
+              <p className="mt-1 font-inter text-[12px] text-yazz-text-muted">{mapError}</p>
+              <button
+                type="button"
+                onClick={() => {
+                  setMapError(null);
+                  setMapReady(false);
+                  setMapAttempt((n) => n + 1);
+                }}
+                className="mt-3 rounded-lg bg-yazz-primary px-4 py-2 font-inter text-[12px] font-semibold text-white"
+              >
+                Réessayer
+              </button>
+            </div>
+          ) : (
+            <div className="text-center">
+              <div className="mx-auto mb-3 h-8 w-8 animate-spin rounded-full border-2 border-yazz-border-light border-t-yazz-primary" />
+              <p className="font-inter text-[12px] font-medium text-yazz-text-muted">
+                Chargement de la carte…
+              </p>
+            </div>
+          )}
         </div>
       )}
 
@@ -603,4 +649,20 @@ function escapeHtml(s: string): string {
     '"': "&quot;",
     "'": "&#39;",
   }[c] as string));
+}
+
+/** Raison lisible d'un échec de chargement de la carte (sans détail technique). */
+function mapErrorText(err: unknown): string {
+  const e = err as { status?: number; message?: string } | undefined;
+  const msg = String(e?.message ?? err ?? "");
+  if (e?.status === 401 || e?.status === 403 || /401|403|forbidden|unauthorized|access token/i.test(msg)) {
+    return "Le service de carte refuse l’accès (clé de carte). Nous sommes prévenus, réessayez plus tard.";
+  }
+  if (/webgl/i.test(msg)) {
+    return "Ce navigateur ne peut pas afficher la carte. Essayez de désactiver le mode économie d’énergie ou d’utiliser Chrome à jour.";
+  }
+  if (/failed to fetch|network|load failed|timeout/i.test(msg)) {
+    return "Connexion internet trop faible pour charger la carte.";
+  }
+  return "Un problème empêche la carte de se charger.";
 }

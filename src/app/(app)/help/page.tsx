@@ -13,6 +13,7 @@ import {
   FileText,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { displayNumber, useSupportContacts, whatsappLink } from "@/lib/yazz/support-contacts";
 
 type FaqItem = {
   q: string;
@@ -56,6 +57,8 @@ const FAQ: FaqItem[] = [
 
 export default function HelpPage() {
   const [openIdx, setOpenIdx] = useState<number | null>(0);
+  // Contacts réglés dans yazz-admin (Service client), à jour en direct.
+  const contacts = useSupportContacts();
 
   return (
     <div className="h-full overflow-y-auto">
@@ -82,23 +85,23 @@ export default function HelpPage() {
             label="WhatsApp"
             description="Réponse en quelques minutes"
             color="bg-yazz-whatsapp"
-            href="https://wa.me/243986842924?text=Bonjour%20YAZZ%2C%20j%27ai%20besoin%20d%27aide"
+            href={whatsappLink(contacts, "Bonjour YAZZ, j'ai besoin d'aide")}
             external
           />
           <ContactCard
             icon={Mail}
             label="Email"
-            description="support@yazz.app"
+            description={contacts.email}
             color="bg-yazz-info"
-            href="mailto:support@yazz.app"
+            href={`mailto:${contacts.email}`}
             external
           />
           <ContactCard
             icon={Phone}
             label="Téléphone"
-            description="+243 986 842 924"
+            description={displayNumber(contacts.phone)}
             color="bg-yazz-primary"
-            href="tel:+243986842924"
+            href={`tel:+${contacts.phone}`}
             external
           />
         </div>
