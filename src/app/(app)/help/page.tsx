@@ -65,7 +65,7 @@ export default function HelpPage() {
       <div className="yazz-stagger mx-auto max-w-3xl px-4 py-6 md:px-6 md:py-8">
         {/* Header */}
         <div className="mb-6 flex items-center gap-3">
-          <div className="grid h-12 w-12 place-items-center rounded-yazz-lg yazz-gradient-primary text-white shadow-yazz-medium">
+          <div className="grid h-12 w-12 place-items-center rounded-yazz-md bg-yazz-primary/[0.08] text-yazz-primary">
             <LifeBuoy className="h-6 w-6" />
           </div>
           <div>
@@ -185,7 +185,6 @@ function ContactCard({
   icon: Icon,
   label,
   description,
-  color,
   href,
   external,
 }: {
@@ -201,9 +200,9 @@ function ContactCard({
       href={href}
       target={external ? "_blank" : undefined}
       rel={external ? "noopener noreferrer" : undefined}
-      className="group flex items-center gap-3 rounded-yazz-md border border-yazz-border-light bg-yazz-surface p-3 yazz-shadow-soft transition-all hover:-translate-y-0.5 hover:yazz-shadow-elevated"
+      className="group flex items-center gap-3 rounded-yazz-lg bg-yazz-surface p-3.5 shadow-yazz-soft ring-1 ring-yazz-border-light/70 transition-shadow duration-200 hover:shadow-yazz-medium"
     >
-      <div className={cn("grid h-10 w-10 shrink-0 place-items-center rounded-yazz-lg text-white", color)}>
+      <div className="grid h-10 w-10 shrink-0 place-items-center rounded-yazz-sm bg-yazz-accent text-yazz-text-body transition-colors group-hover:bg-yazz-primary/[0.08] group-hover:text-yazz-primary">
         <Icon className="h-5 w-5" />
       </div>
       <div className="flex-1 min-w-0">
@@ -211,7 +210,7 @@ function ContactCard({
           <p className="font-outfit text-[13px] font-bold tracking-[-0.01em] text-yazz-text-dark">{label}</p>
           {external && <ExternalLink className="h-3 w-3 text-yazz-text-caption" />}
         </div>
-        <p className="font-inter text-[10px] text-yazz-text-muted">{description}</p>
+        <p className="font-inter text-[12px] text-yazz-text-muted">{description}</p>
       </div>
     </a>
   );

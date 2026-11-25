@@ -19,10 +19,10 @@ type YazzToastContainerProps = {
 };
 
 const toastConfig: Record<ToastType, { icon: any; color: string; bg: string; border: string }> = {
-  success: { icon: CheckCircle2, color: "text-yazz-success", bg: "bg-yazz-success/10", border: "border-l-yazz-success" },
-  error: { icon: AlertTriangle, color: "text-yazz-error", bg: "bg-yazz-error/10", border: "border-l-yazz-error" },
-  warning: { icon: AlertTriangle, color: "text-yazz-warning", bg: "bg-yazz-warning/10", border: "border-l-yazz-warning" },
-  info: { icon: Info, color: "text-yazz-info", bg: "bg-yazz-info/10", border: "border-l-yazz-info" },
+  success: { icon: CheckCircle2, color: "text-yazz-success", bg: "bg-yazz-success/10", border: "ring-yazz-success/20" },
+  error: { icon: AlertTriangle, color: "text-yazz-error", bg: "bg-yazz-error/10", border: "ring-yazz-error/20" },
+  warning: { icon: AlertTriangle, color: "text-yazz-warning", bg: "bg-yazz-warning/10", border: "ring-yazz-warning/20" },
+  info: { icon: Info, color: "text-yazz-info", bg: "bg-yazz-info/10", border: "ring-yazz-info/20" },
 };
 
 export function YazzToastContainer({ toasts, onDismiss }: YazzToastContainerProps) {
@@ -57,7 +57,7 @@ function YazzToastItem({ toast, onDismiss }: { toast: ToastData; onDismiss: () =
   return (
     <div
       className={cn(
-        "pointer-events-auto flex w-full items-start gap-3 rounded-yazz-xl border-l-4 bg-yazz-surface p-3.5 yazz-shadow-elevated transition-all duration-300",
+        "pointer-events-auto flex w-full items-start gap-3 rounded-yazz-xl ring-1 ring-inset bg-yazz-surface p-3.5 yazz-shadow-elevated transition-all duration-300",
         cfg.border,
         visible
           ? "translate-y-0 opacity-100"

@@ -91,7 +91,7 @@ export default function PlacesPage() {
           {isReady && (
             <button
               onClick={() => setEditing("new")}
-              className="font-inter flex h-10 shrink-0 items-center gap-2 rounded-yazz-sm yazz-gradient-primary px-4 text-[13px] font-semibold text-white shadow-yazz-medium"
+              className="font-inter flex h-10 shrink-0 items-center gap-2 rounded-yazz-sm bg-yazz-primary px-4 text-[13px] font-semibold text-white shadow-yazz-soft transition-colors hover:bg-[#2238d6]"
             >
               <Plus className="h-4 w-4" />
               <span className="hidden sm:inline">Ajouter un lieu</span>
@@ -101,7 +101,7 @@ export default function PlacesPage() {
         </div>
 
         {!isReady && (
-          <div className="rounded-yazz-md border-l-4 border-l-yazz-warning bg-yazz-warning/10 p-4">
+          <div className="rounded-yazz-md ring-1 ring-inset ring-yazz-warning/20 bg-yazz-warning/10 p-4">
             <p className="font-inter text-[12px] text-yazz-text-muted">
               Configurez Supabase dans <code className="font-mono">.env.local</code>.
             </p>
@@ -109,7 +109,7 @@ export default function PlacesPage() {
         )}
 
         {error && (
-          <div className="mb-4 rounded-yazz-md border-l-4 border-l-yazz-error bg-yazz-error/10 p-3">
+          <div className="mb-4 rounded-yazz-md ring-1 ring-inset ring-yazz-error/20 bg-yazz-error/10 p-3">
             <p className="font-inter text-[12px] text-yazz-error">{error}</p>
           </div>
         )}
@@ -117,10 +117,10 @@ export default function PlacesPage() {
         {feedback && (
           <div
             className={cn(
-              "mb-4 rounded-yazz-md border-l-4 p-3 yazz-animate-fade-in-up",
+              "mb-4 rounded-yazz-md ring-1 ring-inset p-3 yazz-animate-fade-in-up",
               feedback.type === "success"
-                ? "border-l-yazz-success bg-yazz-success/10"
-                : "border-l-yazz-error bg-yazz-error/10",
+                ? "ring-yazz-success/20 bg-yazz-success/10"
+                : "ring-yazz-error/20 bg-yazz-error/10",
             )}
           >
             <p
@@ -170,7 +170,7 @@ export default function PlacesPage() {
                   setAnswering(null);
                   setFeedback(r.ok ? { type: "success", message: r.message ?? "" } : { type: "error", message: r.error });
                 }}
-                className="font-inter flex h-10 flex-1 items-center justify-center gap-2 rounded-yazz-sm yazz-gradient-primary px-4 text-[13px] font-semibold text-white shadow-yazz-medium disabled:opacity-50 sm:flex-none"
+                className="font-inter flex h-10 flex-1 items-center justify-center gap-2 rounded-yazz-sm bg-yazz-primary px-4 text-[13px] font-semibold text-white shadow-yazz-soft transition-colors hover:bg-[#2238d6] disabled:opacity-50 sm:flex-none"
               >
                 {answering === "yes" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
                 <span className="sm:hidden">Oui</span>
@@ -210,7 +210,7 @@ export default function PlacesPage() {
             </p>
             <button
               onClick={() => setEditing("new")}
-              className="font-inter mt-4 flex h-10 items-center gap-2 rounded-yazz-sm yazz-gradient-primary px-4 text-[13px] font-semibold text-white shadow-yazz-medium"
+              className="font-inter mt-4 flex h-10 items-center gap-2 rounded-yazz-sm bg-yazz-primary px-4 text-[13px] font-semibold text-white shadow-yazz-soft transition-colors hover:bg-[#2238d6]"
             >
               <Plus className="h-4 w-4" />
               Ajouter un lieu
@@ -242,7 +242,7 @@ export default function PlacesPage() {
                         <p className="font-outfit truncate text-[15px] font-semibold text-yazz-text-dark">
                           {placeLabel(p.name)}
                         </p>
-                        <span className="font-inter shrink-0 rounded-full bg-yazz-accent px-2 py-0.5 text-[9px] font-semibold uppercase text-yazz-text-caption">
+                        <span className="font-inter shrink-0 rounded-full bg-yazz-accent px-2 py-0.5 text-[10px] font-semibold text-yazz-text-muted">
                           {PLACE_TYPE_LABEL[p.type]}
                         </span>
                       </div>
@@ -655,7 +655,7 @@ function PlaceEditorModal({
           <button
             onClick={submit}
             disabled={saving || !name.trim() || !point || !!taken}
-            className="font-inter flex h-11 flex-1 items-center justify-center gap-2 rounded-yazz-sm yazz-gradient-primary text-[13px] font-semibold text-white shadow-yazz-medium disabled:opacity-50"
+            className="font-inter flex h-11 flex-1 items-center justify-center gap-2 rounded-yazz-sm bg-yazz-primary text-[13px] font-semibold text-white shadow-yazz-soft transition-colors hover:bg-[#2238d6] disabled:opacity-50"
           >
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
             Enregistrer

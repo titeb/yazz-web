@@ -329,7 +329,7 @@ export default function SOSPage() {
             </p>
 
             {error && (
-              <div className="mt-6 w-full max-w-xs rounded-yazz-md border-l-4 border-l-yazz-error bg-yazz-error/10 p-3">
+              <div className="mt-6 w-full max-w-xs rounded-yazz-md ring-1 ring-inset ring-yazz-error/20 bg-yazz-error/10 p-3">
                 <p className="font-inter text-[12px] text-yazz-error">{error}</p>
               </div>
             )}
@@ -380,7 +380,7 @@ export default function SOSPage() {
             </p>
 
             {error && (
-              <div className="mt-4 w-full max-w-xs rounded-yazz-md border-l-4 border-l-yazz-error bg-yazz-error/10 p-3">
+              <div className="mt-4 w-full max-w-xs rounded-yazz-md ring-1 ring-inset ring-yazz-error/20 bg-yazz-error/10 p-3">
                 <p className="font-inter text-[12px] text-yazz-error">{error}</p>
               </div>
             )}
@@ -388,7 +388,7 @@ export default function SOSPage() {
             {/* Code à recopier */}
             <div className="mt-6 flex flex-col items-center gap-3">
               <div className="rounded-yazz-lg bg-white/10 px-6 py-3 backdrop-blur-sm">
-                <p className="font-inter text-[10px] uppercase tracking-wide text-white/40">Code de confirmation</p>
+                <p className="font-inter text-[11px] text-white/50">Code de confirmation</p>
                 <p className="font-outfit text-[32px] font-bold tracking-[0.3em] text-white">
                   {confirmCode}
                 </p>

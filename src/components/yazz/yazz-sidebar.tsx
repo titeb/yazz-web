@@ -113,11 +113,11 @@ export function YazzSidebar({ collapsed, onToggle, active }: YazzSidebarProps) {
       {/* Nav items */}
       <nav className="flex-1 overflow-y-auto px-3 py-2 no-scrollbar">
         {!collapsed && (
-          <p className="font-inter px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-yazz-text-caption">
+          <p className="font-inter px-3 pb-2 pt-1 text-[11px] font-medium text-yazz-text-caption">
             Navigation
           </p>
         )}
-        <ul className="yazz-stagger-group space-y-1">
+        <ul className="yazz-stagger-group space-y-0.5">
           {navItems.map((item) => {
             const isActive = getIsActive(item.href);
             const Icon = item.icon;
@@ -128,21 +128,30 @@ export function YazzSidebar({ collapsed, onToggle, active }: YazzSidebarProps) {
                   aria-current={isActive ? "page" : undefined}
                   title={collapsed ? item.label : undefined}
                   className={cn(
-                    "group relative flex w-full items-center gap-3 rounded-yazz-sm px-3 py-2.5 font-inter text-[13px] font-medium transition-all",
+                    "group relative flex w-full items-center gap-3 rounded-yazz-sm px-3 py-2.5 font-inter text-[13px] transition-colors duration-150",
                     "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yazz-primary/30",
                     collapsed && "justify-center px-0",
                     isActive
-                      ? "bg-yazz-primary text-white shadow-yazz-medium"
-                      : "text-yazz-text-body hover:bg-yazz-accent hover:text-yazz-primary"
+                      ? "bg-yazz-primary/[0.08] font-semibold text-yazz-primary"
+                      : "font-medium text-yazz-text-body hover:bg-yazz-accent hover:text-yazz-text-dark"
                   )}
                 >
-                  <Icon className={cn("h-[18px] w-[18px] shrink-0", isActive && "text-white")} />
+                  {/* Repère discret de la page ouverte */}
+                  {isActive && !collapsed && (
+                    <span className="absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-full bg-yazz-primary yazz-enter-pop" />
+                  )}
+                  <Icon
+                    className={cn(
+                      "h-[18px] w-[18px] shrink-0 transition-colors",
+                      isActive ? "text-yazz-primary" : "text-yazz-text-muted group-hover:text-yazz-text-dark"
+                    )}
+                  />
                   {!collapsed && <span className="flex-1 text-left">{item.label}</span>}
                   {!collapsed && item.badge && (
                     <span
                       className={cn(
                         "rounded-full px-2 py-0.5 text-[10px] font-semibold",
-                        isActive ? "bg-white/20 text-white" : "bg-yazz-crawling/15 text-yazz-crawling"
+                        isActive ? "bg-yazz-primary text-white" : "bg-yazz-accent text-yazz-text-body"
                       )}
                     >
                       {item.badge}
@@ -166,7 +175,7 @@ export function YazzSidebar({ collapsed, onToggle, active }: YazzSidebarProps) {
               onClick={() => router.push("/help")}
               className={cn(
                 "group flex w-full items-center gap-3 rounded-yazz-sm px-3 py-2.5 font-inter text-[13px] font-medium text-yazz-text-body transition-colors",
-                "hover:bg-yazz-accent hover:text-yazz-primary",
+                "hover:bg-yazz-accent hover:text-yazz-text-dark",
                 collapsed && "justify-center"
               )}
               title={collapsed ? "Support" : undefined}
@@ -180,8 +189,8 @@ export function YazzSidebar({ collapsed, onToggle, active }: YazzSidebarProps) {
               onClick={() => setShowLogoutConfirm(true)}
               disabled={signingOut}
               className={cn(
-                "group flex w-full items-center gap-3 rounded-yazz-sm px-3 py-2.5 font-inter text-[13px] font-medium text-yazz-error/80 transition-colors",
-                "hover:bg-yazz-error/10 hover:text-yazz-error disabled:opacity-50",
+                "group flex w-full items-center gap-3 rounded-yazz-sm px-3 py-2.5 font-inter text-[13px] font-medium text-yazz-text-muted transition-colors",
+                "hover:bg-yazz-error/[0.06] hover:text-yazz-error disabled:opacity-50",
                 collapsed && "justify-center"
               )}
               title={collapsed ? "Déconnexion" : undefined}

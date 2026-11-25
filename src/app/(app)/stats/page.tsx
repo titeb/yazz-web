@@ -82,7 +82,7 @@ export default function StatsPage() {
 
         {/* Mode démo */}
         {!isReady && (
-          <div className="mb-4 rounded-yazz-md border-l-4 border-l-yazz-warning bg-yazz-warning/10 p-4">
+          <div className="mb-4 rounded-yazz-md ring-1 ring-inset ring-yazz-warning/20 bg-yazz-warning/10 p-4">
             <div className="flex items-start gap-3">
               <Database className="h-5 w-5 shrink-0 text-yazz-warning" />
               <div>
@@ -117,8 +117,8 @@ export default function StatsPage() {
 
           {isReady && alerts.length === 0 && (
             <div className="grid place-items-center py-8 text-center">
-              <div className="grid h-12 w-12 place-items-center rounded-full bg-yazz-success/10">
-                <AlertTriangle className="h-5 w-5 text-yazz-success" />
+              <div className="grid h-12 w-12 place-items-center rounded-full bg-yazz-accent">
+                <AlertTriangle className="h-5 w-5 text-yazz-text-muted" />
               </div>
               <p className="font-outfit mt-2 text-[14px] font-semibold text-yazz-text-dark">
                 Aucune alerte
@@ -134,10 +134,10 @@ export default function StatsPage() {
               {alerts.map((a) => (
                 <li
                   key={a.id}
-                  className={`rounded-yazz-md border-l-2 bg-yazz-surface p-3 yazz-shadow-soft ${
-                    a.severity === "critical" ? "border-l-yazz-error" :
-                    a.severity === "warning" ? "border-l-yazz-warning" :
-                    "border-l-yazz-info"
+                  className={`rounded-yazz-md ring-1 ring-inset bg-yazz-surface p-3 yazz-shadow-soft ${
+                    a.severity === "critical" ? "ring-yazz-error/20" :
+                    a.severity === "warning" ? "ring-yazz-warning/20" :
+                    "ring-yazz-info/20"
                   } ${!a.isRead ? "ring-1 ring-yazz-primary/20" : "opacity-70"}`}
                 >
                   <div className="flex items-start justify-between gap-3">

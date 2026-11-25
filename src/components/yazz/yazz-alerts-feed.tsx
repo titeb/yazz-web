@@ -38,9 +38,9 @@ function getTypeConfig(type: AlertItem["type"]) {
 }
 
 const severityConfig: Record<AlertItem["severity"], string> = {
-  info: "border-l-yazz-info",
-  warning: "border-l-yazz-warning",
-  critical: "border-l-yazz-error",
+  info: "ring-yazz-info/20",
+  warning: "ring-yazz-warning/20",
+  critical: "ring-yazz-error/20",
 };
 
 function timeAgo(iso: string): string {
@@ -82,7 +82,7 @@ export function YazzAlertsFeed({ alerts }: YazzAlertsFeedProps) {
               <li key={a.id}>
                 <button
                   className={cn(
-                    "group flex w-full items-start gap-3 rounded-yazz-md border-l-2 bg-yazz-background/50 p-3 text-left transition-all hover:bg-yazz-accent/60",
+                    "group flex w-full items-start gap-3 rounded-yazz-md ring-1 ring-inset bg-yazz-background/50 p-3 text-left transition-all hover:bg-yazz-accent/60",
                     severityConfig[a.severity],
                   )}
                 >
@@ -102,7 +102,7 @@ export function YazzAlertsFeed({ alerts }: YazzAlertsFeedProps) {
                       {a.label}
                     </p>
                     <div className="mt-1.5 flex items-center justify-between">
-                      <span className="font-outfit rounded-full bg-yazz-surface px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-yazz-text-caption">
+                      <span className="font-outfit rounded-full bg-yazz-surface px-1.5 py-0.5 text-[10px] font-semibold text-yazz-text-muted">
                         {a.plate}
                       </span>
                       <span
@@ -124,8 +124,8 @@ export function YazzAlertsFeed({ alerts }: YazzAlertsFeedProps) {
 
         {alerts.length === 0 && (
           <div className="grid place-items-center py-10 text-center">
-            <div className="grid h-12 w-12 place-items-center rounded-full bg-yazz-success/10">
-              <Bell className="h-5 w-5 text-yazz-success" />
+            <div className="grid h-12 w-12 place-items-center rounded-full bg-yazz-accent">
+              <Bell className="h-5 w-5 text-yazz-text-muted" />
             </div>
             <p className="font-outfit mt-3 text-[13px] font-semibold text-yazz-text-dark">
               Aucune alerte

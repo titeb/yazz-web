@@ -116,8 +116,8 @@ export function YazzEngineCutModal({
         {step === "confirm" && (
           <>
             <div className={cn(
-              "rounded-yazz-sm border-l-4 p-3",
-              isCut ? "border-l-yazz-success bg-yazz-success/5" : "border-l-yazz-error bg-yazz-error/5"
+              "rounded-yazz-sm ring-1 ring-inset p-3",
+              isCut ? "ring-yazz-success/20 bg-yazz-success/5" : "ring-yazz-error/20 bg-yazz-error/5"
             )}>
               <div className="flex items-start gap-2.5">
                 <AlertTriangle className={cn("h-4 w-4 shrink-0 mt-0.5", isCut ? "text-yazz-success" : "text-yazz-error")} />
@@ -137,7 +137,7 @@ export function YazzEngineCutModal({
             </div>
 
             {speedTooHigh && (
-              <div className="mt-3 rounded-yazz-sm border-l-4 border-l-yazz-warning bg-yazz-warning/10 p-3">
+              <div className="mt-3 rounded-yazz-sm ring-1 ring-inset ring-yazz-warning/20 bg-yazz-warning/10 p-3">
                 <div className="flex items-start gap-2.5">
                   <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5 text-yazz-warning" />
                   <p className="font-inter text-[11px] text-yazz-text-body">
@@ -199,7 +199,7 @@ export function YazzEngineCutModal({
 
         {step === "error" && (
           <div className="py-4">
-            <div className="rounded-yazz-sm border-l-4 border-l-yazz-error bg-yazz-error/10 p-3">
+            <div className="rounded-yazz-sm ring-1 ring-inset ring-yazz-error/20 bg-yazz-error/10 p-3">
               <div className="flex items-start gap-2.5">
                 <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5 text-yazz-error" />
                 <div>

@@ -167,13 +167,15 @@ function LoginContent() {
   return (
     <div className="relative grid min-h-screen lg:grid-cols-2">
       {/* Brand panel (gauche, desktop) */}
-      <div className="relative hidden overflow-hidden yazz-gradient-primary lg:flex lg:flex-col lg:items-center lg:justify-center lg:p-12">
-        {/* Decorative grid */}
-        <div className="absolute inset-0 opacity-20">
+      <div className="relative hidden overflow-hidden bg-[#10143a] lg:flex lg:flex-col lg:items-center lg:justify-center lg:p-12">
+        {/* Halo bleu YAZZ très doux + quadrillage discret, comme une carte la nuit */}
+        <div className="pointer-events-none absolute -left-1/4 -top-1/4 h-[70%] w-[90%] rounded-full bg-yazz-primary/35 blur-[120px]" />
+        <div className="pointer-events-none absolute -bottom-1/3 right-[-20%] h-[60%] w-[70%] rounded-full bg-yazz-primary/20 blur-[120px]" />
+        <div className="pointer-events-none absolute inset-0 opacity-[0.07]">
           <svg className="h-full w-full" preserveAspectRatio="none" viewBox="0 0 100 100">
             <defs>
-              <pattern id="grid-login" width="6" height="6" patternUnits="userSpaceOnUse">
-                <path d="M 6 0 L 0 0 0 6" fill="none" stroke="white" strokeWidth="0.2" />
+              <pattern id="grid-login" width="8" height="8" patternUnits="userSpaceOnUse">
+                <path d="M 8 0 L 0 0 0 8" fill="none" stroke="white" strokeWidth="0.15" />
               </pattern>
             </defs>
             <rect width="100" height="100" fill="url(#grid-login)" />
@@ -188,7 +190,7 @@ function LoginContent() {
           <h1 className="font-outfit mt-8 text-5xl font-bold leading-tight tracking-[-0.03em] text-white">
             Sécurisez vos véhicules,
             <br />
-            <span className="text-white/80">où que vous soyez.</span>
+            <span className="text-white/60">où que vous soyez.</span>
           </h1>
         </div>
       </div>
@@ -341,7 +343,7 @@ function LoginContent() {
 
           {/* Erreur */}
           {error && (
-            <div className="mt-4 rounded-yazz-sm border-l-2 border-l-yazz-error bg-yazz-error/5 p-3">
+            <div className="mt-4 rounded-yazz-sm ring-1 ring-inset ring-yazz-error/20 bg-yazz-error/5 p-3">
               <p className="font-inter text-[12px] font-medium text-yazz-error">
                 {error}
               </p>

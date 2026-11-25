@@ -219,7 +219,7 @@ export default function VigilePage() {
         </div>
 
         {error && (
-          <div className="mb-4 rounded-yazz-md border-l-4 border-l-yazz-warning bg-yazz-warning/10 p-4">
+          <div className="mb-4 rounded-yazz-md ring-1 ring-inset ring-yazz-warning/20 bg-yazz-warning/10 p-4">
             <p className="font-inter text-[12px] text-yazz-text-body">{error}</p>
           </div>
         )}

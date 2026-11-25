@@ -64,7 +64,7 @@ export default function DashboardPage() {
     <div className="absolute inset-0 overflow-hidden">
       {/* Bannière si Supabase pas configuré (mode démo) */}
       {!isSupabaseReady && (
-        <div className="absolute left-4 right-4 top-4 z-30 rounded-yazz-md border-l-4 border-l-yazz-warning bg-yazz-warning/10 p-3 backdrop-blur-sm md:left-6">
+        <div className="absolute left-4 right-4 top-4 z-30 rounded-yazz-md ring-1 ring-inset ring-yazz-warning/20 bg-yazz-warning/10 p-3 backdrop-blur-sm md:left-6">
           <div className="flex items-start gap-2.5">
             <Database className="h-4 w-4 shrink-0 text-yazz-warning" />
             <div>
@@ -86,7 +86,7 @@ export default function DashboardPage() {
 
       {/* Carte flottante "Mes véhicules" en haut à droite */}
       {!selectedVehicle && (
-        <div className="yazz-enter absolute right-4 top-4 z-20 md:right-6">
+        <div className="yazz-enter absolute right-3 top-[60px] z-20 md:right-6 md:top-4">
           <YazzVehicleCard
             vehicles={vehicles}
             selectedId={selectedVehicleId}
@@ -97,7 +97,7 @@ export default function DashboardPage() {
 
       {/* Panneau détail en overlay à droite quand un véhicule est sélectionné */}
       {selectedVehicle && (
-        <div className="absolute right-4 top-4 z-20 max-h-[calc(var(--yazz-vh)-120px)] w-[340px] max-w-[calc(100vw-2rem)] overflow-hidden rounded-yazz-xl border border-yazz-border-light bg-yazz-surface yazz-shadow-high yazz-animate-slide-in-right md:right-6">
+        <div className="absolute right-3 top-[60px] z-20 max-h-[calc(var(--yazz-vh)-140px)] w-[340px] max-w-[calc(100vw-1.5rem)] overflow-hidden rounded-yazz-xl bg-yazz-surface yazz-shadow-high yazz-animate-slide-in-right md:right-6 md:top-4 md:max-h-[calc(var(--yazz-vh)-120px)]">
           <YazzVehicleDetail
             vehicle={selectedVehicle}
             onClose={() => setSelectedVehicleId(undefined)}
