@@ -26,80 +26,45 @@ const iconMap: Record<StatCardProps["icon"], LucideIcon> = {
   credit: Wallet,
 };
 
-const accentMap = {
-  primary: {
-    bg: "bg-yazz-primary/10",
-    fg: "text-yazz-primary",
-    bar: "bg-yazz-primary",
-  },
-  success: {
-    bg: "bg-yazz-success/10",
-    fg: "text-yazz-success",
-    bar: "bg-yazz-success",
-  },
-  warning: {
-    bg: "bg-yazz-warning/10",
-    fg: "text-yazz-warning",
-    bar: "bg-yazz-warning",
-  },
-  info: {
-    bg: "bg-yazz-info/10",
-    fg: "text-yazz-info",
-    bar: "bg-yazz-info",
-  },
-} as const;
 
-export function YazzStatCard({ label, value, delta, trend, icon, accent }: StatCardProps) {
+export function YazzStatCard({ label, value, delta, trend, icon }: StatCardProps) {
   const Icon = iconMap[icon];
-  const accentClasses = accentMap[accent];
   const TrendIcon = trend === "up" ? TrendingUp : trend === "down" ? TrendingDown : Minus;
 
+  // Carte sobre : fond blanc, icône d'une seule couleur, libellé normal,
+  // grand chiffre ; la tendance en petit texte (vert/rouge seulement si utile).
   return (
     <div
       className={cn(
-        "group relative overflow-hidden rounded-yazz-md bg-yazz-surface p-5 transition-all duration-300",
-        "border border-yazz-border-light yazz-shadow-soft",
-        "hover:-translate-y-0.5 hover:yazz-shadow-elevated hover:border-yazz-border-medium",
+        "group relative overflow-hidden rounded-yazz-lg bg-yazz-surface p-5",
+        "shadow-yazz-soft ring-1 ring-yazz-border-light/70 transition-shadow duration-200",
+        "hover:shadow-yazz-medium",
       )}
     >
-      {/* Top accent bar */}
-      <div className={cn("absolute left-0 top-0 h-full w-1", accentClasses.bar)} />
-
-      <div className="flex items-start justify-between">
-        <div className={cn("grid h-11 w-11 place-items-center rounded-yazz-lg", accentClasses.bg)}>
-          <Icon className={cn("h-[22px] w-[22px]", accentClasses.fg)} />
+      <div className="flex items-center justify-between gap-3">
+        <p className="font-inter text-[13px] font-medium text-yazz-text-muted">{label}</p>
+        <div className="grid h-9 w-9 place-items-center rounded-yazz-sm bg-yazz-accent">
+          <Icon className="h-[18px] w-[18px] text-yazz-text-body" />
         </div>
-
-        {delta && (
-          <div
-            className={cn(
-              "flex items-center gap-1 rounded-full px-2 py-1 text-[10px] font-semibold",
-              trend === "up" && "bg-yazz-success/10 text-yazz-success",
-              trend === "down" && "bg-yazz-error/10 text-yazz-error",
-              trend === "flat" && "bg-yazz-accent text-yazz-text-muted",
-            )}
-          >
-            <TrendIcon className="h-3 w-3" />
-            {delta}
-          </div>
-        )}
       </div>
 
-      <div className="mt-4">
-        <p className="font-inter text-[11px] font-medium uppercase tracking-[0.08em] text-yazz-text-caption">
-          {label}
-        </p>
-        <p className="font-outfit mt-1 text-[26px] font-bold leading-tight tracking-[-0.02em] text-yazz-text-dark">
-          {value}
-        </p>
-      </div>
+      <p className="font-outfit mt-2 text-[28px] font-bold leading-tight tracking-[-0.02em] text-yazz-text-dark tabular-nums">
+        {value}
+      </p>
 
-      {/* Hover glow effect */}
-      <div className={cn(
-        "pointer-events-none absolute -right-8 -top-8 h-32 w-32 rounded-full opacity-0 blur-2xl transition-opacity duration-500",
-        "group-hover:opacity-30",
-        accentClasses.bg,
-      )} />
+      {delta && (
+        <p
+          className={cn(
+            "mt-1 flex items-center gap-1 font-inter text-[12px] font-medium",
+            trend === "up" && "text-yazz-success",
+            trend === "down" && "text-yazz-error",
+            trend === "flat" && "text-yazz-text-caption",
+          )}
+        >
+          <TrendIcon className="h-3.5 w-3.5" />
+          {delta}
+        </p>
+      )}
     </div>
   );
 }

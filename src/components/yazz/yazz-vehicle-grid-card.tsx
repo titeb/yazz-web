@@ -279,7 +279,7 @@ export function YazzVehicleGridCard({ device }: { device: UserDevice }) {
                 "grid h-12 w-12 shrink-0 place-items-center rounded-[14px]",
                 device.isActive === false
                   ? "bg-yazz-accent"
-                  : "yazz-gradient-primary text-white"
+                  : "bg-yazz-primary/[0.08] text-yazz-primary"
               )}
             >
               <span className="font-outfit text-[18px] font-bold">{firstLetter}</span>
@@ -382,11 +382,11 @@ export function YazzVehicleGridCard({ device }: { device: UserDevice }) {
         </div>
 
         {/* ─── Stats compactes (3 cols) ────────────────────────────────── */}
-        <div className="grid grid-cols-3 gap-2 px-4 pb-3">
-          <div className="rounded-yazz-md bg-yazz-background/60 p-2.5">
+        <div className="grid grid-cols-3 divide-x divide-yazz-border-light px-4 pb-3">
+          <div className="px-3 py-1 first:pl-0">
             <div className="flex items-center gap-1">
               <Gauge className="h-3 w-3 text-yazz-primary" />
-              <p className="font-inter text-[9px] uppercase tracking-wide text-yazz-text-caption">
+              <p className="font-inter text-[11px] text-yazz-text-muted">
                 Vitesse
               </p>
             </div>
@@ -395,10 +395,10 @@ export function YazzVehicleGridCard({ device }: { device: UserDevice }) {
               <span className="ml-0.5 text-[10px] font-normal text-yazz-text-caption">km/h</span>
             </p>
           </div>
-          <div className="rounded-yazz-md bg-yazz-background/60 p-2.5">
+          <div className="px-3 py-1 first:pl-0">
             <div className="flex items-center gap-1">
               <Battery className="h-3 w-3 text-yazz-primary" />
-              <p className="font-inter text-[9px] uppercase tracking-wide text-yazz-text-caption">
+              <p className="font-inter text-[11px] text-yazz-text-muted">
                 Batterie
               </p>
             </div>
@@ -418,10 +418,10 @@ export function YazzVehicleGridCard({ device }: { device: UserDevice }) {
               )}
             </p>
           </div>
-          <div className="rounded-yazz-md bg-yazz-background/60 p-2.5">
+          <div className="px-3 py-1 first:pl-0">
             <div className="flex items-center gap-1">
               <MapPin className="h-3 w-3 text-yazz-primary" />
-              <p className="font-inter text-[9px] uppercase tracking-wide text-yazz-text-caption">
+              <p className="font-inter text-[11px] text-yazz-text-muted">
                 Position
               </p>
             </div>
@@ -480,7 +480,7 @@ export function YazzVehicleGridCard({ device }: { device: UserDevice }) {
               "font-inter flex flex-col items-center gap-1 rounded-yazz-sm py-2 transition-all active:scale-95",
               isCut
                 ? "bg-yazz-error text-white yazz-blink"
-                : "bg-yazz-background text-yazz-text-body hover:bg-yazz-accent"
+                : "bg-yazz-accent text-yazz-text-body hover:bg-[#e8eaf0]"
             )}
             title={isCut ? "Restaurer le moteur" : "Couper le moteur"}
           >
@@ -491,7 +491,7 @@ export function YazzVehicleGridCard({ device }: { device: UserDevice }) {
           {/* 2. Partager */}
           <button
             onClick={handleShare}
-            className="font-inter flex flex-col items-center gap-1 rounded-yazz-sm bg-yazz-background py-2 text-yazz-text-body transition-all hover:bg-yazz-accent active:scale-95"
+            className="font-inter flex flex-col items-center gap-1 rounded-yazz-sm bg-yazz-accent py-2 text-yazz-text-body transition-all hover:bg-[#e8eaf0] active:scale-95"
             title="Partager"
           >
             <Share2 className="h-[16px] w-[16px]" />
@@ -505,7 +505,7 @@ export function YazzVehicleGridCard({ device }: { device: UserDevice }) {
               "font-inter flex flex-col items-center gap-1 rounded-yazz-sm py-2 transition-all active:scale-95",
               parkingActive
                 ? "yazz-gradient-primary text-white yazz-blink"
-                : "bg-yazz-background text-yazz-text-body hover:bg-yazz-accent"
+                : "bg-yazz-accent text-yazz-text-body hover:bg-[#e8eaf0]"
             )}
             title={parkingActive ? "Désactiver le mode parking" : "Activer le mode parking"}
           >
@@ -516,7 +516,7 @@ export function YazzVehicleGridCard({ device }: { device: UserDevice }) {
           {/* 4. SOS */}
           <button
             onClick={handleSOS}
-            className="font-inter flex flex-col items-center gap-1 rounded-yazz-sm bg-yazz-background py-2 text-yazz-text-body transition-all hover:bg-yazz-accent active:scale-95"
+            className="font-inter flex flex-col items-center gap-1 rounded-yazz-sm bg-yazz-accent py-2 text-yazz-text-body transition-all hover:bg-[#e8eaf0] active:scale-95"
             title="SOS"
           >
             <ShieldAlert className="h-[16px] w-[16px] yazz-blink" />
@@ -526,7 +526,7 @@ export function YazzVehicleGridCard({ device }: { device: UserDevice }) {
           {/* 5. Options (more) → ouvre le modal options */}
           <button
             onClick={() => setShowOptions(true)}
-            className="font-inter flex flex-col items-center gap-1 rounded-yazz-sm bg-yazz-background py-2 text-yazz-text-body transition-all hover:bg-yazz-accent active:scale-95"
+            className="font-inter flex flex-col items-center gap-1 rounded-yazz-sm bg-yazz-accent py-2 text-yazz-text-body transition-all hover:bg-[#e8eaf0] active:scale-95"
             title="Plus d'options"
           >
             <MoreVertical className="h-[16px] w-[16px]" />

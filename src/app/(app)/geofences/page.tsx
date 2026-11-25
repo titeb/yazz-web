@@ -218,7 +218,7 @@ export default function GeofencesPage() {
           {isReady && (
             <button
               onClick={() => setShowAddModal(true)}
-              className="font-inter flex h-10 items-center gap-2 rounded-yazz-sm yazz-gradient-primary px-4 text-[13px] font-semibold text-white shadow-yazz-medium transition-all hover:shadow-yazz-elevated active:scale-95"
+              className="font-inter flex h-10 items-center gap-2 rounded-yazz-sm bg-yazz-primary px-4 text-[13px] font-semibold text-white shadow-yazz-soft transition-colors hover:bg-[#2238d6] transition-all hover:shadow-yazz-elevated active:scale-95"
             >
               <Plus className="h-4 w-4" />
               Créer
@@ -227,7 +227,7 @@ export default function GeofencesPage() {
         </div>
 
         {!isReady && (
-          <div className="rounded-yazz-md border-l-4 border-l-yazz-warning bg-yazz-warning/10 p-4">
+          <div className="rounded-yazz-md ring-1 ring-inset ring-yazz-warning/20 bg-yazz-warning/10 p-4">
             <p className="font-inter text-[12px] text-yazz-text-muted">
               Configurez Supabase dans <code className="font-mono">.env.local</code>.
             </p>
@@ -235,7 +235,7 @@ export default function GeofencesPage() {
         )}
 
         {error && (
-          <div className="mb-4 rounded-yazz-md border-l-4 border-l-yazz-error bg-yazz-error/10 p-3">
+          <div className="mb-4 rounded-yazz-md ring-1 ring-inset ring-yazz-error/20 bg-yazz-error/10 p-3">
             <p className="font-inter text-[12px] text-yazz-error">{error}</p>
           </div>
         )}
@@ -253,7 +253,7 @@ export default function GeofencesPage() {
             </p>
             <button
               onClick={() => setShowAddModal(true)}
-              className="font-inter mt-4 flex h-10 items-center gap-2 rounded-yazz-sm yazz-gradient-primary px-4 text-[13px] font-semibold text-white shadow-yazz-medium"
+              className="font-inter mt-4 flex h-10 items-center gap-2 rounded-yazz-sm bg-yazz-primary px-4 text-[13px] font-semibold text-white shadow-yazz-soft transition-colors hover:bg-[#2238d6]"
             >
               <Plus className="h-4 w-4" />
               Créer une géofence
@@ -284,7 +284,7 @@ export default function GeofencesPage() {
                       <p className="font-outfit truncate text-[14px] font-semibold text-yazz-text-dark">
                         {gf.name}
                       </p>
-                      <p className="font-inter text-[10px] uppercase text-yazz-text-caption">
+                      <p className="font-inter text-[11px] text-yazz-text-muted">
                         {gf.type === "circle" ? "Cercle" : "Polygone"}
                         {gf.radius ? ` · ${gf.radius}m` : ""}
                       </p>
@@ -540,7 +540,7 @@ function AddGeofenceModal({
           </div>
 
           {error && (
-            <div className="rounded-yazz-sm border-l-2 border-l-yazz-error bg-yazz-error/10 p-2">
+            <div className="rounded-yazz-sm ring-1 ring-inset ring-yazz-error/20 bg-yazz-error/10 p-2">
               <p className="font-inter text-[11px] text-yazz-error">{error}</p>
             </div>
           )}
@@ -552,7 +552,7 @@ function AddGeofenceModal({
             <button
               onClick={handleSubmit}
               disabled={loading || !name.trim()}
-              className="font-inter flex flex-1 items-center justify-center gap-2 rounded-yazz-sm yazz-gradient-primary py-2.5 text-[12px] font-semibold text-white shadow-yazz-medium hover:shadow-yazz-elevated disabled:opacity-50"
+              className="font-inter flex flex-1 items-center justify-center gap-2 rounded-yazz-sm bg-yazz-primary py-2.5 text-[12px] font-semibold text-white shadow-yazz-soft transition-colors hover:bg-[#2238d6] hover:shadow-yazz-elevated disabled:opacity-50"
             >
               {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
               Créer
@@ -605,7 +605,7 @@ function ConfirmDeleteGeofenceModal({
         </p>
 
         {error && (
-          <div className="mb-3 rounded-yazz-sm border-l-2 border-l-yazz-error bg-yazz-error/10 p-2">
+          <div className="mb-3 rounded-yazz-sm ring-1 ring-inset ring-yazz-error/20 bg-yazz-error/10 p-2">
             <p className="font-inter text-[11px] text-yazz-error">{error}</p>
           </div>
         )}

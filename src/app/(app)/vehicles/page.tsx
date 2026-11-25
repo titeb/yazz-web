@@ -89,7 +89,7 @@ function VehiclesContent() {
 
         {/* States */}
         {!isReady && (
-          <div className="rounded-yazz-md border-l-4 border-l-yazz-warning bg-yazz-warning/10 p-4">
+          <div className="rounded-yazz-md ring-1 ring-inset ring-yazz-warning/20 bg-yazz-warning/10 p-4">
             <p className="font-inter text-[12px] text-yazz-text-muted">
               Configure Supabase dans <code className="font-mono">.env.local</code> pour voir vos capteurs.
             </p>
@@ -97,7 +97,7 @@ function VehiclesContent() {
         )}
 
         {error && (
-          <div className="rounded-yazz-md border-l-4 border-l-yazz-error bg-yazz-error/10 p-4">
+          <div className="rounded-yazz-md ring-1 ring-inset ring-yazz-error/20 bg-yazz-error/10 p-4">
             <p className="font-inter text-[12px] text-yazz-error">{error}</p>
           </div>
         )}
@@ -303,7 +303,7 @@ function AddDeviceModal({
         </div>
 
         {error && (
-          <div className="rounded-yazz-sm border-l-2 border-l-yazz-error bg-yazz-error/10 p-2">
+          <div className="rounded-yazz-sm ring-1 ring-inset ring-yazz-error/20 bg-yazz-error/10 p-2">
             <p className="font-inter text-[11px] text-yazz-error">{error}</p>
           </div>
         )}
@@ -419,7 +419,7 @@ function EditDeviceModal({
         </Field>
 
         {error && (
-          <div className="rounded-yazz-sm border-l-2 border-l-yazz-error bg-yazz-error/10 p-2">
+          <div className="rounded-yazz-sm ring-1 ring-inset ring-yazz-error/20 bg-yazz-error/10 p-2">
             <p className="font-inter text-[11px] text-yazz-error">{error}</p>
           </div>
         )}

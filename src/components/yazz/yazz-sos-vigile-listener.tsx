@@ -169,7 +169,7 @@ export function YazzSosVigileListener() {
           {/* Texte */}
           <div className="min-w-0 flex-1 py-2 pr-2 text-left">
             <p className="font-outfit text-[13px] font-bold text-yazz-error">
-              🚨 Alerte SOS à proximité
+              Alerte SOS à proximité
             </p>
             <p className="font-inter truncate text-[11px] text-yazz-text-dark">
               {toast.deviceName || "Véhicule inconnu"}

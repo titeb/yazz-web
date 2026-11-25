@@ -335,7 +335,7 @@ export default function SharingPage() {
           {isReady && vehicles.length > 0 && (
             <button
               onClick={() => setShowAddModal(true)}
-              className="font-inter flex h-10 items-center gap-2 rounded-yazz-sm yazz-gradient-primary px-4 text-[13px] font-semibold text-white shadow-yazz-medium hover:shadow-yazz-elevated active:scale-95"
+              className="font-inter flex h-10 items-center gap-2 rounded-yazz-sm bg-yazz-primary px-4 text-[13px] font-semibold text-white shadow-yazz-soft transition-colors hover:bg-[#2238d6] hover:shadow-yazz-elevated active:scale-95"
             >
               <Plus className="h-4 w-4" />
               Partager
@@ -344,13 +344,13 @@ export default function SharingPage() {
         </div>
 
         {!isReady && (
-          <div className="rounded-yazz-md border-l-4 border-l-yazz-warning bg-yazz-warning/10 p-4">
+          <div className="rounded-yazz-md ring-1 ring-inset ring-yazz-warning/20 bg-yazz-warning/10 p-4">
             <p className="font-inter text-[12px] text-yazz-text-muted">Configurez Supabase.</p>
           </div>
         )}
 
         {error && (
-          <div className="mb-4 rounded-yazz-md border-l-4 border-l-yazz-error bg-yazz-error/10 p-3">
+          <div className="mb-4 rounded-yazz-md ring-1 ring-inset ring-yazz-error/20 bg-yazz-error/10 p-3">
             <p className="font-inter text-[12px] text-yazz-error">{error}</p>
           </div>
         )}
@@ -372,7 +372,7 @@ export default function SharingPage() {
                     <li key={inv.id} className="rounded-yazz-xl border border-yazz-primary/30 bg-yazz-primary/5 p-4 yazz-shadow-soft">
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex items-start gap-3 min-w-0 flex-1">
-                          <div className="grid h-10 w-10 shrink-0 place-items-center rounded-yazz-lg yazz-gradient-primary text-white">
+                          <div className="grid h-10 w-10 shrink-0 place-items-center rounded-yazz-sm bg-yazz-primary/[0.08] text-yazz-primary">
                             <UserPlus className="h-4 w-4" />
                           </div>
                           <div className="min-w-0">
@@ -442,7 +442,7 @@ export default function SharingPage() {
                     <li key={share.id} className="rounded-yazz-xl border border-yazz-border-light bg-yazz-surface p-4 yazz-shadow-soft">
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex items-start gap-3 min-w-0 flex-1">
-                          <div className="grid h-10 w-10 shrink-0 place-items-center rounded-yazz-lg yazz-gradient-primary text-white">
+                          <div className="grid h-10 w-10 shrink-0 place-items-center rounded-yazz-sm bg-yazz-primary/[0.08] text-yazz-primary">
                             <Car className="h-4 w-4" />
                           </div>
                           <div className="min-w-0">
@@ -696,7 +696,7 @@ function AddShareModal({
           </div>
 
           {error && (
-            <div className="rounded-yazz-sm border-l-2 border-l-yazz-error bg-yazz-error/10 p-2">
+            <div className="rounded-yazz-sm ring-1 ring-inset ring-yazz-error/20 bg-yazz-error/10 p-2">
               <p className="font-inter text-[11px] text-yazz-error">{error}</p>
             </div>
           )}
@@ -708,7 +708,7 @@ function AddShareModal({
             <button
               onClick={handleSubmit}
               disabled={loading}
-              className="font-inter flex flex-1 items-center justify-center gap-2 rounded-yazz-sm yazz-gradient-primary py-2.5 text-[12px] font-semibold text-white shadow-yazz-medium hover:shadow-yazz-elevated disabled:opacity-50"
+              className="font-inter flex flex-1 items-center justify-center gap-2 rounded-yazz-sm bg-yazz-primary py-2.5 text-[12px] font-semibold text-white shadow-yazz-soft transition-colors hover:bg-[#2238d6] hover:shadow-yazz-elevated disabled:opacity-50"
             >
               {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Share2 className="h-4 w-4" />}
               Partager

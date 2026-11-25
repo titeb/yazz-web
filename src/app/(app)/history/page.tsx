@@ -12,6 +12,7 @@ import {
   Clock,
   Gauge,
   MapPin,
+  ParkingSquare,
   AlertTriangle,
   Play,
   X,
@@ -556,7 +557,7 @@ export default function HistoryPage() {
         </div>
 
         {!isReady ? (
-          <div className="rounded-yazz-md border-l-4 border-l-yazz-warning bg-yazz-warning/10 p-4">
+          <div className="rounded-yazz-md ring-1 ring-inset ring-yazz-warning/20 bg-yazz-warning/10 p-4">
             <p className="font-inter text-[12px] text-yazz-text-muted">
               Configurez Supabase dans <code className="font-mono">.env.local</code> pour voir l'historique.
             </p>
@@ -629,10 +630,10 @@ export default function HistoryPage() {
             {/* Stats du jour — skeleton pendant chargement, contenu si trips, rien sinon */}
             {trips.length > 0 ? (
               <div className="yazz-stagger-group mb-6 grid grid-cols-2 gap-3 md:grid-cols-4">
-                <StatBox icon={Clock} label="Temps de conduite" value={formatDuration(totalDriveMin)} color="text-yazz-info" bg="bg-yazz-info/10" />
-                <StatBox icon={MapPin} label="Distance parcourue" value={formatDistance(totalDistance)} color="text-yazz-success" bg="bg-yazz-success/10" />
-                <StatBox icon={Gauge} label="Vitesse maximale" value={`${maxSpeed} km/h`} color="text-yazz-crawling" bg="bg-yazz-crawling/10" />
-                <StatBox icon={Clock} label="Temps d'arrêt" value={formatDuration(totalStopMin)} color="text-yazz-warning" bg="bg-yazz-warning/10" />
+                <StatBox icon={Clock} label="Temps de conduite" value={formatDuration(totalDriveMin)} color="" bg="" />
+                <StatBox icon={Route} label="Distance parcourue" value={formatDistance(totalDistance)} color="" bg="" />
+                <StatBox icon={Gauge} label="Vitesse maximale" value={`${maxSpeed} km/h`} color="" bg="" />
+                <StatBox icon={ParkingSquare} label="Temps d'arrêt" value={formatDuration(totalStopMin)} color="" bg="" />
               </div>
             ) : (loading || vehiclesLoading) && !error ? (
               // FIX 2026-11-05 : skeleton stats grid pendant chargement
@@ -649,7 +650,7 @@ export default function HistoryPage() {
 
             {/* Erreur */}
             {error && (
-              <div className="mb-4 rounded-yazz-md border-l-4 border-l-yazz-error bg-yazz-error/10 p-3">
+              <div className="mb-4 rounded-yazz-md ring-1 ring-inset ring-yazz-error/20 bg-yazz-error/10 p-3">
                 <p className="font-inter text-[12px] text-yazz-error">{error}</p>
               </div>
             )}
@@ -733,12 +734,13 @@ export default function HistoryPage() {
 
                             {/* Ligne 2: Adresse ou shimmer pendant le chargement */}
                             {event.address ? (
-                              <p className="font-inter mt-1 text-[11px] text-yazz-text-muted">
-                                {event.type === 'resume' ? `📍 Départ : ${event.address}` : `📍 ${event.address}`}
+                              <p className="font-inter mt-1 flex items-start gap-1.5 text-[12px] text-yazz-text-muted">
+                                <MapPin className="mt-[2px] h-3 w-3 shrink-0 text-yazz-text-caption" />
+                                <span>{event.type === 'resume' ? `Départ : ${event.address}` : event.address}</span>
                               </p>
                             ) : addressesLoading && event.trip ? (
                               <div className="mt-1 flex items-center gap-1.5">
-                                <span className="text-[11px]">📍</span>
+                                <MapPin className="h-3 w-3 shrink-0 text-yazz-text-caption" />
                                 <div className="h-[11px] w-48 rounded-yazz-sm bg-yazz-accent yazz-shimmer" />
                               </div>
                             ) : null}
@@ -847,14 +849,14 @@ function StatBox({
   bg: string;
 }) {
   return (
-    <div className="rounded-yazz-md border border-yazz-border-light bg-yazz-surface p-3 yazz-shadow-soft">
-      <div className="flex items-center gap-2">
-        <div className={cn("grid h-8 w-8 place-items-center rounded-yazz-lg", bg)}>
-          <Icon className={cn("h-4 w-4", color)} />
+    <div className="rounded-yazz-lg bg-yazz-surface p-3 shadow-yazz-soft ring-1 ring-yazz-border-light/70">
+      <div className="flex items-center gap-2.5">
+        <div className="grid h-8 w-8 place-items-center rounded-yazz-sm bg-yazz-accent">
+          <Icon className="h-4 w-4 text-yazz-text-body" />
         </div>
         <div className="min-w-0">
-          <p className="font-inter text-[10px] uppercase tracking-wide text-yazz-text-caption">{label}</p>
-          <p className="font-outfit text-[14px] font-bold text-yazz-text-dark">{value}</p>
+          <p className="font-inter text-[12px] text-yazz-text-muted">{label}</p>
+          <p className="font-outfit text-[16px] font-bold text-yazz-text-dark">{value}</p>
         </div>
       </div>
     </div>
@@ -865,8 +867,8 @@ function StatBox({
 // Mêmes dimensions que StatBox pour transition fluide.
 function StatBoxSkeleton() {
   return (
-    <div className="rounded-yazz-md border border-yazz-border-light bg-yazz-surface p-3">
-      <div className="flex items-center gap-2">
+    <div className="rounded-yazz-lg bg-yazz-surface p-3 shadow-yazz-soft ring-1 ring-yazz-border-light/70">
+      <div className="flex items-center gap-2.5">
         <div className="yazz-skeleton h-8 w-8 rounded-yazz-lg" />
         <div className="flex-1 space-y-1.5">
           <div className="yazz-skeleton yazz-skeleton-line-sm" />
@@ -952,7 +954,7 @@ function TripDetailModal({ trip, onClose }: { trip: Trip; onClose: () => void })
               <div className="flex items-start gap-2">
                 <div className="mt-0.5 h-2 w-2 shrink-0 rounded-full bg-yazz-success" />
                 <div>
-                  <p className="font-inter text-[10px] uppercase text-yazz-text-caption">Départ</p>
+                  <p className="font-inter text-[11px] text-yazz-text-muted">Départ</p>
                   <p className="font-inter text-[12px] text-yazz-text-dark">{trip.startAddress}</p>
                 </div>
               </div>
@@ -961,7 +963,7 @@ function TripDetailModal({ trip, onClose }: { trip: Trip; onClose: () => void })
               <div className="flex items-start gap-2">
                 <div className="mt-0.5 h-2 w-2 shrink-0 rounded-full bg-yazz-error" />
                 <div>
-                  <p className="font-inter text-[10px] uppercase text-yazz-text-caption">Arrivée</p>
+                  <p className="font-inter text-[11px] text-yazz-text-muted">Arrivée</p>
                   <p className="font-inter text-[12px] text-yazz-text-dark">{trip.endAddress}</p>
                 </div>
               </div>

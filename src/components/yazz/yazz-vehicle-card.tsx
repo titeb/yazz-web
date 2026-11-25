@@ -83,14 +83,14 @@ export function YazzVehicleCard({ vehicles, selectedId, onSelect }: YazzVehicleC
   }), [vehicles]);
 
   return (
-    <div className="flex max-h-[calc(var(--yazz-vh)-180px)] w-[260px] flex-col overflow-hidden rounded-yazz-xl border border-yazz-border-light bg-yazz-surface/95 yazz-glass yazz-shadow-elevated">
+    <div className="flex max-h-[calc(var(--yazz-vh)-180px)] w-[260px] max-w-[calc(100vw-1.5rem)] flex-col overflow-hidden rounded-yazz-xl bg-yazz-surface/95 shadow-yazz-elevated backdrop-blur-md">
       {/* Header — cliquable pour collapse */}
       <button
         onClick={() => setCollapsed((c) => !c)}
         className="flex items-center justify-between gap-2 border-b border-yazz-border-light px-3 py-2.5 transition-colors hover:bg-yazz-accent/50"
       >
         <div className="flex items-center gap-2">
-          <div className="grid h-7 w-7 place-items-center rounded-yazz-lg yazz-gradient-primary text-white">
+          <div className="grid h-7 w-7 place-items-center rounded-yazz-sm bg-yazz-primary/[0.08] text-yazz-primary">
             <Car className="h-3.5 w-3.5" />
           </div>
           <div className="text-left">

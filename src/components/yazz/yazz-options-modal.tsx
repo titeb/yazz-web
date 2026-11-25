@@ -200,7 +200,7 @@ export function OptionsModal({
         {actionResult && (
           <div className={cn(
             "shrink-0 border-b p-3",
-            actionResult.type === "success" ? "border-l-4 border-l-yazz-success bg-yazz-success/10" : "border-l-4 border-l-yazz-error bg-yazz-error/10"
+            actionResult.type === "success" ? "ring-1 ring-inset ring-yazz-success/20 bg-yazz-success/10" : "ring-1 ring-inset ring-yazz-error/20 bg-yazz-error/10"
           )}>
             <p className={cn("font-inter text-[12px] font-semibold", actionResult.type === "success" ? "text-yazz-success" : "text-yazz-error")}>
               {actionResult.message}
@@ -316,7 +316,7 @@ export function OptionsModal({
         {activeSubModal === "delete" && (
           <SubModal title="Supprimer le capteur ?" onClose={() => setActiveSubModal(null)}>
             <div className="space-y-3">
-              <div className="rounded-yazz-sm border-l-4 border-l-yazz-error bg-yazz-error/10 p-3">
+              <div className="rounded-yazz-sm ring-1 ring-inset ring-yazz-error/20 bg-yazz-error/10 p-3">
                 <p className="font-inter text-[12px] text-yazz-text-body">
                   Cette action est <strong>irréversible</strong>. Le capteur <strong>{vehicleName}</strong> sera définitivement retiré de votre compte.
                 </p>

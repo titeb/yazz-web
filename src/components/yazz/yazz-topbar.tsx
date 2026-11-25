@@ -80,7 +80,7 @@ export function YazzTopbar({ onMobileMenu }: YazzTopbarProps) {
 
   return (
     <>
-      <header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-yazz-border-light bg-yazz-surface/90 px-4 backdrop-blur-md yazz-glass md:px-6">
+      <header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-yazz-border-light bg-yazz-surface/90 px-4 backdrop-blur-md md:px-6">
         <button
           onClick={onMobileMenu}
           aria-label="Ouvrir le menu"
@@ -89,21 +89,21 @@ export function YazzTopbar({ onMobileMenu }: YazzTopbarProps) {
           <Menu className="h-5 w-5" />
         </button>
 
-        <div className="relative flex-1 max-w-md">
+        <div className="relative min-w-0 flex-1 md:max-w-md">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-yazz-text-caption" />
           <input
             type="search"
             placeholder="Rechercher un véhicule, IMEI, plaque..."
-            className="font-inter h-10 w-full rounded-yazz-sm border border-yazz-border-light bg-yazz-background pl-10 pr-3 text-[13px] text-yazz-text-dark placeholder:text-yazz-text-caption transition-all focus:border-yazz-primary focus:outline-none focus:ring-2 focus:ring-yazz-primary/20"
+            className="font-inter h-10 w-full rounded-yazz-sm border border-transparent bg-yazz-accent pl-10 pr-3 text-[13px] text-yazz-text-dark placeholder:text-yazz-text-caption transition-all focus:border-yazz-primary/40 focus:bg-yazz-surface focus:outline-none focus:ring-4 focus:ring-yazz-primary/10"
           />
         </div>
 
-        <div className="flex-1" />
+        <div className="hidden flex-1 md:block" />
 
         <div className="flex items-center gap-1.5">
           <button
             onClick={() => router.push("/vehicles?add=1")}
-            className="font-inter hidden h-10 items-center gap-2 rounded-yazz-sm yazz-gradient-primary text-white px-4 text-[13px] font-semibold shadow-yazz-medium transition-all hover:shadow-yazz-elevated active:scale-[0.98] md:inline-flex"
+            className="font-inter hidden h-10 items-center gap-2 rounded-yazz-sm bg-yazz-primary text-white px-4 text-[13px] font-semibold shadow-yazz-soft transition-all hover:bg-[#2238d6] active:scale-[0.98] md:inline-flex"
           >
             <Plus className="h-4 w-4" />
             Ajouter un véhicule
@@ -144,7 +144,7 @@ export function YazzTopbar({ onMobileMenu }: YazzTopbarProps) {
                 <div className="max-h-[400px] overflow-y-auto">
                   {alerts.length === 0 ? (
                     <div className="grid place-items-center py-8 text-center">
-                      <div className="grid h-10 w-10 place-items-center rounded-full bg-yazz-success/10"><Bell className="h-4 w-4 text-yazz-success" /></div>
+                      <div className="grid h-10 w-10 place-items-center rounded-full bg-yazz-accent"><Bell className="h-4 w-4 text-yazz-text-muted" /></div>
                       <p className="font-outfit mt-2 text-[13px] font-semibold text-yazz-text-dark">Aucune notification</p>
                     </div>
                   ) : (
@@ -182,7 +182,7 @@ export function YazzTopbar({ onMobileMenu }: YazzTopbarProps) {
               {avatarUrl ? (
                 <img src={avatarUrl} alt={fullName} className="h-8 w-8 rounded-full object-cover" />
               ) : (
-                <div className="font-outfit grid h-8 w-8 place-items-center rounded-full yazz-gradient-primary text-[11px] font-bold text-white">
+                <div className="font-outfit grid h-8 w-8 place-items-center rounded-full bg-yazz-primary text-[11px] font-bold text-white">
                   {initials}
                 </div>
               )}
@@ -200,7 +200,7 @@ export function YazzTopbar({ onMobileMenu }: YazzTopbarProps) {
                     {avatarUrl ? (
                       <img src={avatarUrl} alt={fullName} className="h-10 w-10 rounded-full object-cover" />
                     ) : (
-                      <div className="font-outfit grid h-10 w-10 place-items-center rounded-full yazz-gradient-primary text-[12px] font-bold text-white">{initials}</div>
+                      <div className="font-outfit grid h-10 w-10 place-items-center rounded-full bg-yazz-primary text-[12px] font-bold text-white">{initials}</div>
                     )}
                     <div className="min-w-0">
                       <p className="font-outfit truncate text-[13px] font-semibold text-yazz-text-dark">{fullName}</p>

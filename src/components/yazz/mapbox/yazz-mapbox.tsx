@@ -565,7 +565,7 @@ export function YazzMapbox({ vehicles, selectedId, onSelect }: YazzMapboxProps) 
       )}
 
       {/* Filter pills (overlay top-left) */}
-      <div className="absolute left-3 top-3 z-20 flex items-center gap-1 rounded-yazz-sm bg-yazz-surface/95 p-1 yazz-glass">
+      <div className="no-scrollbar absolute left-3 top-3 z-20 flex max-w-[calc(100%-1.5rem)] items-center gap-0.5 overflow-x-auto rounded-yazz-md bg-yazz-surface/95 p-1 shadow-yazz-medium backdrop-blur-md yazz-enter">
         {([
           { id: "all", label: "Tous", count: counts.all },
           { id: "moving", label: "Mouvement", count: counts.moving },
@@ -579,14 +579,14 @@ export function YazzMapbox({ vehicles, selectedId, onSelect }: YazzMapboxProps) 
               key={f.id}
               onClick={() => setFilter(f.id as VehicleStatus | "all")}
               className={cn(
-                "font-inter rounded-yazz-xs px-2.5 py-1.5 text-[11px] font-semibold transition-all",
+                "font-inter shrink-0 whitespace-nowrap rounded-yazz-sm px-3 py-1.5 text-[12px] font-semibold transition-colors duration-150",
                 active
-                  ? "bg-yazz-primary text-white shadow-yazz-soft"
-                  : "text-yazz-text-muted hover:bg-yazz-accent hover:text-yazz-primary"
+                  ? "bg-yazz-primary text-white"
+                  : "text-yazz-text-muted hover:bg-yazz-accent hover:text-yazz-text-dark"
               )}
             >
               {f.label}
-              <span className={cn("ml-1.5", active ? "opacity-80" : "opacity-50")}>{f.count}</span>
+              <span className={cn("ml-1.5 tabular-nums", active ? "text-white/75" : "text-yazz-text-caption")}>{f.count}</span>
             </button>
           );
         })}
@@ -597,8 +597,8 @@ export function YazzMapbox({ vehicles, selectedId, onSelect }: YazzMapboxProps) 
         .yazz-mapbox-popup .mapboxgl-popup-content {
           border-radius: 14px;
           background: white;
-          box-shadow: 0 8px 24px rgba(43, 68, 238, 0.16);
-          border: 1px solid #dde1f2;
+          box-shadow: 0 12px 32px rgba(16, 24, 40, 0.14), 0 2px 6px rgba(16, 24, 40, 0.06);
+          border: none;
           padding: 0;
         }
         .yazz-mapbox-popup .mapboxgl-popup-tip {
@@ -615,16 +615,32 @@ export function YazzMapbox({ vehicles, selectedId, onSelect }: YazzMapboxProps) 
         }
         .mapboxgl-ctrl-group {
           border-radius: 9px !important;
-          box-shadow: 0 1px 3px rgba(43, 68, 238, 0.12) !important;
+          box-shadow: 0 4px 14px rgba(16, 24, 40, 0.1), 0 1px 3px rgba(16, 24, 40, 0.06) !important;
           overflow: hidden;
-          border: 1px solid #dde1f2 !important;
+          border: none !important;
         }
         .mapboxgl-ctrl-group button {
-          width: 32px !important;
-          height: 32px !important;
+          width: 36px !important;
+          height: 36px !important;
+          transition: background-color 0.15s ease;
+        }
+        .mapboxgl-ctrl-group button + button {
+          border-top: 1px solid #eef0f4 !important;
         }
         .mapboxgl-ctrl-group button:hover {
-          background-color: #f0f1fa !important;
+          background-color: #f3f4f7 !important;
+        }
+        .dark .mapboxgl-ctrl-group {
+          background: #1a1a2e !important;
+        }
+        .dark .mapboxgl-ctrl-group button + button {
+          border-top-color: rgba(255, 255, 255, 0.08) !important;
+        }
+        .dark .mapboxgl-ctrl-group button .mapboxgl-ctrl-icon {
+          filter: invert(1);
+        }
+        .dark .mapboxgl-ctrl-group button:hover {
+          background-color: #252542 !important;
         }
         /* Attribution Mapbox — masquée complètement */
         .mapboxgl-ctrl-attrib,

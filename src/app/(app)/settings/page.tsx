@@ -286,7 +286,7 @@ export default function SettingsPage() {
             {sosVigilEnabled && (
               <div className="ml-11 mt-2 rounded-yazz-sm bg-yazz-error/5 p-3">
                 <p className="font-inter text-[11px] leading-relaxed text-yazz-text-muted">
-                  ✅ Vous êtes maintenant vigile. Vous recevrez les alertes SOS
+                  Vous êtes maintenant vigile. Vous recevrez les alertes SOS
                   des véhicules à proximité en temps réel. Allez dans{" "}
                   <span className="font-semibold text-yazz-text-dark">Mode vigile</span>{" "}
                   dans le menu pour voir les alertes actives.
@@ -324,10 +324,10 @@ export default function SettingsPage() {
         {saveMessage && (
           <div
             className={cn(
-              "mb-3 rounded-yazz-sm border-l-4 p-3",
+              "mb-3 rounded-yazz-sm ring-1 ring-inset p-3",
               saveMessage.type === "success"
-                ? "border-l-yazz-success bg-yazz-success/10"
-                : "border-l-yazz-error bg-yazz-error/10"
+                ? "ring-yazz-success/20 bg-yazz-success/10"
+                : "ring-yazz-error/20 bg-yazz-error/10"
             )}
           >
             <p className={cn("font-inter text-[12px]", saveMessage.type === "success" ? "text-yazz-success" : "text-yazz-error")}>
@@ -406,7 +406,7 @@ export default function SettingsPage() {
               </div>
             </div>
 
-            <div className="rounded-yazz-sm border-l-4 border-l-yazz-error bg-yazz-error/5 p-3">
+            <div className="rounded-yazz-sm ring-1 ring-inset ring-yazz-error/20 bg-yazz-error/5 p-3">
               <p className="font-inter text-[12px] leading-relaxed text-yazz-text-body">
                 Cette action supprimera définitivement votre compte, vos véhicules liés, votre historique de trajets, vos géofences, et votre solde de crédit. <strong>Vous ne pourrez pas annuler cette action.</strong>
               </p>

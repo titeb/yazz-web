@@ -84,7 +84,7 @@ export default function AlertsPage() {
 
         {/* Mode démo */}
         {!isReady && (
-          <div className="rounded-yazz-md border-l-4 border-l-yazz-warning bg-yazz-warning/10 p-4">
+          <div className="rounded-yazz-md ring-1 ring-inset ring-yazz-warning/20 bg-yazz-warning/10 p-4">
             <div className="flex items-start gap-3">
               <Construction className="h-5 w-5 shrink-0 text-yazz-warning" />
               <div>
@@ -99,7 +99,7 @@ export default function AlertsPage() {
 
         {/* Error */}
         {error && (
-          <div className="rounded-yazz-md border-l-4 border-l-yazz-error bg-yazz-error/10 p-4">
+          <div className="rounded-yazz-md ring-1 ring-inset ring-yazz-error/20 bg-yazz-error/10 p-4">
             <p className="font-inter text-[12px] text-yazz-error">{error}</p>
           </div>
         )}
@@ -108,10 +108,10 @@ export default function AlertsPage() {
         {feedback && (
           <div
             className={cn(
-              "mb-4 rounded-yazz-md border-l-4 p-3 yazz-animate-fade-in-up",
+              "mb-4 rounded-yazz-md ring-1 ring-inset p-3 yazz-animate-fade-in-up",
               feedback.type === "success"
-                ? "border-l-yazz-success bg-yazz-success/10"
-                : "border-l-yazz-error bg-yazz-error/10"
+                ? "ring-yazz-success/20 bg-yazz-success/10"
+                : "ring-yazz-error/20 bg-yazz-error/10"
             )}
           >
             <p
@@ -135,11 +135,11 @@ export default function AlertsPage() {
         {/* Empty state */}
         {isReady && alerts.length === 0 && !loading && (
           <div className="grid place-items-center py-12 text-center">
-            <div className="grid h-14 w-14 place-items-center rounded-full bg-yazz-success/10">
-              <Bell className="h-6 w-6 text-yazz-success" />
+            <div className="grid h-14 w-14 place-items-center rounded-full bg-yazz-accent">
+              <Bell className="h-6 w-6 text-yazz-text-muted" />
             </div>
             <p className="font-outfit mt-3 text-[15px] font-semibold text-yazz-text-dark">Aucune alerte</p>
-            <p className="font-inter mt-1 text-[12px] text-yazz-text-muted">Tout est sous contrôle 🎉</p>
+            <p className="font-inter mt-1 text-[12px] text-yazz-text-muted">Tout est sous contrôle.</p>
           </div>
         )}
 
@@ -232,12 +232,12 @@ function AlertRow({
   return (
     <li
       className={cn(
-        "rounded-yazz-md border-l-2 bg-yazz-surface p-3 yazz-shadow-soft transition-all",
+        "rounded-yazz-md ring-1 ring-inset bg-yazz-surface p-3 yazz-shadow-soft transition-all",
         alert.severity === "critical"
-          ? "border-l-yazz-error"
+          ? "ring-yazz-error/20"
           : alert.severity === "warning"
-            ? "border-l-yazz-warning"
-            : "border-l-yazz-info",
+            ? "ring-yazz-warning/20"
+            : "ring-yazz-info/20",
         !alert.isRead ? "ring-1 ring-yazz-primary/20" : "opacity-70",
         isConfirming && "ring-2 ring-yazz-error/40"
       )}

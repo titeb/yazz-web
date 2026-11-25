@@ -249,7 +249,7 @@ export function YazzVehicleDetail({ vehicle, onClose }: YazzVehicleDetailProps) 
               />
             </div>
           ) : (
-            <div className="grid h-12 w-12 shrink-0 place-items-center rounded-[14px] bg-yazz-primary/10">
+            <div className="grid h-12 w-12 shrink-0 place-items-center rounded-[14px] bg-yazz-primary/[0.08]">
               <span className="font-outfit text-[18px] font-bold text-yazz-primary">
                 {firstLetter}
               </span>
@@ -335,55 +335,55 @@ export function YazzVehicleDetail({ vehicle, onClose }: YazzVehicleDetailProps) 
         <button
           onClick={() => setShowEngineCut(true)}
           className={cn(
-            "font-inter flex flex-col items-center gap-1.5 rounded-yazz-sm py-2.5 transition-all active:scale-95",
+            "font-inter flex flex-col items-center gap-1.5 rounded-yazz-sm py-2.5 transition-all duration-150 active:scale-95",
             isCut
               ? "bg-yazz-error text-white yazz-blink"
-              : "bg-yazz-background text-yazz-text-body hover:bg-yazz-accent"
+              : "bg-yazz-accent text-yazz-text-body hover:bg-[#e8eaf0]"
           )}
         >
           <Power className="h-[18px] w-[18px]" />
-          <span className="text-[9px] font-semibold">{isCut ? "Restaurer" : "Couper"}</span>
+          <span className="text-[10px] font-semibold">{isCut ? "Restaurer" : "Couper"}</span>
         </button>
 
         {/* 2. Partager */}
         <button
           onClick={handleShare}
-          className="font-inter flex flex-col items-center gap-1.5 rounded-yazz-sm bg-yazz-background py-2.5 text-yazz-text-body transition-all hover:bg-yazz-accent active:scale-95"
+          className="font-inter flex flex-col items-center gap-1.5 rounded-yazz-sm bg-yazz-accent py-2.5 text-yazz-text-body transition-all hover:bg-[#e8eaf0] active:scale-95"
         >
           <Share2 className="h-[18px] w-[18px]" />
-          <span className="text-[9px] font-semibold">Partager</span>
+          <span className="text-[10px] font-semibold">Partager</span>
         </button>
 
         {/* 3. Parking */}
         <button
           onClick={handleToggleParking}
           className={cn(
-            "font-inter flex flex-col items-center gap-1.5 rounded-yazz-sm py-2.5 transition-all active:scale-95",
+            "font-inter flex flex-col items-center gap-1.5 rounded-yazz-sm py-2.5 transition-all duration-150 active:scale-95",
             parkingActive
               ? "yazz-gradient-primary text-white yazz-blink"
-              : "bg-yazz-background text-yazz-text-body hover:bg-yazz-accent"
+              : "bg-yazz-accent text-yazz-text-body hover:bg-[#e8eaf0]"
           )}
         >
           <Car className="h-[18px] w-[18px]" />
-          <span className="text-[9px] font-semibold">Parking</span>
+          <span className="text-[10px] font-semibold">Parking</span>
         </button>
 
         {/* 4. SOS */}
         <button
           onClick={handleSOS}
-          className="font-inter flex flex-col items-center gap-1.5 rounded-yazz-sm bg-yazz-background py-2.5 text-yazz-text-body transition-all hover:bg-yazz-accent active:scale-95"
+          className="font-inter flex flex-col items-center gap-1.5 rounded-yazz-sm bg-yazz-accent py-2.5 text-yazz-text-body transition-all hover:bg-[#e8eaf0] active:scale-95"
         >
           <ShieldAlert className="h-[18px] w-[18px] yazz-blink" />
-          <span className="text-[9px] font-semibold">SOS</span>
+          <span className="text-[10px] font-semibold">SOS</span>
         </button>
 
         {/* 5. Options */}
         <button
           onClick={() => setShowOptions(true)}
-          className="font-inter flex flex-col items-center gap-1.5 rounded-yazz-sm bg-yazz-background py-2.5 text-yazz-text-body transition-all hover:bg-yazz-accent active:scale-95"
+          className="font-inter flex flex-col items-center gap-1.5 rounded-yazz-sm bg-yazz-accent py-2.5 text-yazz-text-body transition-all hover:bg-[#e8eaf0] active:scale-95"
         >
           <MoreVertical className="h-[18px] w-[18px]" />
-          <span className="text-[9px] font-semibold">Options</span>
+          <span className="text-[10px] font-semibold">Options</span>
         </button>
       </div>
 
@@ -397,9 +397,7 @@ export function YazzVehicleDetail({ vehicle, onClose }: YazzVehicleDetailProps) 
       <div className="flex-1 overflow-y-auto p-4">
         {/* Vitesse */}
         <div className="flex items-start gap-3">
-          <div className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-yazz-primary/10">
-            <Gauge className="h-[18px] w-[18px] text-yazz-primary" />
-          </div>
+          <Gauge className="mt-0.5 h-[18px] w-[18px] shrink-0 text-yazz-text-muted" />
           <div className="flex-1 min-w-0">
             <p className="font-inter text-[11px] text-yazz-text-muted">
               {isOffline ? "Dernière vitesse enregistrée" : "Vitesse actuelle"}
@@ -414,9 +412,7 @@ export function YazzVehicleDetail({ vehicle, onClose }: YazzVehicleDetailProps) 
 
         {/* Position */}
         <div className="flex items-start gap-3">
-          <div className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-yazz-primary/10">
-            <MapPin className="h-[18px] w-[18px] text-yazz-primary" />
-          </div>
+          <MapPin className="mt-0.5 h-[18px] w-[18px] shrink-0 text-yazz-text-muted" />
           <div className="flex-1 min-w-0">
             <p className="font-inter text-[11px] text-yazz-text-muted">
               {isOffline ? "Dernière position connue" : "Position actuelle"}
@@ -435,13 +431,13 @@ export function YazzVehicleDetail({ vehicle, onClose }: YazzVehicleDetailProps) 
         </div>
 
         {/* Stats compactes */}
-        <div className="mt-4 grid grid-cols-2 gap-2">
-          <div className="rounded-yazz-md bg-yazz-background/60 p-2.5">
-            <p className="font-inter text-[10px] uppercase tracking-wide text-yazz-text-caption">Cap</p>
+        <div className="mt-3 grid grid-cols-2 border-t border-yazz-border-light pt-3">
+          <div className="pl-[30px]">
+            <p className="font-inter text-[11px] text-yazz-text-muted">Cap</p>
             <p className="font-outfit text-[14px] font-bold text-yazz-text-dark">{vehicle.heading}°</p>
           </div>
-          <div className="rounded-yazz-md bg-yazz-background/60 p-2.5">
-            <p className="font-inter text-[10px] uppercase tracking-wide text-yazz-text-caption">Distance jour</p>
+          <div>
+            <p className="font-inter text-[11px] text-yazz-text-muted">Distance du jour</p>
             <p className="font-outfit text-[14px] font-bold text-yazz-text-dark">{vehicle.todayDistanceKm} km</p>
           </div>
         </div>
@@ -449,14 +445,14 @@ export function YazzVehicleDetail({ vehicle, onClose }: YazzVehicleDetailProps) 
         {/* Alertes actives */}
         {vehicle.alerts && vehicle.alerts.length > 0 && (
           <div className="mt-4">
-            <p className="font-inter mb-2 px-1 text-[10px] font-semibold uppercase tracking-wide text-yazz-text-caption">
+            <p className="font-inter mb-2 px-1 text-[11px] font-semibold text-yazz-text-muted">
               Alertes actives ({vehicle.alerts.length})
             </p>
             <ul className="space-y-1.5">
               {vehicle.alerts.map((alert, idx) => (
                 <li
                   key={idx}
-                  className="flex items-center gap-2 rounded-yazz-md border-l-2 border-l-yazz-error bg-yazz-error/5 p-2.5"
+                  className="flex items-center gap-2 rounded-yazz-md bg-yazz-error/[0.06] p-2.5"
                 >
                   <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-yazz-error yazz-blink" />
                   <p className="font-inter flex-1 text-[11px] font-medium text-yazz-text-body">

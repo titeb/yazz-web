@@ -239,7 +239,7 @@ export default function PaymentsPage() {
         <div className="mb-6 rounded-yazz-xl yazz-gradient-primary p-5 text-white yazz-shadow-medium">
           <div className="flex items-start justify-between">
             <div>
-              <p className="font-inter text-[11px] uppercase tracking-wide text-white/70">
+              <p className="font-inter text-[12px] text-white/75">
                 Solde actuel
               </p>
               <p className="font-outfit mt-1 text-[36px] font-bold tracking-[-0.02em]">
@@ -251,7 +251,7 @@ export default function PaymentsPage() {
                   ? stats.daysUntilExpiry !== null
                     ? `Expire dans ${stats.daysUntilExpiry} jour${stats.daysUntilExpiry > 1 ? "s" : ""}`
                     : "Actif"
-                  : "⚠ Crédit inactif — rechargez pour réactiver le suivi"}
+                  : "Crédit inactif — rechargez pour réactiver le suivi"}
               </p>
             </div>
             <div className="grid h-12 w-12 place-items-center rounded-yazz-lg bg-white/15">
@@ -326,7 +326,7 @@ export default function PaymentsPage() {
 
           {/* Erreur */}
           {error && (
-            <div className="mb-3 rounded-yazz-sm border-l-2 border-l-yazz-error bg-yazz-error/10 p-2.5">
+            <div className="mb-3 rounded-yazz-sm ring-1 ring-inset ring-yazz-error/20 bg-yazz-error/10 p-2.5">
               <p className="font-inter text-[11px] text-yazz-error">{error}</p>
             </div>
           )}

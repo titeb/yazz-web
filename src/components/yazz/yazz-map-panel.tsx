@@ -310,7 +310,7 @@ export function YazzMapPanel({ vehicles, selectedId, onSelect }: YazzMapPanelPro
 
       {/* Legend bottom-left */}
       <div className="absolute bottom-4 left-4 z-20 rounded-yazz-sm bg-yazz-surface/95 p-2.5 yazz-glass">
-        <p className="font-inter mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-yazz-text-caption">
+        <p className="font-inter mb-1.5 text-[11px] font-semibold text-yazz-text-muted">
           Légende
         </p>
         <ul className="space-y-1">
@@ -333,7 +333,7 @@ export function YazzMapPanel({ vehicles, selectedId, onSelect }: YazzMapPanelPro
       {/* Scale bottom-right */}
       <div className="absolute bottom-4 right-4 z-20 flex items-center gap-2 rounded-yazz-sm bg-yazz-surface/95 px-2.5 py-1.5 yazz-glass">
         <span className="font-outfit text-[10px] font-semibold text-yazz-text-muted">2 km</span>
-        <div className="h-1.5 w-12 border-b-2 border-l-2 border-r-2 border-yazz-text-muted" />
+        <div className="h-1.5 w-12 border-b-2 ring-1 ring-inset border-r-2 border-yazz-text-muted" />
       </div>
     </div>
   );
