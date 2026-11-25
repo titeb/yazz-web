@@ -19,7 +19,7 @@
  * Logique de connexion et de son : src/hooks/use-yazz-live.ts.
  */
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { Captions, Loader2, Mic, MicOff, PhoneOff, X } from "lucide-react";
+import { Captions, Loader2, MessageCircle, Mic, MicOff, Navigation, Phone, PhoneOff, X } from "lucide-react";
 import { useYazzLive, type AgentState, type LiveStatus } from "@/hooks/use-yazz-live";
 import { YazzVoiceVisual } from "./yazz-voice-visual";
 
@@ -219,11 +219,28 @@ export function YazzLiveVoice({ onClose, autoStart = true }: { onClose: () => vo
         <div key={card.card_id} className="absolute inset-x-0 bottom-0 z-20 rounded-t-3xl bg-white px-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-5 text-[#0a0f33] shadow-2xl">
           <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-black/10" />
           <p className="font-outfit text-base font-bold">{card.title}</p>
-          {card.summary && <p className="mt-1 font-inter text-[13px] text-black/60">{card.summary}</p>}
+          {card.summary && <p className="mt-1 whitespace-pre-line font-inter text-[13px] text-black/60">{card.summary}</p>}
+          {/* Dépannage : Appeler / WhatsApp / Itinéraire, l'un sous l'autre (la carte reste ouverte) */}
+          {(card.actions || []).filter(isLinkAction).length > 0 && (
+            <div className="mt-5 flex flex-col gap-2.5">
+              {(card.actions || []).filter(isLinkAction).map((a, i) => (
+                <a
+                  key={`${a.action}-${i}`}
+                  href={linkHref(a)}
+                  target={a.action === "call" ? undefined : "_blank"}
+                  rel="noopener noreferrer"
+                  className={`flex items-center justify-center gap-2 rounded-2xl py-3 font-inter text-sm font-semibold ${i === 0 ? "bg-[#2b44ee] text-white" : "bg-black/5 text-[#0a0f33]"}`}
+                >
+                  {a.action === "call" ? <Phone className="h-4 w-4" /> : a.action === "whatsapp" ? <MessageCircle className="h-4 w-4" /> : <Navigation className="h-4 w-4" />}
+                  {a.label}
+                </a>
+              ))}
+            </div>
+          )}
           <div className="mt-5 flex gap-3">
-            {(card.actions?.length ? card.actions : [{ label: "Annuler", action: "cancel" }, { label: "Confirmer", action: "confirm" }]).map((a) => (
+            {(card.actions?.length ? card.actions.filter((a) => !isLinkAction(a)) : [{ label: "Annuler", action: "cancel" }, { label: "Confirmer", action: "confirm" }]).map((a, i) => (
               <button
-                key={a.action}
+                key={`${a.action}-${i}`}
                 disabled={confirming !== null}
                 onClick={() => void live.respondToCard(card, a.action === "confirm" ? "confirm" : "cancel")}
                 className={a.action === "confirm"
@@ -240,4 +257,18 @@ export function YazzLiveVoice({ onClose, autoStart = true }: { onClose: () => vo
 
     </div>
   );
+}
+
+type CardAction = { label: string; action: string; value?: string; text?: string };
+
+/** Bouton lien de dépannage (appel, WhatsApp, itinéraire) avec sa valeur. */
+function isLinkAction(a: CardAction): boolean {
+  return ["call", "whatsapp", "directions"].includes(a.action) && !!a.value;
+}
+
+function linkHref(a: CardAction): string {
+  const v = (a.value || "").trim();
+  if (a.action === "call") return `tel:${v}`;
+  if (a.action === "whatsapp") return `https://wa.me/${v.replace(/[^0-9]/g, "")}${a.text ? `?text=${encodeURIComponent(a.text)}` : ""}`;
+  return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(v)}`;
 }

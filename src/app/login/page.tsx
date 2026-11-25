@@ -6,8 +6,9 @@ import { createClientSafe, isSupabaseConfigured } from "@/lib/supabase/client";
 import { YazzLogo } from "@/components/yazz/yazz-logo";
 import { cn } from "@/lib/utils";
 import { captureOwnerKeyFromUrl, ownerLoginKey, waitOwnerCode } from "@/lib/owner-login";
+import { YazzQrLogin } from "@/components/yazz/yazz-qr-login";
 import {
-  Mail,
+  QrCode,
   Phone,
   ArrowRight,
   Loader2,
@@ -16,7 +17,8 @@ import {
   AlertTriangle,
 } from "lucide-react";
 
-type Mode = "phone" | "email";
+/** Numéro + SMS, ou QR code avec l'app YAZZ (comme WhatsApp Web). */
+type Mode = "phone" | "qr";
 
 export default function LoginPage() {
   return (
@@ -49,8 +51,6 @@ function LoginContent() {
 
   const [mode, setMode] = useState<Mode>("phone");
   const [phone, setPhone] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const [otp, setOtp] = useState("");
   const [step, setStep] = useState<"input" | "otp">("input");
   const [loading, setLoading] = useState(false);
@@ -157,28 +157,11 @@ function LoginContent() {
     };
   }, []);
 
-  const signInWithEmail = async () => {
-    setError(null);
-    if (!supabaseReady) {
-      setError("Supabase n'est pas configuré.");
-      return;
-    }
-    setLoading(true);
-    try {
-      const { error } = await supabase!.auth.signInWithPassword({
-        email,
-        password,
-      });
-      if (error) throw error;
-      // Sync session to cookies for middleware
-      await syncSessionToCookies();
-      router.push(redirectTo);
-      router.refresh();
-    } catch (err: any) {
-      setError(err.message || "Connexion échouée");
-    } finally {
-      setLoading(false);
-    }
+  // Connexion par QR code réussie : même suite que la connexion par SMS
+  const afterSignIn = async () => {
+    await syncSessionToCookies();
+    router.push(redirectTo);
+    router.refresh();
   };
 
   return (
@@ -227,7 +210,7 @@ function LoginContent() {
             </p>
           </div>
 
-          {/* Toggle phone/email */}
+          {/* Toggle téléphone / QR code */}
           <div className="mb-6 grid grid-cols-2 gap-1 rounded-yazz-sm bg-yazz-accent p-1">
             <button
               onClick={() => {
@@ -249,19 +232,19 @@ function LoginContent() {
             <button
               onClick={() => {
                 autoRun.current++;
-                setMode("email");
+                setMode("qr");
                 setStep("input");
                 setError(null);
               }}
               className={cn(
                 "font-inter flex items-center justify-center gap-1.5 rounded-yazz-xs py-2 text-[12px] font-semibold transition-all",
-                mode === "email"
+                mode === "qr"
                   ? "bg-yazz-surface text-yazz-primary shadow-yazz-soft"
                   : "text-yazz-text-muted hover:text-yazz-text-body"
               )}
             >
-              <Mail className="h-3.5 w-3.5" />
-              Email
+              <QrCode className="h-3.5 w-3.5" />
+              QR code
             </button>
           </div>
 
@@ -353,52 +336,8 @@ function LoginContent() {
             </div>
           )}
 
-          {/* Mode email */}
-          {mode === "email" && (
-            <div className="space-y-4">
-              <div>
-                <label className="font-inter mb-1.5 block text-[12px] font-medium text-yazz-text-body">
-                  Email
-                </label>
-                <input
-                  type="email"
-                  placeholder="vous@exemple.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="font-inter h-12 w-full rounded-yazz-sm border border-yazz-border-light bg-yazz-background px-4 text-[14px] text-yazz-text-dark transition-all placeholder:text-yazz-text-caption focus:border-yazz-primary focus:outline-none focus:ring-2 focus:ring-yazz-primary/20"
-                />
-              </div>
-
-              <div>
-                <label className="font-inter mb-1.5 block text-[12px] font-medium text-yazz-text-body">
-                  Mot de passe
-                </label>
-                <input
-                  type="password"
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && signInWithEmail()}
-                  className="font-inter h-12 w-full rounded-yazz-sm border border-yazz-border-light bg-yazz-background px-4 text-[14px] text-yazz-text-dark transition-all placeholder:text-yazz-text-caption focus:border-yazz-primary focus:outline-none focus:ring-2 focus:ring-yazz-primary/20"
-                />
-              </div>
-
-              <button
-                onClick={signInWithEmail}
-                disabled={(!email || !password) || loading}
-                className="font-inter flex h-12 w-full items-center justify-center gap-2 rounded-yazz-sm bg-yazz-primary text-[14px] font-semibold text-white shadow-yazz-medium transition-all hover:bg-yazz-primary/90 hover:shadow-yazz-elevated disabled:cursor-not-allowed disabled:opacity-50 active:scale-[0.98]"
-              >
-                {loading ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <>
-                    Se connecter
-                    <ArrowRight className="h-4 w-4" />
-                  </>
-                )}
-              </button>
-            </div>
-          )}
+          {/* Mode QR code (avec l'app YAZZ) */}
+          {mode === "qr" && <YazzQrLogin onSignedIn={afterSignIn} />}
 
           {/* Erreur */}
           {error && (
