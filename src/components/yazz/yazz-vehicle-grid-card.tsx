@@ -519,7 +519,7 @@ export function YazzVehicleGridCard({ device }: { device: UserDevice }) {
             className="font-inter flex flex-col items-center gap-1 rounded-yazz-sm bg-yazz-accent py-2 text-yazz-text-body transition-all hover:bg-[#e8eaf0] active:scale-95"
             title="SOS"
           >
-            <ShieldAlert className="h-[16px] w-[16px] text-yazz-error" />
+            <ShieldAlert className="h-[16px] w-[16px] yazz-blink" />
             <span className="text-[9px] font-semibold">SOS</span>
           </button>
 

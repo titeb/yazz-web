@@ -373,7 +373,7 @@ export function YazzVehicleDetail({ vehicle, onClose }: YazzVehicleDetailProps) 
           onClick={handleSOS}
           className="font-inter flex flex-col items-center gap-1.5 rounded-yazz-sm bg-yazz-accent py-2.5 text-yazz-text-body transition-all hover:bg-[#e8eaf0] active:scale-95"
         >
-          <ShieldAlert className="h-[18px] w-[18px] text-yazz-error" />
+          <ShieldAlert className="h-[18px] w-[18px] yazz-blink" />
           <span className="text-[10px] font-semibold">SOS</span>
         </button>
 
