@@ -8,7 +8,6 @@ import {
   Car,
   CheckCircle2,
   Clock,
-  Eye,
   Loader2,
   MapPin,
   Navigation,
@@ -26,7 +25,7 @@ import { useReverseGeocode } from "@/hooks/use-reverse-geocode";
 // Page vigile SOS
 // S'abonne aux sos_alerts actives (status = 'active' AND declared_by != me)
 // via Realtime. Affiche les infos véhicule pour identification.
-// Permet de signaler un repérage (spotting).
+// Le vigile voit tout de suite le trajet jusqu'au véhicule ; « Je l'ai retrouvé ».
 // ============================================================
 
 type SosAlert = {
@@ -58,7 +57,6 @@ export default function VigilePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
-  const [spottingAlertId, setSpottingAlertId] = useState<string | null>(null);
   const channelNameRef = useRef<string | null>(null);
 
   if (!channelNameRef.current) {
@@ -208,33 +206,6 @@ export default function VigilePage() {
     }
   };
 
-  const handleSpot = async (alertId: string) => {
-    if (!supabase) return;
-    setSpottingAlertId(alertId);
-    try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const { error: spotErr } = await supabase.from("sos_spottings").insert({
-        alert_id: alertId,
-        spotter_user_id: user.id,
-        spotted_lat: null,
-        spotted_lng: null,
-      });
-
-      if (spotErr && spotErr.code !== "23505") {
-        throw spotErr;
-      }
-      // spotted_count est incrémenté automatiquement par le trigger SQL
-    } catch (err: any) {
-      console.error("[Vigile] spotting erreur:", err);
-    } finally {
-      setTimeout(() => setSpottingAlertId(null), 2000);
-    }
-  };
-
   return (
     <div className="h-full overflow-y-auto bg-yazz-background">
       <div className="mx-auto max-w-2xl px-4 py-5 md:px-6 md:py-8">
@@ -294,8 +265,6 @@ export default function VigilePage() {
               <VigileAlertCard
                 key={alert.id}
                 alert={alert}
-                onSpot={() => handleSpot(alert.id)}
-                spotting={spottingAlertId === alert.id}
                 onFound={() => handleFound(alert.id)}
                 foundBusy={foundBusy === alert.id}
               />
@@ -312,14 +281,10 @@ export default function VigilePage() {
 // ============================================================
 function VigileAlertCard({
   alert,
-  onSpot,
-  spotting,
   onFound,
   foundBusy,
 }: {
   alert: SosAlert;
-  onSpot: () => void;
-  spotting: boolean;
   onFound: () => void;
   foundBusy: boolean;
 }) {
@@ -412,12 +377,14 @@ function VigileAlertCard({
       { enableHighAccuracy: true, maximumAge: 5000, timeout: 15000 }
     );
   };
-  useEffect(
-    () => () => {
+  // Dès l'ouverture : position demandée une fois, puis trajet affiché tout seul
+  useEffect(() => {
+    const t = !found && hasPos ? setTimeout(follow, 300) : undefined;
+    return () => {
+      if (t) clearTimeout(t);
       if (watchRef.current != null) navigator.geolocation?.clearWatch(watchRef.current);
-    },
-    []
-  );
+    };
+  }, []);
   const distance =
     me && hasPos
       ? (() => {
@@ -497,12 +464,7 @@ function VigileAlertCard({
           <span className="font-inter shrink-0 text-[13px] font-semibold text-yazz-primary">à {distance}</span>
         )}
       </div>
-      <p className="font-inter flex items-center gap-1.5 px-4 pt-1.5 text-[12.5px] text-yazz-text-muted">
-        <Eye className="h-3.5 w-3.5" />
-        {alert.spotted_count > 0
-          ? `Repéré par ${alert.spotted_count} vigile${alert.spotted_count > 1 ? "s" : ""}`
-          : "Pas encore repéré"}
-      </p>
+
 
       {/* Actions */}
       <div className="p-4">
@@ -515,53 +477,33 @@ function VigileAlertCard({
           </div>
         ) : (
           <div className="space-y-2.5">
-          {me && gpsUrl ? (
             <a
-              href={gpsUrl}
+              href={gpsUrl || undefined}
               target="_blank"
               rel="noopener noreferrer"
-              className="font-inter flex h-12 w-full items-center justify-center gap-2 bg-yazz-primary text-[15px] font-semibold text-white transition-all hover:brightness-110 active:scale-[0.99]"
-            >
-              <Navigation className="h-[18px] w-[18px]" />
-              Ouvrir le GPS
-            </a>
-          ) : (
-            <button
-              onClick={follow}
-              disabled={!hasPos}
-              className="font-inter flex h-12 w-full items-center justify-center gap-2 bg-yazz-primary text-[15px] font-semibold text-white transition-all hover:brightness-110 active:scale-[0.99] disabled:opacity-50"
-            >
-              <Navigation className="h-[18px] w-[18px]" />
-              Suivre
-            </button>
-          )}
-          {geoMsg && <p className="font-inter text-center text-[13px] font-semibold text-yazz-error">{geoMsg}</p>}
-          <div className="flex gap-2.5">
-            <button
-              onClick={onSpot}
-              disabled={spotting}
+              onClick={() => !me && follow()}
               className={cn(
-                "font-inter flex h-11 flex-1 items-center justify-center gap-2 border-[1.5px] text-[14px] font-semibold transition-all active:scale-[0.98]",
-                spotting
-                  ? "border-yazz-success bg-yazz-success/10 text-yazz-success"
-                  : "border-yazz-border-light bg-yazz-surface text-yazz-text-dark hover:bg-yazz-accent"
+                "font-inter flex h-12 w-full items-center justify-center gap-2 bg-yazz-primary text-[15px] font-semibold text-white transition-all hover:brightness-110 active:scale-[0.99]",
+                !gpsUrl && "pointer-events-none opacity-50"
               )}
             >
-              {spotting ? <CheckCircle2 className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-              {spotting ? "Signalé" : "Je l'ai vu"}
-            </button>
+              <Navigation className="h-[18px] w-[18px]" />
+              Y aller
+            </a>
+            {geoMsg && <p className="font-inter text-center text-[13px] font-semibold text-yazz-text-muted">{geoMsg}</p>}
             <button
               onClick={() => (confirmFound ? (setConfirmFound(false), onFound()) : setConfirmFound(true))}
               disabled={foundBusy}
               className={cn(
-                "font-inter flex h-11 flex-[2] items-center justify-center gap-2 text-[14px] font-semibold text-white transition-all active:scale-[0.98] disabled:opacity-60",
-                confirmFound ? "bg-[#2f8a57]" : "bg-yazz-success hover:brightness-95"
+                "font-inter flex h-11 w-full items-center justify-center gap-2 border-[1.5px] text-[14px] font-semibold transition-all active:scale-[0.99] disabled:opacity-60",
+                confirmFound
+                  ? "border-yazz-text-dark bg-yazz-text-dark text-white"
+                  : "border-yazz-border-light bg-yazz-surface text-yazz-text-dark hover:bg-yazz-accent"
               )}
             >
               {foundBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
-              {foundBusy ? "Envoi…" : confirmFound ? "Confirmer" : "Retrouvé"}
+              {foundBusy ? "Envoi…" : confirmFound ? "Touchez encore pour confirmer" : "Je l'ai retrouvé"}
             </button>
-          </div>
           </div>
         )}
       </div>

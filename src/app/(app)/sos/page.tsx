@@ -340,7 +340,7 @@ export default function SOSPage() {
                 <button
                   onClick={() => closeAlert(false)}
                   disabled={closing}
-                  className="font-inter flex h-12 flex-[2] items-center justify-center gap-2 bg-yazz-success text-[14px] font-semibold text-white transition-all hover:brightness-95 active:scale-[0.98] disabled:opacity-60"
+                  className="font-inter flex h-12 flex-[2] items-center justify-center gap-2 bg-yazz-primary text-[14px] font-semibold text-white transition-all hover:brightness-95 active:scale-[0.98] disabled:opacity-60"
                 >
                   {closing ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-[18px] w-[18px]" />}
                   Je l&apos;ai récupéré
