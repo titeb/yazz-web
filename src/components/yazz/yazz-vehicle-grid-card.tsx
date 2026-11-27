@@ -25,6 +25,7 @@ import { OptionsModal } from "./yazz-options-modal";
 import { createClientSafe } from "@/lib/supabase/client";
 import { useYazzToast, YazzToastContainer } from "./yazz-toast";
 import { hasStaleMovingFix, isCrawling, isMoving } from "@/lib/yazz/motion";
+import { useActiveSos } from "@/hooks/use-active-sos";
 
 // ============================================================
 // Helpers — mêmes règles que le dashboard (cohérence visuelle)
@@ -146,6 +147,7 @@ function deriveStatus(d: UserDevice): StatusInfo {
 export function YazzVehicleGridCard({ device }: { device: UserDevice }) {
   const router = useRouter();
   const supabase = createClientSafe();
+  const sosActive = useActiveSos(device.id);
 
   const [showEngineCut, setShowEngineCut] = useState(false);
   const [showOptions, setShowOptions] = useState(false);
@@ -516,11 +518,16 @@ export function YazzVehicleGridCard({ device }: { device: UserDevice }) {
           {/* 4. SOS */}
           <button
             onClick={handleSOS}
-            className="font-inter flex flex-col items-center gap-1 rounded-yazz-sm bg-yazz-accent py-2 text-yazz-text-body transition-all hover:bg-[#e8eaf0] active:scale-95"
-            title="SOS"
+            className={cn(
+              "font-inter flex flex-col items-center gap-1 rounded-yazz-sm py-2 transition-all active:scale-95",
+              sosActive
+                ? "bg-yazz-error text-white yazz-blink"
+                : "bg-yazz-accent text-yazz-text-body hover:bg-[#e8eaf0]"
+            )}
+            title={sosActive ? "SOS en cours" : "SOS"}
           >
-            <ShieldAlert className="h-[16px] w-[16px] yazz-blink" />
-            <span className="text-[9px] font-semibold">SOS</span>
+            <ShieldAlert className={cn("h-[16px] w-[16px]", !sosActive && "yazz-blink")} />
+            <span className="text-[9px] font-semibold">{sosActive ? "SOS en cours" : "SOS"}</span>
           </button>
 
           {/* 5. Options (more) → ouvre le modal options */}

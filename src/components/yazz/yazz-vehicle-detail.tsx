@@ -24,6 +24,7 @@ import { OptionsModal } from "./yazz-options-modal";
 import { createClientSafe } from "@/lib/supabase/client";
 import { useYazzToast, YazzToastContainer } from "./yazz-toast";
 import { isCrawling } from "@/lib/yazz/motion";
+import { useActiveSos } from "@/hooks/use-active-sos";
 
 type YazzVehicleDetailProps = {
   vehicle: Vehicle;
@@ -87,6 +88,7 @@ export function YazzVehicleDetail({ vehicle, onClose }: YazzVehicleDetailProps) 
   const vehiclePhoto = vehicle.urlImage || null;
 
   const supabase = createClientSafe();
+  const sosActive = useActiveSos(vehicle.id);
 
   // FIX 2026-10-30 :plus de fetch séparé pour parking_mode — on utilise
   // vehicle.parkingMode qui vient du hook use-user-vehicles (Realtime-synced).
@@ -371,10 +373,16 @@ export function YazzVehicleDetail({ vehicle, onClose }: YazzVehicleDetailProps) 
         {/* 4. SOS */}
         <button
           onClick={handleSOS}
-          className="font-inter flex flex-col items-center gap-1.5 rounded-yazz-sm bg-yazz-accent py-2.5 text-yazz-text-body transition-all hover:bg-[#e8eaf0] active:scale-95"
+          title={sosActive ? "SOS en cours" : "SOS"}
+          className={cn(
+            "font-inter flex flex-col items-center gap-1.5 rounded-yazz-sm py-2.5 transition-all duration-150 active:scale-95",
+            sosActive
+              ? "bg-yazz-error text-white yazz-blink"
+              : "bg-yazz-accent text-yazz-text-body hover:bg-[#e8eaf0]"
+          )}
         >
-          <ShieldAlert className="h-[18px] w-[18px] yazz-blink" />
-          <span className="text-[10px] font-semibold">SOS</span>
+          <ShieldAlert className={cn("h-[18px] w-[18px]", !sosActive && "yazz-blink")} />
+          <span className="text-[10px] font-semibold">{sosActive ? "SOS en cours" : "SOS"}</span>
         </button>
 
         {/* 5. Options */}
