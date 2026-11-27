@@ -70,7 +70,7 @@ export function SosLiveMap({ lat, lng, found }: { lat: number; lng: number; foun
   }, [found]);
 
   return (
-    <div className="relative mt-3 h-48 w-full overflow-hidden rounded-yazz-sm bg-yazz-accent">
+    <div className="relative h-52 w-full overflow-hidden rounded-yazz-sm bg-yazz-accent">
       <div ref={box} className="absolute inset-0" />
       <style jsx global>{`
         .yazz-sos-marker { position: relative; width: 22px; height: 22px; }
