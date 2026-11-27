@@ -1,27 +1,16 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { createClientSafe } from "@/lib/supabase/client";
-import {
-  ArrowLeft,
-  BellRing,
-  Car,
-  CheckCircle2,
-  Eye,
-  Info,
-  Loader2,
-  MapPin,
-  ShieldAlert,
-  ShieldCheck,
-} from "lucide-react";
+import { ArrowLeft, Car, CheckCircle2, Eye, Info, Loader2, ShieldAlert } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 // ─────────────────────────────────────────────────────────────────────
-// Signaler un vol (SOS) — même parcours que l'app :
-//   1. on explique simplement ce qui va se passer ;
-//   2. on maintient le bouton ~1,5 s (pas de code à taper, pas d'erreur) ;
-//   3. alerte en cours : suivi en direct, « Fausse alerte » ou « Je l'ai récupéré ».
+// SOS — même parcours que l'app, presque sans texte :
+//   1. un gros bouton ;
+//   2. un code à 4 chiffres à recopier (évite les erreurs), l'alerte part seule ;
+//   3. alerte en cours : repérages en direct, « Fausse alerte » ou « Je l'ai récupéré ».
 // Le véhicule est celui d'où l'on vient (?device=…), sinon le premier actif.
 // Une alerte lancée depuis l'app ou l'assistant apparaît ici en direct.
 // ─────────────────────────────────────────────────────────────────────
@@ -63,6 +52,15 @@ export default function SOSPage() {
   const [alert, setAlert] = useState<Alert | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [closing, setClosing] = useState(false);
+  const [confirming, setConfirming] = useState(false);
+  const [code, setCode] = useState("");
+
+  const askCode = () => {
+    setError(null);
+    setCode(String(Math.floor(1000 + Math.random() * 9000)));
+    setConfirming(true);
+    if (typeof navigator !== "undefined" && "vibrate" in navigator) navigator.vibrate?.(15);
+  };
 
   const loadActiveAlert = useCallback(
     async (deviceId: string) => {
@@ -246,7 +244,7 @@ export default function SOSPage() {
 
   return (
     <div className="absolute inset-0 overflow-y-auto bg-yazz-background">
-      <div className="mx-auto flex min-h-full max-w-lg flex-col px-4 pb-6">
+      <div className="mx-auto flex min-h-full max-w-md flex-col px-4 pb-6">
         {/* Barre du haut */}
         <div className="flex items-center gap-3 py-4">
           <button
@@ -257,7 +255,7 @@ export default function SOSPage() {
             <ArrowLeft className="h-5 w-5" />
           </button>
           <h1 className="font-outfit text-[18px] font-bold text-yazz-text-dark">
-            {phase === "active" ? "Alerte SOS" : "Signaler un vol"}
+            {phase === "active" ? "Alerte SOS" : "SOS"}
           </h1>
         </div>
 
@@ -267,115 +265,88 @@ export default function SOSPage() {
           </div>
         ) : (
           <div key={phase === "active" ? "active" : "idle"} className="yazz-stagger flex flex-1 flex-col">
-            {/* Bouclier qui émet */}
-            <div className="flex flex-col items-center pt-2 text-center">
-              <PulseBadge tone={found ? "success" : "danger"} animate={phase !== "active" || !found} />
-              <h2 className="font-outfit mt-2 text-[22px] font-bold tracking-tight text-yazz-text-dark">
-                {phase === "active"
-                  ? found
-                    ? "Véhicule retrouvé"
-                    : "Alerte en cours"
-                  : "Votre véhicule a été volé ?"}
-              </h2>
-              <p className="font-inter mt-1.5 max-w-sm text-[14px] leading-relaxed text-yazz-text-muted">
-                {phase === "active"
-                  ? found
-                    ? "Un vigile YAZZ signale l'avoir retrouvé. Vous pouvez terminer l'alerte."
-                    : "Les vigiles YAZZ proches sont prévenus et suivent votre véhicule en direct."
-                  : "YAZZ alerte les vigiles autour de lui pour vous aider à le retrouver."}
-              </p>
-            </div>
-
             {/* Véhicule */}
-            <div className="mt-6 flex items-center gap-4 rounded-yazz-md bg-yazz-surface p-4 yazz-shadow-soft">
-              <div className="grid h-16 w-16 shrink-0 place-items-center overflow-hidden rounded-yazz-sm bg-yazz-accent">
+            <div className="flex items-center gap-4 rounded-yazz-md bg-yazz-surface p-3.5 yazz-shadow-soft">
+              <div className="grid h-14 w-14 shrink-0 place-items-center overflow-hidden rounded-yazz-sm bg-yazz-accent">
                 {photo ? (
                   <img src={photo} alt="" className="h-full w-full object-cover" />
                 ) : (
-                  <Car className="h-7 w-7 text-yazz-text-muted" strokeWidth={1.75} />
+                  <Car className="h-6 w-6 text-yazz-text-muted" strokeWidth={1.75} />
                 )}
               </div>
               <div className="min-w-0 flex-1">
                 <p className="font-outfit truncate text-[16px] font-semibold text-yazz-text-dark">{vehicleLabel(device)}</p>
                 {device?.vehicle_plate && (
-                  <span className="font-inter mt-1.5 inline-block rounded-yazz-sm border-[1.5px] border-yazz-border-light px-2 py-0.5 text-[12px] font-bold tracking-[0.12em] text-yazz-text-dark">
+                  <span className="font-inter mt-1 inline-block border-[1.5px] border-yazz-border-light px-2 py-0.5 text-[12px] font-bold tracking-[0.12em] text-yazz-text-dark">
                     {device.vehicle_plate}
                   </span>
-                )}
-                {phase === "active" && (
-                  <p className={cn("font-inter mt-1.5 flex items-center gap-1.5 text-[13px] font-semibold", found ? "text-yazz-success" : "text-yazz-error")}>
-                    <span className={cn("h-2 w-2 rounded-full", found ? "bg-yazz-success" : "bg-yazz-error yazz-blink")} />
-                    {found ? "Retrouvé" : "Position suivie en direct"}
-                  </p>
                 )}
               </div>
             </div>
 
-            {/* Explications / suivi */}
-            <p className="font-inter mb-2 mt-6 px-1 text-[12px] font-semibold uppercase tracking-[0.06em] text-yazz-text-muted">
-              {phase === "active" ? "Suivi de l'alerte" : "Ce qui va se passer"}
-            </p>
-            <div className="divide-y divide-yazz-border-light rounded-yazz-md bg-yazz-surface yazz-shadow-soft">
+            {/* Centre */}
+            <div className="flex flex-1 flex-col items-center justify-center py-8 text-center">
               {phase === "active" ? (
                 <>
-                  <Step icon={BellRing} title="Vigiles prévenus" text="Ceux qui sont à moins de 10 km, une seule fois, avec la photo." />
-                  <Step
-                    icon={Eye}
-                    title={spotted > 0 ? `Repéré par ${spotted} vigile${spotted > 1 ? "s" : ""}` : "Pas encore repéré"}
-                    text="Vous recevez une notification à chaque signalement."
-                  />
-                  <Step icon={ShieldCheck} title="Retrouvé ?" text="Terminez l'alerte : les vigiles sont prévenus qu'ils peuvent arrêter." />
+                  <PulseBadge tone={found ? "success" : "danger"} animate={!found} />
+                  <p className="font-outfit text-[22px] font-bold text-yazz-text-dark">
+                    {found ? "Véhicule retrouvé" : "Alerte en cours"}
+                  </p>
+                  <p className="font-inter mt-2 flex items-center gap-1.5 text-[14px] text-yazz-text-muted">
+                    <Eye className="h-4 w-4" />
+                    {spotted > 0 ? `Repéré par ${spotted} vigile${spotted > 1 ? "s" : ""}` : "Vigiles prévenus"}
+                  </p>
                 </>
-              ) : (
+              ) : phase === "sending" ? (
                 <>
-                  <Step icon={BellRing} title="Les vigiles proches sont prévenus" text="Dans un rayon de 10 km, avec la photo de votre véhicule." />
-                  <Step icon={MapPin} title="Ils suivent votre véhicule en direct" text="Sa position s'affiche sur leur carte tant que l'alerte est active." />
-                  <Step icon={ShieldCheck} title="Vous êtes prévenu dès qu'il est retrouvé" text="Vous pouvez arrêter l'alerte à tout moment." />
+                  <PulseBadge tone="danger" animate />
+                  <p className="font-outfit text-[18px] font-semibold text-yazz-text-dark">Envoi de l&apos;alerte…</p>
                 </>
+              ) : confirming ? (
+                <CodeConfirm
+                  code={code}
+                  onOk={() => {
+                    setConfirming(false);
+                    triggerSOS();
+                  }}
+                  onCancel={() => setConfirming(false)}
+                />
+              ) : (
+                <button onClick={askCode} className="group flex flex-col items-center" aria-label="Déclencher le SOS">
+                  <span className="transition-transform duration-150 group-active:scale-95">
+                    <PulseBadge tone="danger" animate big />
+                  </span>
+                  <span className="font-inter text-[14px] font-medium text-yazz-text-muted">Touchez en cas de vol</span>
+                </button>
               )}
             </div>
 
             {error && (
-              <div className="mt-4 flex items-start gap-2.5 rounded-yazz-md bg-yazz-error/10 p-3">
-                <Info className="mt-0.5 h-4 w-4 shrink-0 text-yazz-error" />
-                <p className="font-inter text-[13px] font-medium text-yazz-error">{error}</p>
+              <div className="mb-4 flex items-center justify-center gap-2 text-yazz-error">
+                <Info className="h-4 w-4 shrink-0" />
+                <p className="font-inter text-[13px] font-semibold">{error}</p>
               </div>
             )}
 
-            {/* Actions */}
-            <div className="sticky bottom-0 -mx-4 mt-auto bg-gradient-to-t from-yazz-background from-70% to-transparent px-4 pb-1 pt-6">
-              {phase === "active" ? (
-                <div className="flex gap-2.5">
-                  <button
-                    onClick={() => closeAlert(true)}
-                    disabled={closing}
-                    className="font-inter h-12 flex-1 rounded-yazz-sm border-[1.5px] border-yazz-border-light bg-yazz-surface text-[14px] font-semibold text-yazz-text-dark transition-colors hover:bg-yazz-accent disabled:opacity-50"
-                  >
-                    Fausse alerte
-                  </button>
-                  <button
-                    onClick={() => closeAlert(false)}
-                    disabled={closing}
-                    className="font-inter flex h-12 flex-[2] items-center justify-center gap-2 rounded-yazz-sm bg-yazz-success text-[14px] font-semibold text-white transition-all hover:brightness-95 active:scale-[0.98] disabled:opacity-60"
-                  >
-                    {closing ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-[18px] w-[18px]" />}
-                    Je l&apos;ai récupéré
-                  </button>
-                </div>
-              ) : (
-                <>
-                  <HoldButton
-                    label="Maintenir pour envoyer l'alerte"
-                    holdingLabel="Continuez d'appuyer…"
-                    busy={phase === "sending"}
-                    onConfirm={triggerSOS}
-                  />
-                  <p className="font-inter mt-2 text-center text-[12.5px] text-yazz-text-muted">
-                    Gardez le bouton appuyé 2 secondes
-                  </p>
-                </>
-              )}
-            </div>
+            {phase === "active" && (
+              <div className="flex gap-2.5">
+                <button
+                  onClick={() => closeAlert(true)}
+                  disabled={closing}
+                  className="font-inter h-12 flex-1 border-[1.5px] border-yazz-border-light bg-yazz-surface text-[14px] font-semibold text-yazz-text-dark transition-colors hover:bg-yazz-accent disabled:opacity-50"
+                >
+                  Fausse alerte
+                </button>
+                <button
+                  onClick={() => closeAlert(false)}
+                  disabled={closing}
+                  className="font-inter flex h-12 flex-[2] items-center justify-center gap-2 bg-yazz-success text-[14px] font-semibold text-white transition-all hover:brightness-95 active:scale-[0.98] disabled:opacity-60"
+                >
+                  {closing ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-[18px] w-[18px]" />}
+                  Je l&apos;ai récupéré
+                </button>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -383,132 +354,77 @@ export default function SOSPage() {
   );
 }
 
-function Step({ icon: Icon, title, text }: { icon: typeof BellRing; title: string; text: string }) {
-  return (
-    <div className="flex items-start gap-3 p-4">
-      <div className="grid h-9 w-9 shrink-0 place-items-center rounded-yazz-sm bg-yazz-error/10 text-yazz-error">
-        <Icon className="h-[18px] w-[18px]" strokeWidth={2} />
-      </div>
-      <div className="min-w-0">
-        <p className="font-inter text-[14px] font-semibold leading-snug text-yazz-text-dark">{title}</p>
-        <p className="font-inter mt-0.5 text-[13px] leading-relaxed text-yazz-text-muted">{text}</p>
-      </div>
-    </div>
-  );
-}
-
 /** Bouclier rouge qui émet des ondes (vert une fois le véhicule retrouvé). */
-function PulseBadge({ tone, animate }: { tone: "danger" | "success"; animate: boolean }) {
+function PulseBadge({ tone, animate, big = false }: { tone: "danger" | "success"; animate: boolean; big?: boolean }) {
   const color = tone === "success" ? "bg-yazz-success" : "bg-yazz-error";
   const soft = tone === "success" ? "bg-yazz-success/15" : "bg-yazz-error/15";
   return (
-    <div className="relative my-4 grid h-28 w-28 place-items-center">
+    <div className={cn("relative mb-4 grid place-items-center", big ? "h-48 w-48" : "h-28 w-28")}>
       {animate && (
         <>
-          <span className={cn("absolute inset-2 rounded-full animate-ping [animation-duration:2.2s]", soft)} />
-          <span className={cn("absolute inset-0 rounded-full", soft, "opacity-60")} />
+          <span className={cn("absolute inset-3 rounded-full animate-ping [animation-duration:2.2s]", soft)} />
+          <span className={cn("absolute inset-0 rounded-full opacity-60", soft)} />
         </>
       )}
       <span
         className={cn(
-          "relative grid h-20 w-20 place-items-center rounded-full text-white shadow-[0_10px_28px_-6px_rgba(229,62,62,0.55)]",
+          "relative grid place-items-center rounded-full text-white",
+          big ? "h-32 w-32" : "h-20 w-20",
           color,
-          tone === "success" && "shadow-[0_10px_28px_-6px_rgba(56,161,105,0.55)]"
+          tone === "success"
+            ? "shadow-[0_10px_28px_-6px_rgba(56,161,105,0.55)]"
+            : "shadow-[0_12px_32px_-8px_rgba(229,62,62,0.6)]"
         )}
       >
-        {tone === "success" ? <CheckCircle2 className="h-9 w-9" /> : <ShieldAlert className="h-9 w-9" />}
+        {tone === "success" ? (
+          <CheckCircle2 className={big ? "h-12 w-12" : "h-9 w-9"} />
+        ) : (
+          <ShieldAlert className={big ? "h-12 w-12" : "h-9 w-9"} />
+        )}
       </span>
     </div>
   );
 }
 
-/**
- * Bouton « maintenir pour confirmer » : un clic accidentel ne déclenche rien.
- * On garde le bouton appuyé ~1,5 s (souris, doigt ou clavier), la barre se
- * remplit, l'alerte part.
- */
-function HoldButton({
-  label,
-  holdingLabel,
-  busy,
-  onConfirm,
-}: {
-  label: string;
-  holdingLabel: string;
-  busy: boolean;
-  onConfirm: () => void;
-}) {
-  const HOLD_MS = 1500;
-  const [progress, setProgress] = useState(0);
-  const [holding, setHolding] = useState(false);
-  const raf = useRef<number | null>(null);
-  const startedAt = useRef(0);
-
-  const stop = useCallback(() => {
-    if (raf.current) cancelAnimationFrame(raf.current);
-    raf.current = null;
-    setHolding(false);
-    setProgress(0);
-  }, []);
-
-  const start = useCallback(() => {
-    if (busy || raf.current) return;
-    setHolding(true);
-    startedAt.current = performance.now();
-    if (typeof navigator !== "undefined" && "vibrate" in navigator) navigator.vibrate?.(8);
-    const tick = (t: number) => {
-      const p = Math.min(1, (t - startedAt.current) / HOLD_MS);
-      setProgress(p);
-      if (p >= 1) {
-        stop();
-        if (typeof navigator !== "undefined" && "vibrate" in navigator) navigator.vibrate?.(30);
-        onConfirm();
-        return;
-      }
-      raf.current = requestAnimationFrame(tick);
-    };
-    raf.current = requestAnimationFrame(tick);
-  }, [busy, onConfirm, stop]);
-
-  useEffect(() => stop, [stop]);
-
+/** Confirmation par code : on recopie 4 chiffres, l'alerte part toute seule. */
+function CodeConfirm({ code, onOk, onCancel }: { code: string; onOk: () => void; onCancel: () => void }) {
+  const [value, setValue] = useState("");
+  const [wrong, setWrong] = useState(false);
   return (
-    <button
-      type="button"
-      disabled={busy}
-      onPointerDown={start}
-      onPointerUp={stop}
-      onPointerLeave={stop}
-      onPointerCancel={stop}
-      onContextMenu={(e) => e.preventDefault()}
-      onKeyDown={(e) => {
-        if ((e.key === " " || e.key === "Enter") && !e.repeat) {
-          e.preventDefault();
-          start();
-        }
-      }}
-      onKeyUp={stop}
-      aria-label={label}
-      className={cn(
-        "relative h-14 w-full touch-none select-none overflow-hidden rounded-yazz-sm bg-yazz-error text-white shadow-[0_10px_24px_-10px_rgba(229,62,62,0.8)] transition-transform duration-150",
-        holding && "scale-[0.985]",
-        busy && "opacity-80"
-      )}
-    >
-      <span className="absolute inset-y-0 left-0 bg-black/20" style={{ width: `${progress * 100}%` }} />
-      <span className="font-inter relative flex items-center justify-center gap-2.5 text-[15px] font-semibold">
-        {busy ? (
-          <>
-            <Loader2 className="h-5 w-5 animate-spin" />
-            Envoi de l&apos;alerte…
-          </>
-        ) : (
-          <>
-            <ShieldAlert className="h-5 w-5" />
-            {holding ? holdingLabel : label}
-          </>
+    <div className="yazz-enter-pop flex flex-col items-center">
+      <p className="font-inter text-[14px] text-yazz-text-muted">Tapez le code</p>
+      <p className="font-outfit mt-1 text-[40px] font-extrabold tracking-[0.3em] text-yazz-error tabular-nums">{code}</p>
+      <input
+        autoFocus
+        inputMode="numeric"
+        maxLength={4}
+        value={value}
+        aria-label="Code de confirmation"
+        onChange={(e) => {
+          const v = e.target.value.replace(/\D/g, "").slice(0, 4);
+          setWrong(false);
+          if (v.length === 4) {
+            if (v === code) {
+              onOk();
+              return;
+            }
+            setWrong(true);
+            setValue("");
+            if (typeof navigator !== "undefined" && "vibrate" in navigator) navigator.vibrate?.(60);
+            return;
+          }
+          setValue(v);
+        }}
+        placeholder="····"
+        className={cn(
+          "font-outfit mt-5 h-16 w-56 border-2 bg-yazz-surface text-center text-[30px] font-bold tracking-[0.5em] text-yazz-text-dark placeholder:text-yazz-text-muted/40 focus:outline-none",
+          wrong ? "border-yazz-error" : "border-yazz-border-light focus:border-yazz-error"
         )}
-      </span>
-    </button>
+      />
+      <p className={cn("font-inter mt-2 h-5 text-[13px] font-semibold text-yazz-error", !wrong && "invisible")}>Code incorrect</p>
+      <button onClick={onCancel} className="font-inter mt-2 text-[14px] font-semibold text-yazz-text-muted hover:text-yazz-text-dark">
+        Annuler
+      </button>
+    </div>
   );
 }

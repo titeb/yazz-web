@@ -391,6 +391,45 @@ function VigileAlertCard({
   const found = Boolean(alert.found_at);
   const hasPos = alert.last_lat != null && alert.last_lng != null;
 
+  // Suivre : autorisation de position, puis mon point + l'itinéraire jusqu'au
+  // véhicule sur la carte (mis à jour quand l'un ou l'autre bouge)
+  const watchRef = useRef<number | null>(null);
+  const [me, setMe] = useState<{ lat: number; lng: number } | null>(null);
+  const [geoMsg, setGeoMsg] = useState<string | null>(null);
+  const gpsUrl = hasPos
+    ? `https://www.google.com/maps/dir/?api=1&destination=${alert.last_lat},${alert.last_lng}&travelmode=driving`
+    : "";
+  const follow = () => {
+    if (!navigator.geolocation) {
+      if (gpsUrl) window.open(gpsUrl, "_blank", "noopener");
+      return;
+    }
+    setGeoMsg(null);
+    if (watchRef.current != null) navigator.geolocation.clearWatch(watchRef.current);
+    watchRef.current = navigator.geolocation.watchPosition(
+      (p) => setMe({ lat: p.coords.latitude, lng: p.coords.longitude }),
+      () => setGeoMsg("Autorisez votre position pour être guidé"),
+      { enableHighAccuracy: true, maximumAge: 5000, timeout: 15000 }
+    );
+  };
+  useEffect(
+    () => () => {
+      if (watchRef.current != null) navigator.geolocation?.clearWatch(watchRef.current);
+    },
+    []
+  );
+  const distance =
+    me && hasPos
+      ? (() => {
+          const r = Math.PI / 180;
+          const dLat = (alert.last_lat! - me.lat) * r;
+          const dLng = (alert.last_lng! - me.lng) * r;
+          const h = Math.sin(dLat / 2) ** 2 + Math.cos(me.lat * r) * Math.cos(alert.last_lat! * r) * Math.sin(dLng / 2) ** 2;
+          const m = 2 * 6371000 * Math.asin(Math.sqrt(h));
+          return m >= 1000 ? `${(m / 1000).toFixed(1).replace(".", ",")} km` : `${Math.round(m / 10) * 10} m`;
+        })()
+      : null;
+
   // « Je l'ai retrouvé » : un 2e appui confirme (pas de fenêtre du navigateur)
   const [confirmFound, setConfirmFound] = useState(false);
   useEffect(() => {
@@ -444,7 +483,7 @@ function VigileAlertCard({
       {/* Carte en direct */}
       {hasPos && (
         <div className="px-4">
-          <SosLiveMap lat={alert.last_lat!} lng={alert.last_lng!} found={found} />
+          <SosLiveMap lat={alert.last_lat!} lng={alert.last_lng!} found={found} me={found ? null : me} />
         </div>
       )}
 
@@ -454,16 +493,8 @@ function VigileAlertCard({
         <p className="font-inter min-w-0 flex-1 truncate text-[13px] text-yazz-text-body">
           {addressLoading ? "Localisation…" : addressDisplay}
         </p>
-        {hasPos && (
-          <a
-            href={`https://www.google.com/maps/dir/?api=1&destination=${alert.last_lat},${alert.last_lng}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="font-inter flex shrink-0 items-center gap-1.5 text-[13px] font-semibold text-yazz-primary hover:underline"
-          >
-            <Navigation className="h-3.5 w-3.5" />
-            Y aller
-          </a>
+        {distance && (
+          <span className="font-inter shrink-0 text-[13px] font-semibold text-yazz-primary">à {distance}</span>
         )}
       </div>
       <p className="font-inter flex items-center gap-1.5 px-4 pt-1.5 text-[12.5px] text-yazz-text-muted">
@@ -483,6 +514,28 @@ function VigileAlertCard({
             </p>
           </div>
         ) : (
+          <div className="space-y-2.5">
+          {me && gpsUrl ? (
+            <a
+              href={gpsUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-inter flex h-12 w-full items-center justify-center gap-2 bg-yazz-primary text-[15px] font-semibold text-white transition-all hover:brightness-110 active:scale-[0.99]"
+            >
+              <Navigation className="h-[18px] w-[18px]" />
+              Ouvrir le GPS
+            </a>
+          ) : (
+            <button
+              onClick={follow}
+              disabled={!hasPos}
+              className="font-inter flex h-12 w-full items-center justify-center gap-2 bg-yazz-primary text-[15px] font-semibold text-white transition-all hover:brightness-110 active:scale-[0.99] disabled:opacity-50"
+            >
+              <Navigation className="h-[18px] w-[18px]" />
+              Suivre
+            </button>
+          )}
+          {geoMsg && <p className="font-inter text-center text-[13px] font-semibold text-yazz-error">{geoMsg}</p>}
           <div className="flex gap-2.5">
             <button
               onClick={onSpot}
@@ -506,8 +559,9 @@ function VigileAlertCard({
               )}
             >
               {foundBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
-              {foundBusy ? "Envoi…" : confirmFound ? "Appuyez pour confirmer" : "Je l'ai retrouvé"}
+              {foundBusy ? "Envoi…" : confirmFound ? "Confirmer" : "Retrouvé"}
             </button>
+          </div>
           </div>
         )}
       </div>
