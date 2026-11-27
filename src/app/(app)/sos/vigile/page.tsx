@@ -13,6 +13,10 @@ import {
   ChevronLeft,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import dynamic from "next/dynamic";
+
+// Carte chargée seulement dans le navigateur (Mapbox)
+const SosLiveMap = dynamic(() => import("@/components/yazz/mapbox/sos-live-map").then((m) => m.SosLiveMap), { ssr: false });
 import { useReverseGeocode } from "@/hooks/use-reverse-geocode";
 
 // ============================================================
@@ -37,6 +41,9 @@ type SosAlert = {
   vehicle_plate: string | null;
   vehicle_brand: string | null;
   vehicle_model: string | null;
+  // « Retrouvé » signalé par un vigile (migration 051)
+  found_at?: string | null;
+  found_by?: string | null;
 };
 
 let vigileChannelCounter = 0;
@@ -162,6 +169,43 @@ export default function VigilePage() {
     };
   }, [supabase, fetchAlerts, currentUserId]);
 
+  // Un vigile a retrouvé le véhicule : le propriétaire et tous les vigiles
+  // prévenus le savent tout de suite (serveur YAZZ).
+  const [foundBusy, setFoundBusy] = useState<string | null>(null);
+  const handleFound = async (alertId: string) => {
+    if (!supabase) return;
+    if (!window.confirm("Confirmez-vous avoir retrouvé ce véhicule ? Le propriétaire et les vigiles seront prévenus.")) return;
+    setFoundBusy(alertId);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const backendUrl = process.env.NEXT_PUBLIC_YAZZ_BACKEND_URL;
+      if (!session || !backendUrl) return;
+      let lat: number | null = null;
+      let lng: number | null = null;
+      try {
+        const pos = await new Promise<GeolocationPosition>((ok, ko) =>
+          navigator.geolocation.getCurrentPosition(ok, ko, { timeout: 5000, maximumAge: 60000 })
+        );
+        lat = pos.coords.latitude;
+        lng = pos.coords.longitude;
+      } catch {
+        /* position facultative */
+      }
+      const res = await fetch(`${backendUrl}/api/sos/${alertId}/found`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${session.access_token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ lat, lng }),
+      });
+      if (res.ok) {
+        setAlerts((list) => list.map((a) => (a.id === alertId ? { ...a, found_at: new Date().toISOString() } : a)));
+      }
+    } catch (err) {
+      console.error("[Vigile] retrouvé : erreur", err);
+    } finally {
+      setFoundBusy(null);
+    }
+  };
+
   const handleSpot = async (alertId: string) => {
     if (!supabase) return;
     setSpottingAlertId(alertId);
@@ -252,6 +296,8 @@ export default function VigilePage() {
                 alert={alert}
                 onSpot={() => handleSpot(alert.id)}
                 spotting={spottingAlertId === alert.id}
+                onFound={() => handleFound(alert.id)}
+                foundBusy={foundBusy === alert.id}
               />
             ))}
           </div>
@@ -268,10 +314,14 @@ function VigileAlertCard({
   alert,
   onSpot,
   spotting,
+  onFound,
+  foundBusy,
 }: {
   alert: SosAlert;
   onSpot: () => void;
   spotting: boolean;
+  onFound: () => void;
+  foundBusy: boolean;
 }) {
   const [showAllPhotos, setShowAllPhotos] = useState(false);
   const [photos, setPhotos] = useState<string[]>([]);
@@ -439,6 +489,21 @@ function VigileAlertCard({
           </div>
         )}
 
+        {/* Carte : le véhicule volé, suivi en direct */}
+        {alert.last_lat != null && alert.last_lng != null && (
+          <SosLiveMap lat={alert.last_lat} lng={alert.last_lng} found={Boolean(alert.found_at)} />
+        )}
+
+        {/* Retrouvé par un vigile */}
+        {alert.found_at && (
+          <div className="mt-3 flex items-center gap-2 rounded-yazz-sm bg-yazz-success/10 p-2.5 ring-1 ring-inset ring-yazz-success/20">
+            <CheckCircle2 className="h-4 w-4 shrink-0 text-yazz-success" />
+            <p className="font-inter text-[12px] font-semibold text-yazz-success">
+              Véhicule retrouvé par un vigile — en attente de confirmation du propriétaire
+            </p>
+          </div>
+        )}
+
         {/* Bouton repérer */}
         <button
           onClick={onSpot}
@@ -462,6 +527,17 @@ function VigileAlertCard({
             </>
           )}
         </button>
+
+        {!alert.found_at && (
+          <button
+            onClick={onFound}
+            disabled={foundBusy}
+            className="font-inter mt-2 flex w-full items-center justify-center gap-2 rounded-yazz-sm bg-yazz-success py-2.5 text-[12px] font-semibold text-white shadow-yazz-soft transition-all hover:bg-yazz-success/90 active:scale-95 disabled:opacity-60"
+          >
+            <CheckCircle2 className="h-4 w-4" />
+            {foundBusy ? "Envoi…" : "Je l'ai retrouvé"}
+          </button>
+        )}
       </div>
 
       {/* Modal galerie photos */}
