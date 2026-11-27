@@ -205,7 +205,7 @@ export function YazzVehicleDetail({ vehicle, onClose }: YazzVehicleDetailProps) 
 
   // SOS — navigate vers la page SOS dédiée
   const handleSOS = () => {
-    router.push("/sos");
+    router.push(`/sos?device=${encodeURIComponent(vehicle.id)}`);
   };
 
   // 3 – 10 km/h : « Ralentissement », comme l'app mobile

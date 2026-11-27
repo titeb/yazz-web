@@ -251,7 +251,7 @@ export function YazzVehicleGridCard({ device }: { device: UserDevice }) {
   };
 
   const handleSOS = () => {
-    router.push("/sos");
+    router.push(`/sos?device=${encodeURIComponent(device.id)}`);
   };
 
   return (

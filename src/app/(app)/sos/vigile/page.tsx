@@ -4,13 +4,15 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { createClientSafe, isSupabaseConfigured } from "@/lib/supabase/client";
 import {
-  ShieldAlert,
-  MapPin,
+  ArrowLeft,
+  Car,
+  CheckCircle2,
   Clock,
   Loader2,
-  CheckCircle2,
+  MapPin,
   Navigation,
-  ChevronLeft,
+  ShieldCheck,
+  X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import dynamic from "next/dynamic";
@@ -23,7 +25,7 @@ import { useReverseGeocode } from "@/hooks/use-reverse-geocode";
 // Page vigile SOS
 // S'abonne aux sos_alerts actives (status = 'active' AND declared_by != me)
 // via Realtime. Affiche les infos véhicule pour identification.
-// Permet de signaler un repérage (spotting).
+// Le vigile voit tout de suite le trajet jusqu'au véhicule ; « Je l'ai retrouvé ».
 // ============================================================
 
 type SosAlert = {
@@ -55,7 +57,6 @@ export default function VigilePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
-  const [spottingAlertId, setSpottingAlertId] = useState<string | null>(null);
   const channelNameRef = useRef<string | null>(null);
 
   if (!channelNameRef.current) {
@@ -174,7 +175,6 @@ export default function VigilePage() {
   const [foundBusy, setFoundBusy] = useState<string | null>(null);
   const handleFound = async (alertId: string) => {
     if (!supabase) return;
-    if (!window.confirm("Confirmez-vous avoir retrouvé ce véhicule ? Le propriétaire et les vigiles seront prévenus.")) return;
     setFoundBusy(alertId);
     try {
       const { data: { session } } = await supabase.auth.getSession();
@@ -206,96 +206,65 @@ export default function VigilePage() {
     }
   };
 
-  const handleSpot = async (alertId: string) => {
-    if (!supabase) return;
-    setSpottingAlertId(alertId);
-    try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const { error: spotErr } = await supabase.from("sos_spottings").insert({
-        alert_id: alertId,
-        spotter_user_id: user.id,
-        spotted_lat: null,
-        spotted_lng: null,
-      });
-
-      if (spotErr && spotErr.code !== "23505") {
-        throw spotErr;
-      }
-      // spotted_count est incrémenté automatiquement par le trigger SQL
-    } catch (err: any) {
-      console.error("[Vigile] spotting erreur:", err);
-    } finally {
-      setTimeout(() => setSpottingAlertId(null), 2000);
-    }
-  };
-
   return (
     <div className="h-full overflow-y-auto bg-yazz-background">
-      <div className="mx-auto max-w-3xl px-4 py-6 md:px-6 md:py-8">
-        {/* Header */}
-        <div className="mb-6 flex items-start justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => router.back()}
-              className="grid h-10 w-10 shrink-0 place-items-center rounded-yazz-sm bg-yazz-surface text-yazz-text-muted shadow-yazz-soft transition-colors hover:bg-yazz-accent hover:text-yazz-primary"
-            >
-              <ChevronLeft className="h-5 w-5" />
-            </button>
-            <div>
-              <h1 className="font-outfit text-[24px] font-bold tracking-[-0.02em] text-yazz-text-dark">
-                Mode vigile
-              </h1>
-              <p className="font-inter mt-1 text-[13px] text-yazz-text-muted">
-                {alerts.length > 0
-                  ? `${alerts.length} alerte${alerts.length > 1 ? "s" : ""} SOS active${alerts.length > 1 ? "s" : ""}`
-                  : "Aucune alerte active"}
-              </p>
-            </div>
+      <div className="mx-auto max-w-2xl px-4 py-5 md:px-6 md:py-8">
+        {/* En-tête */}
+        <div className="mb-5 flex items-center gap-3">
+          <button
+            onClick={() => router.back()}
+            aria-label="Retour"
+            className="grid h-10 w-10 shrink-0 place-items-center rounded-yazz-sm bg-yazz-surface text-yazz-text-dark yazz-shadow-soft transition-colors hover:bg-yazz-accent"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </button>
+          <div className="min-w-0 flex-1">
+            <h1 className="font-outfit text-[20px] font-bold tracking-[-0.02em] text-yazz-text-dark">Alertes SOS</h1>
+            <p className="font-inter text-[13px] text-yazz-text-muted">
+              {alerts.length > 0
+                ? `${alerts.length} véhicule${alerts.length > 1 ? "s" : ""} recherché${alerts.length > 1 ? "s" : ""} près de vous`
+                : "Mode vigile activé"}
+            </p>
           </div>
-          <div className="flex items-center gap-1.5 rounded-full bg-yazz-error/10 px-3 py-1.5">
-            <span className="h-2 w-2 rounded-full bg-yazz-error yazz-blink" />
-            <span className="font-inter text-[11px] font-semibold text-yazz-error">En écoute</span>
-          </div>
+          <span className="font-inter flex shrink-0 items-center gap-1.5 bg-yazz-surface px-2.5 py-1.5 text-[12px] font-semibold text-yazz-text-body yazz-shadow-soft">
+            <span className="relative flex h-2 w-2">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-yazz-success opacity-60" />
+              <span className="relative inline-flex h-2 w-2 rounded-full bg-yazz-success" />
+            </span>
+            En écoute
+          </span>
         </div>
 
         {error && (
-          <div className="mb-4 rounded-yazz-md ring-1 ring-inset ring-yazz-warning/20 bg-yazz-warning/10 p-4">
-            <p className="font-inter text-[12px] text-yazz-text-body">{error}</p>
+          <div className="mb-4 bg-yazz-warning/10 p-3">
+            <p className="font-inter text-[13px] text-yazz-text-body">{error}</p>
           </div>
         )}
 
         {loading && (
-          <div className="grid place-items-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-yazz-primary" />
+          <div className="grid place-items-center py-16">
+            <Loader2 className="h-7 w-7 animate-spin text-yazz-primary" />
           </div>
         )}
 
         {!loading && !error && alerts.length === 0 && (
-          <div className="grid place-items-center py-16 text-center">
-            <div className="grid h-16 w-16 place-items-center rounded-full bg-yazz-success/10">
-              <CheckCircle2 className="h-8 w-8 text-yazz-success" />
+          <div className="yazz-enter grid place-items-center bg-yazz-surface px-6 py-14 text-center yazz-shadow-soft">
+            <div className="grid h-14 w-14 place-items-center rounded-full bg-yazz-success/10">
+              <ShieldCheck className="h-7 w-7 text-yazz-success" />
             </div>
-            <p className="font-outfit mt-4 text-[16px] font-semibold text-yazz-text-dark">
-              Tout est calme
-            </p>
-            <p className="font-inter mt-1 max-w-xs text-[12px] text-yazz-text-muted">
-              Aucune alerte SOS active près de vous. Vous serez notifié dès qu'une alerte sera déclenchée.
+            <p className="font-outfit mt-4 text-[17px] font-semibold text-yazz-text-dark">Tout est calme</p>
+            <p className="font-inter mt-1 max-w-xs text-[13px] leading-relaxed text-yazz-text-muted">
+              Aucun véhicule recherché près de vous. Vous serez prévenu dès qu&apos;une alerte est lancée.
             </p>
           </div>
         )}
 
         {!loading && alerts.length > 0 && (
-          <div className="space-y-3">
+          <div className="yazz-stagger space-y-4">
             {alerts.map((alert) => (
               <VigileAlertCard
                 key={alert.id}
                 alert={alert}
-                onSpot={() => handleSpot(alert.id)}
-                spotting={spottingAlertId === alert.id}
                 onFound={() => handleFound(alert.id)}
                 foundBusy={foundBusy === alert.id}
               />
@@ -312,14 +281,10 @@ export default function VigilePage() {
 // ============================================================
 function VigileAlertCard({
   alert,
-  onSpot,
-  spotting,
   onFound,
   foundBusy,
 }: {
   alert: SosAlert;
-  onSpot: () => void;
-  spotting: boolean;
   onFound: () => void;
   foundBusy: boolean;
 }) {
@@ -380,187 +345,186 @@ function VigileAlertCard({
 
   const timeAgo = alert.created_at
     ? (() => {
-        const diff = Date.now() - new Date(alert.created_at).getTime();
-        const min = Math.floor(diff / 60000);
+        const min = Math.floor((Date.now() - new Date(alert.created_at).getTime()) / 60000);
         if (min < 1) return "à l'instant";
         if (min < 60) return `il y a ${min} min`;
-        const h = Math.floor(min / 60);
-        return `il y a ${h}h`;
+        return `il y a ${Math.floor(min / 60)} h`;
       })()
-    : "—";
+    : "";
+
+  const name = [alert.vehicle_brand, alert.vehicle_model, alert.vehicle_color].filter(Boolean).join(" · ") || alert.device_name || "Véhicule signalé";
+  const found = Boolean(alert.found_at);
+  const hasPos = alert.last_lat != null && alert.last_lng != null;
+
+  // Suivre : autorisation de position, puis mon point + l'itinéraire jusqu'au
+  // véhicule sur la carte (mis à jour quand l'un ou l'autre bouge)
+  const watchRef = useRef<number | null>(null);
+  const [me, setMe] = useState<{ lat: number; lng: number } | null>(null);
+  const [geoMsg, setGeoMsg] = useState<string | null>(null);
+  const gpsUrl = hasPos
+    ? `https://www.google.com/maps/dir/?api=1&destination=${alert.last_lat},${alert.last_lng}&travelmode=driving`
+    : "";
+  const follow = () => {
+    if (!navigator.geolocation) {
+      if (gpsUrl) window.open(gpsUrl, "_blank", "noopener");
+      return;
+    }
+    setGeoMsg(null);
+    if (watchRef.current != null) navigator.geolocation.clearWatch(watchRef.current);
+    watchRef.current = navigator.geolocation.watchPosition(
+      (p) => setMe({ lat: p.coords.latitude, lng: p.coords.longitude }),
+      () => setGeoMsg("Autorisez votre position pour être guidé"),
+      { enableHighAccuracy: true, maximumAge: 5000, timeout: 15000 }
+    );
+  };
+  // Dès l'ouverture : position demandée une fois, puis trajet affiché tout seul
+  useEffect(() => {
+    const t = !found && hasPos ? setTimeout(follow, 300) : undefined;
+    return () => {
+      if (t) clearTimeout(t);
+      if (watchRef.current != null) navigator.geolocation?.clearWatch(watchRef.current);
+    };
+  }, []);
+  const distance =
+    me && hasPos
+      ? (() => {
+          const r = Math.PI / 180;
+          const dLat = (alert.last_lat! - me.lat) * r;
+          const dLng = (alert.last_lng! - me.lng) * r;
+          const h = Math.sin(dLat / 2) ** 2 + Math.cos(me.lat * r) * Math.cos(alert.last_lat! * r) * Math.sin(dLng / 2) ** 2;
+          const m = 2 * 6371000 * Math.asin(Math.sqrt(h));
+          return m >= 1000 ? `${(m / 1000).toFixed(1).replace(".", ",")} km` : `${Math.round(m / 10) * 10} m`;
+        })()
+      : null;
+
+  // « Je l'ai retrouvé » : un 2e appui confirme (pas de fenêtre du navigateur)
+  const [confirmFound, setConfirmFound] = useState(false);
+  useEffect(() => {
+    if (!confirmFound) return;
+    const t = setTimeout(() => setConfirmFound(false), 4000);
+    return () => clearTimeout(t);
+  }, [confirmFound]);
 
   return (
-    <article className="overflow-hidden rounded-yazz-xl border border-yazz-error/30 bg-yazz-surface yazz-shadow-soft">
-      {/* Header — bandeau rouge */}
-      <div className="flex items-center gap-2 bg-yazz-error/10 px-4 py-2.5">
-        <ShieldAlert className="h-5 w-5 text-yazz-error yazz-blink" />
-        <p className="font-outfit text-[14px] font-bold text-yazz-error">
-          Alerte SOS active
-        </p>
-        <span className="font-inter ml-auto flex items-center gap-1 text-[11px] text-yazz-text-muted">
-          <Clock className="h-3 w-3" />
-          {timeAgo}
-        </span>
-      </div>
-
-      <div className="p-4">
-        {/* Photos + infos véhicule */}
-        <div className="flex gap-3">
-          {allPhotos[0] && (
-            <button
-              onClick={() => setShowAllPhotos(true)}
-              className="relative h-24 w-24 shrink-0 overflow-hidden rounded-yazz-lg border border-yazz-border-light"
-            >
-              <img src={allPhotos[0]} alt="Véhicule" className="h-full w-full object-cover" />
-              {allPhotos.length > 1 && (
-                <span className="absolute bottom-1 right-1 rounded-full bg-yazz-text-dark/70 px-1.5 py-0.5 text-[9px] font-bold text-white">
-                  +{allPhotos.length - 1}
-                </span>
-              )}
-            </button>
-          )}
-
-          <div className="min-w-0 flex-1">
-            <p className="font-outfit text-[15px] font-bold tracking-[-0.01em] text-yazz-text-dark">
-              {alert.device_name || "Véhicule inconnu"}
-            </p>
-            <div className="mt-1 flex flex-wrap gap-1.5">
-              {alert.vehicle_color && (
-                <span className="rounded-full bg-yazz-accent px-2 py-0.5 text-[10px] font-semibold text-yazz-text-body">
-                  {alert.vehicle_color}
-                </span>
-              )}
-              {alert.vehicle_brand && (
-                <span className="rounded-full bg-yazz-accent px-2 py-0.5 text-[10px] font-semibold text-yazz-text-body">
-                  {alert.vehicle_brand}
-                </span>
-              )}
-              {alert.vehicle_model && (
-                <span className="rounded-full bg-yazz-accent px-2 py-0.5 text-[10px] font-semibold text-yazz-text-body">
-                  {alert.vehicle_model}
-                </span>
-              )}
-              {alert.vehicle_plate && (
-                <span className="rounded-full bg-yazz-primary/10 px-2 py-0.5 text-[10px] font-bold text-yazz-primary">
-                  {alert.vehicle_plate}
-                </span>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Position */}
-        <div className="mt-3 flex items-start gap-2 rounded-yazz-md bg-yazz-background/60 p-2.5">
-          <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-yazz-primary" />
-          <div className="min-w-0 flex-1">
-            {addressLoading ? (
-              <p className="font-inter text-[11px] text-yazz-text-muted">Localisation…</p>
-            ) : (
-              <p className="font-inter text-[11px] leading-snug text-yazz-text-dark">
-                {addressDisplay}
-              </p>
-            )}
-            {alert.last_lat && alert.last_lng && (
-              <p className="font-inter mt-0.5 text-[10px] text-yazz-text-caption">
-                {alert.last_lat.toFixed(4)}, {alert.last_lng.toFixed(4)}
-              </p>
-            )}
-          </div>
-          {alert.last_lat && alert.last_lng && (
-            <a
-              href={`https://www.google.com/maps?q=${alert.last_lat},${alert.last_lng}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="shrink-0 rounded-yazz-sm bg-yazz-primary/10 p-1.5 text-yazz-primary transition-colors hover:bg-yazz-primary/20"
-              title="Ouvrir dans Google Maps"
-            >
-              <Navigation className="h-3.5 w-3.5" />
-            </a>
-          )}
-        </div>
-
-        {/* Spotted count */}
-        {alert.spotted_count > 0 && (
-          <div className="mt-2 flex items-center gap-1.5">
-            <CheckCircle2 className="h-3.5 w-3.5 text-yazz-success" />
-            <span className="font-inter text-[11px] text-yazz-text-muted">
-              Repéré par {alert.spotted_count} vigile{alert.spotted_count > 1 ? "s" : ""}
-            </span>
-          </div>
-        )}
-
-        {/* Carte : le véhicule volé, suivi en direct */}
-        {alert.last_lat != null && alert.last_lng != null && (
-          <SosLiveMap lat={alert.last_lat} lng={alert.last_lng} found={Boolean(alert.found_at)} />
-        )}
-
-        {/* Retrouvé par un vigile */}
-        {alert.found_at && (
-          <div className="mt-3 flex items-center gap-2 rounded-yazz-sm bg-yazz-success/10 p-2.5 ring-1 ring-inset ring-yazz-success/20">
-            <CheckCircle2 className="h-4 w-4 shrink-0 text-yazz-success" />
-            <p className="font-inter text-[12px] font-semibold text-yazz-success">
-              Véhicule retrouvé par un vigile — en attente de confirmation du propriétaire
-            </p>
-          </div>
-        )}
-
-        {/* Bouton repérer */}
+    <article className="overflow-hidden bg-yazz-surface yazz-shadow-soft">
+      {/* Véhicule */}
+      <div className="flex gap-4 p-4">
         <button
-          onClick={onSpot}
-          disabled={spotting}
-          className={cn(
-            "font-inter mt-3 flex w-full items-center justify-center gap-2 rounded-yazz-sm py-2.5 text-[12px] font-semibold transition-all active:scale-95",
-            spotting
-              ? "bg-yazz-success text-white"
-              : "bg-yazz-primary text-white shadow-yazz-medium hover:bg-yazz-primary/90"
-          )}
+          onClick={() => allPhotos.length && setShowAllPhotos(true)}
+          className="relative grid h-[76px] w-[76px] shrink-0 place-items-center overflow-hidden bg-yazz-accent"
+          aria-label="Voir les photos"
         >
-          {spotting ? (
-            <>
-              <CheckCircle2 className="h-4 w-4" />
-              Repéré signalé
-            </>
+          {allPhotos[0] ? (
+            <img src={allPhotos[0]} alt="" className="h-full w-full object-cover" />
           ) : (
-            <>
-              <ShieldAlert className="h-4 w-4" />
-              J'ai repéré ce véhicule
-            </>
+            <Car className="h-7 w-7 text-yazz-text-muted" strokeWidth={1.75} />
+          )}
+          {allPhotos.length > 1 && (
+            <span className="absolute bottom-1 right-1 bg-yazz-text-dark/75 px-1.5 py-0.5 text-[10px] font-semibold text-white">
+              +{allPhotos.length - 1}
+            </span>
           )}
         </button>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+            <span className={cn("font-inter flex items-center gap-1.5 text-[12px] font-semibold", found ? "text-yazz-success" : "text-yazz-error")}>
+              <span className={cn("h-2 w-2 rounded-full", found ? "bg-yazz-success" : "bg-yazz-error yazz-blink")} />
+              {found ? "Retrouvé" : "Signalé volé"}
+            </span>
+            {timeAgo && (
+              <span className="font-inter ml-auto flex items-center gap-1 text-[12px] text-yazz-text-muted">
+                <Clock className="h-3.5 w-3.5" />
+                {timeAgo}
+              </span>
+            )}
+          </div>
+          <p className="font-outfit mt-1 truncate text-[16px] font-semibold text-yazz-text-dark">{name}</p>
+          {alert.vehicle_plate && (
+            <span className="font-inter mt-1.5 inline-block border-[1.5px] border-yazz-border-light px-2 py-0.5 text-[12px] font-bold tracking-[0.12em] text-yazz-text-dark">
+              {alert.vehicle_plate}
+            </span>
+          )}
+        </div>
+      </div>
 
-        {!alert.found_at && (
-          <button
-            onClick={onFound}
-            disabled={foundBusy}
-            className="font-inter mt-2 flex w-full items-center justify-center gap-2 rounded-yazz-sm bg-yazz-success py-2.5 text-[12px] font-semibold text-white shadow-yazz-soft transition-all hover:bg-yazz-success/90 active:scale-95 disabled:opacity-60"
-          >
-            <CheckCircle2 className="h-4 w-4" />
-            {foundBusy ? "Envoi…" : "Je l'ai retrouvé"}
-          </button>
+      {/* Carte en direct */}
+      {hasPos && (
+        <div className="px-4">
+          <SosLiveMap lat={alert.last_lat!} lng={alert.last_lng!} found={found} me={found ? null : me} />
+        </div>
+      )}
+
+      {/* Où + repérages */}
+      <div className="flex items-center gap-3 px-4 pt-3">
+        <MapPin className="h-4 w-4 shrink-0 text-yazz-text-muted" />
+        <p className="font-inter min-w-0 flex-1 truncate text-[13px] text-yazz-text-body">
+          {addressLoading ? "Localisation…" : addressDisplay}
+        </p>
+        {distance && (
+          <span className="font-inter shrink-0 text-[13px] font-semibold text-yazz-primary">à {distance}</span>
         )}
       </div>
 
-      {/* Modal galerie photos */}
+
+      {/* Actions */}
+      <div className="p-4">
+        {found ? (
+          <div className="flex items-center gap-2.5 bg-yazz-success/10 p-3">
+            <CheckCircle2 className="h-5 w-5 shrink-0 text-yazz-success" />
+            <p className="font-inter text-[13px] font-semibold text-yazz-text-dark">
+              Véhicule retrouvé. Merci pour votre aide !
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-2.5">
+            <a
+              href={gpsUrl || undefined}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={() => !me && follow()}
+              className={cn(
+                "font-inter flex h-12 w-full items-center justify-center gap-2 bg-yazz-primary text-[15px] font-semibold text-white transition-all hover:brightness-110 active:scale-[0.99]",
+                !gpsUrl && "pointer-events-none opacity-50"
+              )}
+            >
+              <Navigation className="h-[18px] w-[18px]" />
+              Y aller
+            </a>
+            {geoMsg && <p className="font-inter text-center text-[13px] font-semibold text-yazz-text-muted">{geoMsg}</p>}
+            <button
+              onClick={() => (confirmFound ? (setConfirmFound(false), onFound()) : setConfirmFound(true))}
+              disabled={foundBusy}
+              className={cn(
+                "font-inter flex h-11 w-full items-center justify-center gap-2 border-[1.5px] text-[14px] font-semibold transition-all active:scale-[0.99] disabled:opacity-60",
+                confirmFound
+                  ? "border-yazz-text-dark bg-yazz-text-dark text-white"
+                  : "border-yazz-border-light bg-yazz-surface text-yazz-text-dark hover:bg-yazz-accent"
+              )}
+            >
+              {foundBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
+              {foundBusy ? "Envoi…" : confirmFound ? "Touchez encore pour confirmer" : "Je l'ai retrouvé"}
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Galerie photos */}
       {showAllPhotos && allPhotos.length > 0 && (
         <div
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-yazz-text-dark/80 p-4"
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-yazz-text-dark/80 p-4 yazz-animate-fade-in"
           onClick={() => setShowAllPhotos(false)}
         >
-          <div className="relative max-w-2xl">
+          <div className="relative w-full max-w-2xl">
             <button
               onClick={() => setShowAllPhotos(false)}
-              className="absolute -top-10 right-0 grid h-8 w-8 place-items-center rounded-yazz-sm bg-white/10 text-white hover:bg-white/20"
+              aria-label="Fermer"
+              className="absolute -top-11 right-0 grid h-9 w-9 place-items-center bg-white/10 text-white hover:bg-white/20"
             >
-              ✕
+              <X className="h-5 w-5" />
             </button>
             <div className="grid max-h-[80vh] grid-cols-2 gap-2 overflow-y-auto">
               {allPhotos.map((url, i) => (
-                <img
-                  key={i}
-                  src={url}
-                  alt={`Photo ${i + 1}`}
-                  className="h-48 w-full rounded-yazz-md object-cover"
-                />
+                <img key={i} src={url} alt={`Photo ${i + 1}`} className="h-48 w-full object-cover" />
               ))}
             </div>
           </div>

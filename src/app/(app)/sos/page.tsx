@@ -1,180 +1,159 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { createClientSafe } from "@/lib/supabase/client";
-import {
-  Siren,
-  X,
-  Loader2,
-  CheckCircle2,
-  AlertTriangle,
-  ShieldAlert,
-  RefreshCw,
-} from "lucide-react";
+import { ArrowLeft, Car, CheckCircle2, Eye, Info, Loader2, ShieldAlert } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-type SOSState = "idle" | "countdown" | "confirm" | "sending" | "active" | "cancelled";
+// ─────────────────────────────────────────────────────────────────────
+// SOS — même parcours que l'app, presque sans texte :
+//   1. un gros bouton ;
+//   2. un code à 4 chiffres à recopier (évite les erreurs), l'alerte part seule ;
+//   3. alerte en cours : repérages en direct, « Fausse alerte » ou « Je l'ai récupéré ».
+// Le véhicule est celui d'où l'on vient (?device=…), sinon le premier actif.
+// Une alerte lancée depuis l'app ou l'assistant apparaît ici en direct.
+// ─────────────────────────────────────────────────────────────────────
 
-// Génère un code aléatoire à 4 chiffres pour la confirmation
-function generateConfirmCode(): string {
-  return Math.floor(1000 + Math.random() * 9000).toString();
+type Phase = "loading" | "idle" | "sending" | "active";
+
+type Device = {
+  id: string;
+  name: string | null;
+  url_image: string | null;
+  vehicle_photo: string | null;
+  vehicle_color: string | null;
+  vehicle_plate: string | null;
+  vehicle_brand: string | null;
+  vehicle_model: string | null;
+};
+
+type Alert = {
+  id: string;
+  status: string;
+  found_at?: string | null;
+  spotted_count?: number | null;
+};
+
+const DEVICE_COLUMNS =
+  "id, name, url_image, vehicle_photo, vehicle_color, vehicle_plate, vehicle_brand, vehicle_model";
+
+function vehicleLabel(d: Device | null): string {
+  if (!d) return "Votre véhicule";
+  const parts = [d.vehicle_brand, d.vehicle_model, d.vehicle_color].filter(Boolean);
+  return parts.length ? parts.join(" · ") : d.name || "Votre véhicule";
 }
 
 export default function SOSPage() {
   const router = useRouter();
   const supabase = createClientSafe();
-  const [state, setState] = useState<SOSState>("idle");
-  const [countdown, setCountdown] = useState(3);
+  const [phase, setPhase] = useState<Phase>(() => (supabase ? "loading" : "idle"));
+  const [device, setDevice] = useState<Device | null>(null);
+  const [alert, setAlert] = useState<Alert | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [confirmCode, setConfirmCode] = useState("");
-  const [userInput, setUserInput] = useState("");
-  // FIX 2026-10-30 (Phase 3c) : Ref pour suivre la dernière valeur de state
-  // dans le callback Realtime (évite le bug de closure — sans ref, le callback
-  // capturerait toujours la valeur initiale "idle").
-  const stateRef = useRef<SOSState>(state);
-  useEffect(() => { stateRef.current = state; }, [state]);
+  const [closing, setClosing] = useState(false);
+  const [confirming, setConfirming] = useState(false);
+  const [code, setCode] = useState("");
 
-  // FIX 2026-10-30 (Phase 3c) : Au montage, vérifier si un SOS actif existe
-  // déjà pour cet utilisateur (par exemple déclenché depuis Flutter). Si oui,
-  // passer directement à l'état "active" pour montrer que le SOS est en cours.
-  // + Subscription Realtime sur sos_alerts pour détecter si le SOS est résolu
-  // depuis une autre interface (Flutter ou autre onglet yazz-web).
-  // Stratégie safe : AJOUT seul, ne modifie pas la logique existante.
+  const askCode = () => {
+    setError(null);
+    setCode(String(Math.floor(1000 + Math.random() * 9000)));
+    setConfirming(true);
+    if (typeof navigator !== "undefined" && "vibrate" in navigator) navigator.vibrate?.(15);
+  };
+
+  const loadActiveAlert = useCallback(
+    async (deviceId: string) => {
+      if (!supabase) return null;
+      const { data } = await supabase
+        .from("sos_alerts")
+        .select("id, status, found_at, spotted_count")
+        .eq("device_id", deviceId)
+        .eq("status", "active")
+        .order("created_at", { ascending: false })
+        .limit(1);
+      return (data?.[0] as Alert | undefined) ?? null;
+    },
+    [supabase]
+  );
+
+  // Véhicule + alerte déjà en cours (lancée ici, dans l'app ou par l'assistant)
   useEffect(() => {
     if (!supabase) return;
     let cancelled = false;
-
-    const checkActiveSos = async () => {
+    (async () => {
       try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user || cancelled) return;
-        const { data: activeSos } = await supabase
-          .from("sos_alerts")
-          .select("id, status")
-          .eq("declared_by", user.id)
-          .eq("status", "active")
-          .maybeSingle();
-        if (!cancelled && activeSos) {
-          setState("active");
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+        if (!user) {
+          if (!cancelled) setPhase("idle");
+          return;
         }
-      } catch (e) {
-        // Silencieux — ne pas crasher la page si la query échoue
+        const wanted = new URLSearchParams(window.location.search).get("device");
+        const query = wanted
+          ? supabase.from("user_devices").select(DEVICE_COLUMNS).eq("id", wanted)
+          : supabase.from("user_devices").select(DEVICE_COLUMNS).eq("user_id", user.id).eq("is_active", true);
+        const { data: devices } = await query.limit(1);
+        const d = (devices?.[0] as Device | undefined) ?? null;
+        if (cancelled) return;
+        setDevice(d);
+        const active = d ? await loadActiveAlert(d.id) : null;
+        if (cancelled) return;
+        setAlert(active);
+        setPhase(active ? "active" : "idle");
+      } catch {
+        if (!cancelled) setPhase("idle");
       }
+    })();
+    return () => {
+      cancelled = true;
     };
-    checkActiveSos();
+  }, [supabase, loadActiveAlert]);
 
-    // Realtime : si un SOS actif est résolu depuis Flutter → revenir à "idle"
+  // En direct : alerte levée, retrouvée ou repérée depuis une autre interface
+  useEffect(() => {
+    if (!supabase || !device) return;
     const channel = supabase
-      .channel(`sos-page-realtime`)
+      .channel(`sos-page-${device.id}`)
       .on(
         "postgres_changes",
-        { event: "UPDATE", schema: "public", table: "sos_alerts" },
-        (payload: any) => {
-          const newRow = payload.new;
-          // Si le SOS passe de "active" à autre chose (false_alarm, resolved, etc.)
-          // et que la page était en état "active", revenir à "idle"
-          if (newRow?.status !== "active" && stateRef.current === "active") {
-            setState("idle");
-          }
+        { event: "*", schema: "public", table: "sos_alerts", filter: `device_id=eq.${device.id}` },
+        async () => {
+          const active = await loadActiveAlert(device.id);
+          setAlert(active);
+          setPhase((p) => (p === "sending" ? p : active ? "active" : "idle"));
         }
       )
       .subscribe();
-
     return () => {
-      cancelled = true;
       supabase.removeChannel(channel);
     };
-  }, [supabase]);
-
-  // Countdown timer — après le compte à rebours, on passe à l'étape de confirmation
-  // (code à recopier) au lieu de déclencher le SOS directement
-  useEffect(() => {
-    if (state !== "countdown") return;
-    if (countdown <= 0) {
-      // Générer un code de confirmation aléatoire et passer à l'étape confirm
-      setConfirmCode(generateConfirmCode());
-      setUserInput("");
-      setError(null);
-      setState("confirm");
-      return;
-    }
-    const t = setTimeout(() => setCountdown((c) => c - 1), 1000);
-    return () => clearTimeout(t);
-  }, [state, countdown]);
-
-  const startCountdown = () => {
-    setError(null);
-    setCountdown(3);
-    setState("countdown");
-  };
-
-  const cancelCountdown = () => {
-    setState("idle");
-    setCountdown(3);
-  };
-
-  // Valide le code de confirmation saisi par l'utilisateur
-  const handleConfirmSubmit = () => {
-    if (userInput === confirmCode) {
-      // Bon code → déclencher le SOS
-      triggerSOS();
-    } else {
-      setError("Code incorrect. Vérifiez et réessayez.");
-    }
-  };
-
-  // Régénère un nouveau code (en cas d'erreur de saisie répétée)
-  const regenerateCode = () => {
-    setConfirmCode(generateConfirmCode());
-    setUserInput("");
-    setError(null);
-  };
+  }, [supabase, device, loadActiveAlert]);
 
   const triggerSOS = async () => {
-    setState("sending");
-    setError(null);
-
-    if (!supabase) {
-      setError("Supabase non configuré");
-      setState("idle");
+    if (!supabase) return;
+    if (!device) {
+      setError("Aucun véhicule actif. Activez un capteur d'abord.");
       return;
     }
+    setPhase("sending");
+    setError(null);
 
     try {
       const {
         data: { user },
       } = await supabase.auth.getUser();
-      if (!user) {
-        setError("Non authentifié");
-        setState("idle");
-        return;
-      }
+      if (!user) throw new Error("Session expirée. Reconnectez-vous.");
 
-      // Get user's first active device + ALL vehicle info (for SOS recognition)
-      const { data: devices } = await supabase
-        .from("user_devices")
-        .select("id, name, url_image, vehicle_photo, vehicle_color, vehicle_plate, vehicle_brand, vehicle_model")
-        .eq("user_id", user.id)
-        .eq("is_active", true)
-        .limit(1);
-
-      if (!devices || devices.length === 0) {
-        setError("Aucun capteur actif. Activez un capteur d'abord.");
-        setState("idle");
-        return;
-      }
-
-      const device = devices[0];
-
-      // Get current position from last_known_positions (pour last_lat/last_lng dans l'alerte)
+      // Position actuelle du véhicule
       const { data: position } = await supabase
         .from("last_known_positions")
         .select("latitude, longitude")
         .eq("device_id", device.id)
         .maybeSingle();
 
-      // Fetch vehicle photos from vehicle_photos table (jusqu'à 5, ordre par position)
+      // Photos du véhicule (jusqu'à 5)
       const { data: vehiclePhotos } = await supabase
         .from("vehicle_photos")
         .select("url, position")
@@ -182,11 +161,8 @@ export default function SOSPage() {
         .order("position", { ascending: true })
         .limit(5);
 
-      // Photo principale = première photo de la galerie, ou fallback vehicle_photo / url_image
       const primaryPhoto = vehiclePhotos?.[0]?.url ?? device.vehicle_photo ?? device.url_image ?? null;
 
-      // Create SOS alert avec TOUTES les infos véhicule pour reconnaissance
-      // par les autres utilisateurs (vigiles YAZZ) qui verront l'alerte.
       const { data: alertData, error: insertErr } = await supabase
         .from("sos_alerts")
         .insert({
@@ -203,301 +179,252 @@ export default function SOSPage() {
           vehicle_model: device.vehicle_model ?? null,
           created_at: new Date().toISOString(),
         })
-        .select("id")
+        .select("id, status, found_at, spotted_count")
         .single();
 
       if (insertErr) throw insertErr;
 
-      // Copier les photos du véhicule dans sos_alert_photos (snapshot)
-      // pour que les vigiles voient les photos même si l'owner les supprime après
+      // Photos figées dans l'alerte (les vigiles les voient même si elles changent ensuite)
       if (alertData?.id && vehiclePhotos && vehiclePhotos.length > 0) {
-        const photoInserts = vehiclePhotos.map((p: any, index: number) => ({
-          alert_id: alertData.id,
-          url: p.url,
-          position: index,
-        }));
-        const { error: photoInsertErr } = await supabase
+        await supabase
           .from("sos_alert_photos")
-          .insert(photoInserts);
-        if (photoInsertErr) {
-          console.warn("[SOS] Erreur insertion photos alerte:", photoInsertErr.message);
-          // Non bloquant : l'alerte SOS est créée, les photos sont optionnelles
-        }
+          .insert(vehiclePhotos.map((p: { url: string }, index: number) => ({ alert_id: alertData.id, url: p.url, position: index })))
+          .then(({ error: e }) => e && console.warn("[SOS] photos de l'alerte :", e.message));
       }
 
-      // Notifier les vigiles proches via le backend (FCM push)
-      // Hybride : si le backend échoue, l'alerte est quand même visible via Realtime
+      // Vigiles proches prévenus par le serveur (rayon, photo, une seule fois chacun)
       if (alertData?.id) {
-        try {
-          const { data: { session } } = await supabase.auth.getSession();
-          if (session?.access_token) {
-            const backendUrl = process.env.NEXT_PUBLIC_YAZZ_BACKEND_URL;
-            if (backendUrl) {
-              fetch(`${backendUrl}/api/sos/notify-vigiles`, {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/json",
-                  Authorization: `Bearer ${session.access_token}`,
-                },
-                body: JSON.stringify({ alertId: alertData.id }),
-              }).catch((err) => {
-                console.warn("[SOS] Backend notify-vigiles failed (non bloquant):", err);
-              });
-              // Fire-and-forget : ne pas attendre la réponse
-            }
-          }
-        } catch (notifyErr) {
-          console.warn("[SOS] Erreur notification vigiles (non bloquant):", notifyErr);
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+        const backendUrl = process.env.NEXT_PUBLIC_YAZZ_BACKEND_URL;
+        if (session?.access_token && backendUrl) {
+          fetch(`${backendUrl}/api/sos/notify-vigiles`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
+            body: JSON.stringify({ alertId: alertData.id }),
+          }).catch((err) => console.warn("[SOS] notify-vigiles (non bloquant) :", err));
         }
       }
 
-      setState("active");
-    } catch (err: any) {
-      console.error("[SOS] erreur:", err);
-      setError(err.message || "Erreur lors de l'envoi du SOS");
-      setState("idle");
+      setAlert(alertData as Alert);
+      setPhase("active");
+    } catch (err: unknown) {
+      console.error("[SOS] erreur :", err);
+      const msg = err instanceof Error ? err.message : "";
+      setError(
+        /duplicate|unique/i.test(msg)
+          ? "Une alerte est déjà en cours pour ce véhicule."
+          : "Envoi impossible. Vérifiez votre connexion et réessayez."
+      );
+      setPhase("idle");
     }
   };
 
-  const cancelSOS = async () => {
-    if (!supabase) {
-      router.push("/");
-      return;
-    }
+  // Propriétaire : terminer l'alerte (récupéré ou fausse alerte)
+  const closeAlert = async (falseAlarm: boolean) => {
+    if (!supabase || !alert) return;
+    setClosing(true);
     try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) {
-        router.push("/");
-        return;
-      }
-
-      // Mark active SOS as false_alarm
       await supabase
         .from("sos_alerts")
-        .update({ status: "false_alarm", resolved_at: new Date().toISOString() })
-        .eq("declared_by", user.id)
+        .update({ status: falseAlarm ? "false_alarm" : "resolved", resolved_at: new Date().toISOString() })
+        .eq("id", alert.id)
         .eq("status", "active");
-
       router.push("/");
-    } catch (err) {
-      router.push("/");
+    } catch {
+      setError("Impossible pour le moment. Réessayez.");
+      setClosing(false);
     }
   };
 
+  const photo = device?.vehicle_photo || device?.url_image || null;
+  const found = Boolean(alert?.found_at);
+  const spotted = alert?.spotted_count ?? 0;
+
   return (
-    <div className="absolute inset-0 flex flex-col bg-yazz-text-dark overflow-hidden">
-      {/* Background gradient pulse */}
-      <div className={cn(
-        "absolute inset-0 transition-opacity duration-500",
-        state === "countdown" || state === "active" ? "opacity-100" : "opacity-40"
-      )}>
-        <div className="absolute inset-0 bg-gradient-to-br from-yazz-error/30 via-yazz-text-dark to-yazz-text-dark" />
-        {state === "countdown" && (
-          <div className="absolute inset-0 grid place-items-center">
-            <div className="h-[300px] w-[300px] rounded-full bg-yazz-error/20 animate-ping" />
+    <div className="absolute inset-0 overflow-y-auto bg-yazz-background">
+      <div className="mx-auto flex min-h-full max-w-md flex-col px-4 pb-6">
+        {/* Barre du haut */}
+        <div className="flex items-center gap-3 py-4">
+          <button
+            onClick={() => router.push("/")}
+            aria-label="Retour"
+            className="grid h-10 w-10 place-items-center rounded-yazz-sm bg-yazz-surface text-yazz-text-dark yazz-shadow-soft transition-colors hover:bg-yazz-accent"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </button>
+          <h1 className="font-outfit text-[18px] font-bold text-yazz-text-dark">
+            {phase === "active" ? "Alerte SOS" : "SOS"}
+          </h1>
+        </div>
+
+        {phase === "loading" ? (
+          <div className="grid flex-1 place-items-center">
+            <Loader2 className="h-7 w-7 animate-spin text-yazz-primary" />
+          </div>
+        ) : (
+          <div key={phase === "active" ? "active" : "idle"} className="yazz-stagger flex flex-1 flex-col">
+            {/* Véhicule */}
+            <div className="flex items-center gap-4 rounded-yazz-md bg-yazz-surface p-3.5 yazz-shadow-soft">
+              <div className="grid h-14 w-14 shrink-0 place-items-center overflow-hidden rounded-yazz-sm bg-yazz-accent">
+                {photo ? (
+                  <img src={photo} alt="" className="h-full w-full object-cover" />
+                ) : (
+                  <Car className="h-6 w-6 text-yazz-text-muted" strokeWidth={1.75} />
+                )}
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="font-outfit truncate text-[16px] font-semibold text-yazz-text-dark">{vehicleLabel(device)}</p>
+                {device?.vehicle_plate && (
+                  <span className="font-inter mt-1 inline-block border-[1.5px] border-yazz-border-light px-2 py-0.5 text-[12px] font-bold tracking-[0.12em] text-yazz-text-dark">
+                    {device.vehicle_plate}
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* Centre */}
+            <div className="flex flex-1 flex-col items-center justify-center py-8 text-center">
+              {phase === "active" ? (
+                <>
+                  <PulseBadge tone={found ? "success" : "danger"} animate={!found} />
+                  <p className="font-outfit text-[22px] font-bold text-yazz-text-dark">
+                    {found ? "Véhicule retrouvé" : "Alerte en cours"}
+                  </p>
+                  <p className="font-inter mt-2 flex items-center gap-1.5 text-[14px] text-yazz-text-muted">
+                    <Eye className="h-4 w-4" />
+                    {spotted > 0 ? `Repéré par ${spotted} vigile${spotted > 1 ? "s" : ""}` : "Vigiles prévenus"}
+                  </p>
+                </>
+              ) : phase === "sending" ? (
+                <>
+                  <PulseBadge tone="danger" animate />
+                  <p className="font-outfit text-[18px] font-semibold text-yazz-text-dark">Envoi de l&apos;alerte…</p>
+                </>
+              ) : confirming ? (
+                <CodeConfirm
+                  code={code}
+                  onOk={() => {
+                    setConfirming(false);
+                    triggerSOS();
+                  }}
+                  onCancel={() => setConfirming(false)}
+                />
+              ) : (
+                <button onClick={askCode} className="group flex flex-col items-center" aria-label="Déclencher le SOS">
+                  <span className="transition-transform duration-150 group-active:scale-95">
+                    <PulseBadge tone="danger" animate big />
+                  </span>
+                  <span className="font-inter text-[14px] font-medium text-yazz-text-muted">Touchez en cas de vol</span>
+                </button>
+              )}
+            </div>
+
+            {error && (
+              <div className="mb-4 flex items-center justify-center gap-2 text-yazz-error">
+                <Info className="h-4 w-4 shrink-0" />
+                <p className="font-inter text-[13px] font-semibold">{error}</p>
+              </div>
+            )}
+
+            {phase === "active" && (
+              <div className="flex gap-2.5">
+                <button
+                  onClick={() => closeAlert(true)}
+                  disabled={closing}
+                  className="font-inter h-12 flex-1 border-[1.5px] border-yazz-border-light bg-yazz-surface text-[14px] font-semibold text-yazz-text-dark transition-colors hover:bg-yazz-accent disabled:opacity-50"
+                >
+                  Fausse alerte
+                </button>
+                <button
+                  onClick={() => closeAlert(false)}
+                  disabled={closing}
+                  className="font-inter flex h-12 flex-[2] items-center justify-center gap-2 bg-yazz-primary text-[14px] font-semibold text-white transition-all hover:brightness-95 active:scale-[0.98] disabled:opacity-60"
+                >
+                  {closing ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-[18px] w-[18px]" />}
+                  Je l&apos;ai récupéré
+                </button>
+              </div>
+            )}
           </div>
         )}
       </div>
+    </div>
+  );
+}
 
-      {/* Top bar */}
-      <div className="relative z-10 flex items-center justify-between p-4">
-        <button
-          onClick={() => router.push("/")}
-          aria-label="Fermer"
-          className="grid h-10 w-10 place-items-center rounded-yazz-sm bg-white/10 text-white backdrop-blur-sm transition-colors hover:bg-white/20"
-        >
-          <X className="h-5 w-5" />
-        </button>
-        <h1 className="font-outfit text-[16px] font-bold text-white">Alerte SOS</h1>
-        <div className="h-10 w-10" />
-      </div>
-
-      {/* Content */}
-      <div className="yazz-stagger relative z-10 flex flex-1 flex-col items-center justify-center px-6">
-        {state === "idle" && (
-          <>
-            <div className="mb-8 grid h-32 w-32 place-items-center rounded-full bg-yazz-error/20">
-              <ShieldAlert className="h-14 w-14 text-yazz-error" />
-            </div>
-            <h2 className="font-outfit text-center text-[22px] font-bold text-white">
-              Alertez les vigiles YAZZ
-            </h2>
-            <p className="font-inter mt-2 max-w-xs text-center text-[13px] leading-relaxed text-white/60">
-              En cas d'urgence (vol, agression, accident), déclenchez une alerte SOS. Les vigiles YAZZ à proximité seront notifiés immédiatement.
-            </p>
-
-            {error && (
-              <div className="mt-6 w-full max-w-xs rounded-yazz-md ring-1 ring-inset ring-yazz-error/20 bg-yazz-error/10 p-3">
-                <p className="font-inter text-[12px] text-yazz-error">{error}</p>
-              </div>
-            )}
-
-            <button
-              onClick={startCountdown}
-              className="mt-8 flex h-20 w-20 items-center justify-center rounded-full bg-yazz-error text-white shadow-[0_0_40px_rgba(229,62,62,0.5)] transition-all hover:scale-105 active:scale-95"
-            >
-              <Siren className="h-8 w-8" />
-            </button>
-            <p className="font-inter mt-4 text-[12px] text-white/50">
-              Maintenez pour déclencher
-            </p>
-          </>
+/** Bouclier rouge qui émet des ondes (vert une fois le véhicule retrouvé). */
+function PulseBadge({ tone, animate, big = false }: { tone: "danger" | "success"; animate: boolean; big?: boolean }) {
+  const color = tone === "success" ? "bg-yazz-success" : "bg-yazz-error";
+  const soft = tone === "success" ? "bg-yazz-success/15" : "bg-yazz-error/15";
+  return (
+    <div className={cn("relative mb-4 grid place-items-center", big ? "h-48 w-48" : "h-28 w-28")}>
+      {animate && (
+        <>
+          <span className={cn("absolute inset-3 rounded-full animate-ping [animation-duration:2.2s]", soft)} />
+          <span className={cn("absolute inset-0 rounded-full opacity-60", soft)} />
+        </>
+      )}
+      <span
+        className={cn(
+          "relative grid place-items-center rounded-full text-white",
+          big ? "h-32 w-32" : "h-20 w-20",
+          color,
+          tone === "success"
+            ? "shadow-[0_10px_28px_-6px_rgba(56,161,105,0.55)]"
+            : "shadow-[0_12px_32px_-8px_rgba(229,62,62,0.6)]"
         )}
-
-        {state === "countdown" && (
-          <>
-            <div className="relative grid h-48 w-48 place-items-center">
-              <div className="absolute inset-0 rounded-full bg-yazz-error/30 animate-ping" />
-              <div className="absolute inset-4 rounded-full bg-yazz-error/40" />
-              <span className="relative font-outfit text-[64px] font-bold text-white">
-                {countdown}
-              </span>
-            </div>
-            <p className="font-outfit mt-6 text-[18px] font-bold text-white">
-              Préparation... {countdown}s
-            </p>
-            <button
-              onClick={cancelCountdown}
-              className="mt-6 rounded-yazz-sm bg-white/10 px-6 py-2.5 text-[13px] font-semibold text-white backdrop-blur-sm transition-colors hover:bg-white/20"
-            >
-              Annuler
-            </button>
-          </>
+      >
+        {tone === "success" ? (
+          <CheckCircle2 className={big ? "h-12 w-12" : "h-9 w-9"} />
+        ) : (
+          <ShieldAlert className={big ? "h-12 w-12" : "h-9 w-9"} />
         )}
+      </span>
+    </div>
+  );
+}
 
-        {state === "confirm" && (
-          <>
-            <div className="mb-6 grid h-20 w-20 place-items-center rounded-full bg-yazz-warning/20">
-              <ShieldAlert className="h-10 w-10 text-yazz-warning" />
-            </div>
-            <h2 className="font-outfit text-center text-[20px] font-bold text-white">
-              Confirmez le déclenchement
-            </h2>
-            <p className="font-inter mt-2 max-w-xs text-center text-[12px] leading-relaxed text-white/60">
-              Pour éviter un déclenchement accidentel, recopiez le code ci-dessous pour confirmer l'alerte SOS.
-            </p>
-
-            {error && (
-              <div className="mt-4 w-full max-w-xs rounded-yazz-md ring-1 ring-inset ring-yazz-error/20 bg-yazz-error/10 p-3">
-                <p className="font-inter text-[12px] text-yazz-error">{error}</p>
-              </div>
-            )}
-
-            {/* Code à recopier */}
-            <div className="mt-6 flex flex-col items-center gap-3">
-              <div className="rounded-yazz-lg bg-white/10 px-6 py-3 backdrop-blur-sm">
-                <p className="font-inter text-[11px] text-white/50">Code de confirmation</p>
-                <p className="font-outfit text-[32px] font-bold tracking-[0.3em] text-white">
-                  {confirmCode}
-                </p>
-              </div>
-
-              {/* Input utilisateur */}
-              <input
-                type="text"
-                inputMode="numeric"
-                autoFocus
-                maxLength={4}
-                value={userInput}
-                onChange={(e) => {
-                  const val = e.target.value.replace(/\D/g, "").slice(0, 4);
-                  setUserInput(val);
-                  if (error) setError(null);
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && userInput.length === 4) {
-                    handleConfirmSubmit();
-                  }
-                }}
-                placeholder="----"
-                className="font-outfit h-14 w-40 rounded-yazz-md border-2 border-white/20 bg-white/5 text-center text-[28px] font-bold tracking-[0.3em] text-white placeholder-white/20 backdrop-blur-sm focus:border-yazz-primary focus:outline-none"
-              />
-
-              <div className="flex gap-2">
-                <button
-                  onClick={regenerateCode}
-                  className="font-inter flex items-center gap-1.5 rounded-yazz-sm bg-white/10 px-3 py-2 text-[11px] font-semibold text-white/70 backdrop-blur-sm transition-colors hover:bg-white/20"
-                >
-                  <RefreshCw className="h-3.5 w-3.5" />
-                  Nouveau code
-                </button>
-              </div>
-            </div>
-
-            {/* Boutons */}
-            <div className="mt-6 flex w-full max-w-xs gap-2">
-              <button
-                onClick={() => {
-                  setState("idle");
-                  setCountdown(3);
-                  setUserInput("");
-                  setError(null);
-                }}
-                className="font-inter flex-1 rounded-yazz-sm bg-white/10 px-4 py-3 text-[13px] font-semibold text-white backdrop-blur-sm transition-colors hover:bg-white/20"
-              >
-                Annuler
-              </button>
-              <button
-                onClick={handleConfirmSubmit}
-                disabled={userInput.length !== 4}
-                className="font-inter flex flex-1 items-center justify-center gap-2 rounded-yazz-sm bg-yazz-error px-4 py-3 text-[13px] font-bold text-white shadow-[0_0_30px_rgba(229,62,62,0.4)] transition-all hover:bg-yazz-error/90 disabled:opacity-40 active:scale-95"
-              >
-                <Siren className="h-4 w-4" />
-                Déclencher
-              </button>
-            </div>
-          </>
+/** Confirmation par code : on recopie 4 chiffres, l'alerte part toute seule. */
+function CodeConfirm({ code, onOk, onCancel }: { code: string; onOk: () => void; onCancel: () => void }) {
+  const [value, setValue] = useState("");
+  const [wrong, setWrong] = useState(false);
+  return (
+    <div className="yazz-enter-pop flex flex-col items-center">
+      <p className="font-inter text-[14px] text-yazz-text-muted">Tapez le code</p>
+      <p className="font-outfit mt-1 text-[40px] font-extrabold tracking-[0.3em] text-yazz-error tabular-nums">{code}</p>
+      <input
+        autoFocus
+        inputMode="numeric"
+        maxLength={4}
+        value={value}
+        aria-label="Code de confirmation"
+        onChange={(e) => {
+          const v = e.target.value.replace(/\D/g, "").slice(0, 4);
+          setWrong(false);
+          if (v.length === 4) {
+            if (v === code) {
+              onOk();
+              return;
+            }
+            setWrong(true);
+            setValue("");
+            if (typeof navigator !== "undefined" && "vibrate" in navigator) navigator.vibrate?.(60);
+            return;
+          }
+          setValue(v);
+        }}
+        placeholder="····"
+        className={cn(
+          "font-outfit mt-5 h-16 w-56 border-2 bg-yazz-surface text-center text-[30px] font-bold tracking-[0.5em] text-yazz-text-dark placeholder:text-yazz-text-muted/40 focus:outline-none",
+          wrong ? "border-yazz-error" : "border-yazz-border-light focus:border-yazz-error"
         )}
-
-        {state === "sending" && (
-          <>
-            <Loader2 className="h-12 w-12 animate-spin text-white" />
-            <p className="font-outfit mt-4 text-[16px] font-bold text-white">
-              Envoi de l'alerte...
-            </p>
-          </>
-        )}
-
-        {state === "active" && (
-          <>
-            <div className="mb-6 grid h-32 w-32 place-items-center rounded-full bg-yazz-success/20">
-              <CheckCircle2 className="h-14 w-14 text-yazz-success" />
-            </div>
-            <h2 className="font-outfit text-center text-[22px] font-bold text-white">
-              Alerte SOS active
-            </h2>
-            <p className="font-inter mt-2 max-w-xs text-center text-[13px] leading-relaxed text-white/60">
-              Votre alerte a été envoyée. Les vigiles YAZZ à proximité ont été notifiés. Restez en sécurité.
-            </p>
-
-            {/* Pulsing indicator */}
-            <div className="mt-8 flex items-center gap-2">
-              <span className="h-3 w-3 rounded-full bg-yazz-error yazz-blink" />
-              <span className="font-inter text-[12px] text-white/70">En cours de diffusion</span>
-            </div>
-
-            <button
-              onClick={cancelSOS}
-              className="mt-8 flex items-center gap-2 rounded-yazz-sm bg-white/10 px-6 py-2.5 text-[13px] font-semibold text-white backdrop-blur-sm transition-colors hover:bg-white/20"
-            >
-              <X className="h-4 w-4" />
-              Annuler l'alerte
-            </button>
-          </>
-        )}
-      </div>
-
-      {/* Footer info */}
-      <div className="relative z-10 p-4">
-        <div className="flex items-start gap-2 rounded-yazz-md bg-white/5 p-3 backdrop-blur-sm">
-          <AlertTriangle className="h-4 w-4 shrink-0 text-white/40 mt-0.5" />
-          <p className="font-inter text-[10px] leading-relaxed text-white/40">
-            L'alerte SOS utilise votre position GPS actuelle et notifie les vigiles YAZZ à proximité. N'utilisez cette fonction qu'en cas de réel danger.
-          </p>
-        </div>
-      </div>
+      />
+      <p className={cn("font-inter mt-2 h-5 text-[13px] font-semibold text-yazz-error", !wrong && "invisible")}>Code incorrect</p>
+      <button onClick={onCancel} className="font-inter mt-2 text-[14px] font-semibold text-yazz-text-muted hover:text-yazz-text-dark">
+        Annuler
+      </button>
     </div>
   );
 }
